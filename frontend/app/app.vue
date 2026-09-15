@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CommonArea, Reservation } from '~/domain/reservation'
-import { can } from '~/domain/permissions'
+import { can, type UseCase } from '~/domain/permissions'
 
 const active = ref('Início')
 const showOccurrence = ref(false)
@@ -26,6 +26,16 @@ const navItems = [
   { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' },
 ] as const
 
+function hasAccess(useCase: UseCase) {
+  return authUser.value ? can(authUser.value.role, useCase) : false
+}
+
+const navPermissions: Record<string, UseCase[]> = {
+  Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
+  Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
+  Comunicados: ['view-notices', 'publish-notices'],
+}
+const visibleNavItems = computed(() => navItems.filter(item => item.label === 'Início' || navPermissions[item.label]?.some(hasAccess)))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
 const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence') : false)
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
@@ -107,7 +117,7 @@ const selectNav = (label: string) => { active.value = label }
 <template>
   <LoginScreen v-if="!authUser" :loading="authLoading" :error="authError" :show-demo-access="runtimeConfig.dataSource !== 'api'" @submit="handleLogin" />
   <div v-else class="app-shell">
-    <AppSidebar :active="active" :items="navItems" @select="selectNav" />
+    <AppSidebar :active="active" :items="visibleNavItems" @select="selectNav" />
 
     <main class="main-content">
       <AppTopbar :name="residentName" :initials="residentInitials" :compact="isScrolled" @notifications="showNotifications = !showNotifications" @logout="handleLogout" />
@@ -116,15 +126,15 @@ const selectNav = (label: string) => { active.value = label }
       <div class="page-wrap">
         <section class="page-heading">
           <div><div class="eyebrow">{{ roleLabel }} · Residencial Vale Verde</div><h1>Olá, {{ residentName }}!</h1><p>Veja o que está acontecendo no seu condomínio hoje.</p></div>
-          <button class="primary-button" @click="active = 'Comunicados'"><SvgIcon name="message" />Ver comunicados</button>
+          <button v-if="hasAccess('view-notices')" class="primary-button" @click="active = 'Comunicados'"><SvgIcon name="message" />Ver comunicados</button>
         </section>
 
         <div v-if="active === 'Início'">
           <section class="stat-grid"><DashboardStat v-for="stat in stats" :key="stat.label" v-bind="stat" /></section>
           <section class="content-grid three-columns">
             <article class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="active = 'Ocorrências'">Ver todas</button></div><div class="list"><div v-if="!recentOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in recentOccurrences" :key="item.id" class="list-row interactive-row" @click="openDetail('occurrence', item.id)"><span class="dot teal"></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em></button></div></article>
-            <article class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
-            <article class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="active = 'Comunicados'">Ver todos</button></div><div class="list"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="list-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em></button></div></article>
+            <article v-if="hasAccess('view-common-areas') || hasAccess('manage-reservations')" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
+            <article v-if="hasAccess('view-notices') || hasAccess('publish-notices')" class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="active = 'Comunicados'">Ver todos</button></div><div class="list"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="list-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em></button></div></article>
           </section>
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
@@ -138,7 +148,7 @@ const selectNav = (label: string) => { active.value = label }
       </div>
     </main>
 
-    <MobileNav :active="active" :items="navItems" @select="selectNav" />
+    <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
     <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory"><option>Manutenção</option><option>Convivência</option><option>Segurança</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..."></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || !resident" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
     <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div></dl></DetailModal>
     <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl></DetailModal>
