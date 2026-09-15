@@ -10,5 +10,8 @@
     "nuxt": "^4.0.0",
     "typescript": "^5.0.0",
     "vue-tsc": "^3.3.11"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
   }
 }

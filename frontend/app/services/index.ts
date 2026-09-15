@@ -13,12 +13,16 @@ import { createUserService } from './user-service'
 import { createApiUnitRepository } from '~/repositories/api/api-unit-repository'
 import { mockUnitRepository } from '~/repositories/mock/mock-unit-repository'
 import { createUnitService } from './unit-service'
+import { createApiAuthRepository } from '~/repositories/api/api-auth-repository'
+import { mockAuthRepository } from '~/repositories/mock/mock-auth-repository'
+import { createAuthService } from './auth-service'
 
 export function useServices() {
   const { public: config } = useRuntimeConfig()
   const useMock = config.dataSource !== 'api'
 
   return {
+    authService: createAuthService(useMock ? mockAuthRepository : createApiAuthRepository()),
     reservationService: createReservationService(useMock ? mockReservationRepository : createApiReservationRepository()),
     occurrenceService: createOccurrenceService(useMock ? mockOccurrenceRepository : createApiOccurrenceRepository()),
     noticeService: createNoticeService(useMock ? mockNoticeRepository : createApiNoticeRepository()),
