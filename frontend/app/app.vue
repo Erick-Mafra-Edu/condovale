@@ -23,7 +23,7 @@ const { notices, loadNotices } = useNotices()
 
 const navItems = [
   { label: 'Início', icon: 'home' }, { label: 'Ocorrências', icon: 'alert' },
-  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' },
+  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' },
 ] as const
 
 function hasAccess(useCase: UseCase) {
@@ -34,6 +34,7 @@ const navPermissions: Record<string, UseCase[]> = {
   Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
   Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
   Comunicados: ['view-notices', 'publish-notices'],
+  Relatórios: ['generate-reports'],
 }
 const visibleNavItems = computed(() => navItems.filter(item => item.label === 'Início' || navPermissions[item.label]?.some(hasAccess)))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
@@ -139,6 +140,7 @@ const selectNav = (label: string) => { active.value = label }
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
 
+        <ReportPage v-else-if="active === 'Relatórios' && hasAccess('generate-reports')" :occurrences="occurrences" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && canCreateOccurrence" class="primary-button" @click="showOccurrence = true">Nova ocorrência</button></section>
           <article class="panel detail-panel" v-if="active === 'Reservas'"><div class="filter-row"><button :class="['filter', { selected: selectedAreaId === null }]" @click="selectArea(null)">Todas</button><button v-for="area in areas" :key="area.id" :class="['filter', { selected: selectedAreaId === area.id }]" @click="selectArea(area.id)">{{ area.name }}</button></div><div v-if="!filteredReservations.length" class="empty-row">Nenhuma reserva ativa para este filtro.</div><button v-for="item in filteredReservations" :key="item.id" class="detail-row interactive-row" @click="openDetail('reservation', item.id)"><span class="place-thumb"><SvgIcon name="building" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>Capacidade: {{ getArea(item.areaId)?.capacity ?? 'não informada' }} pessoas · {{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em><span class="arrow"></span></button></article>
