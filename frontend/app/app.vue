@@ -209,6 +209,7 @@ const selectNav = (label: string) => { active.value = label }
   .topbar:hover{transform:none;box-shadow:0 12px 32px rgba(0,0,0,.22),inset 0 1px 0 rgba(225,245,250,.18)}
   .search{background:rgba(4,24,33,.52);border-color:rgba(180,215,225,.1);box-shadow:inset 0 1px 0 rgba(225,245,250,.06)}
   .search:hover{background:rgba(8,31,41,.72);border-color:rgba(180,215,225,.16);box-shadow:inset 0 1px 0 rgba(225,245,250,.1),0 4px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
+  .search:hover{background:rgba(8,31,41,.72);border-color:rgba(180,215,225,.16);box-shadow:inset 0 1px 0 rgba(225,245,250,.1),0 4px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
   .panel,.stat-card{background:rgba(13,45,55,.94);border-color:rgba(180,215,225,.09);box-shadow:0 8px 20px rgba(0,0,0,.12)}
   .stat-card:hover,.panel:hover{box-shadow:0 10px 22px rgba(0,0,0,.16)}
   .notifications-popover{background:rgba(12,39,50,.76);box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(225,245,250,.18)}
