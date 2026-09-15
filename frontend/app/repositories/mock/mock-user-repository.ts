@@ -4,7 +4,7 @@ import type { User } from '~/domain/user'
 import type { UserRepository } from '~/repositories/contracts/user-repository'
 import { simulateRequest } from './mock-config'
 
-const users: User[] = [
+export const mockUsers: User[] = [
   { id: 'user-01', name: 'Morador exemplo', email: 'morador@example.com', role: 'resident', status: 'active', unitId: 'unit-01' },
   { id: 'user-admin', name: 'Administração', email: 'admin@example.com', role: 'admin', status: 'active' },
 ]
@@ -14,7 +14,7 @@ function response<T>(data: T): ApiResponse<T> {
 }
 
 function ensureUser(id: string): User {
-  const item = users.find(item => item.id === id)
+  const item = mockUsers.find(item => item.id === id)
   if (!item) throw new AppError('NOT_FOUND', 'Usuário não encontrado')
   return item
 }
@@ -22,7 +22,7 @@ function ensureUser(id: string): User {
 export const mockUserRepository: UserRepository = {
   async list() {
     await simulateRequest()
-    return response(users)
+    return response(mockUsers)
   },
   async findById(id) {
     await simulateRequest()
@@ -31,7 +31,7 @@ export const mockUserRepository: UserRepository = {
   async create(input) {
     await simulateRequest()
     const item: User = { ...structuredClone(input), id: crypto.randomUUID() }
-    users.push(item)
+    mockUsers.push(item)
     return response(item)
   },
   async update(id, input) {
@@ -47,4 +47,3 @@ export const mockUserRepository: UserRepository = {
     return response(item)
   },
 }
-

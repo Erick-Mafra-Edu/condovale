@@ -4,7 +4,13 @@
 
 `Page/Component → Composable → Service → Repository Contract → MockRepository | ApiRepository`
 
-`app/services/index.ts` concentra a única decisão de seleção. `NUXT_PUBLIC_DATA_SOURCE=mock` mantém dados em memória; `NUXT_PUBLIC_DATA_SOURCE=api` seleciona os cinco ApiRepositories. O padrão continua sendo mock. `NUXT_PUBLIC_API_BASE` configura a base HTTP (padrão `/api`). Services recebem apenas contratos; composables importam `useServices` e objetos de domínio. Não há HTTP, endpoints ou mocks nas camadas superiores.
+`app/services/index.ts` concentra a única decisão de seleção. `NUXT_PUBLIC_DATA_SOURCE=mock` mantém dados em memória; `NUXT_PUBLIC_DATA_SOURCE=api` seleciona os ApiRepositories. O padrão continua sendo mock. `NUXT_PUBLIC_API_BASE` configura a base HTTP (padrão `/api`). Services recebem apenas contratos; composables importam `useServices` e objetos de domínio. Não há HTTP, endpoints ou mocks nas camadas superiores.
+
+## Autenticação e responsabilidade de dados
+
+`User` é uma projeção segura para a interface e não possui `senhaHash`, token ou método que faça HTTP. A autenticação é uma operação de aplicação: `useAuth() → AuthService → AuthRepository`. Em modo API, `POST /auth/login`, `GET /auth/session` e `POST /auth/logout` usam `credentials: 'include'`; o backend deve manter a sessão em cookie `HttpOnly` e devolver somente `{ user }`. Credenciais são transitórias e o frontend não usa `localStorage` para tokens.
+
+Validações de input novas usam **Zod**. O schema vive no domínio do caso de uso e o service converte os erros para `AppError`, preservando o formato `{ fields }` que os composables já expõem para a UI.
 
 ## Decisões
 
@@ -23,6 +29,7 @@
 | Notices | `list`, `findById`, `create`, `update`, `remove` |
 | Users | `list`, `findById`, `create`, `update`, `deactivate` |
 | Units | `list`, `findById` |
+| Auth | autenticar, restaurar sessão e logout; retorna somente usuário sanitizado |
 
 Os mocks são mutáveis em memória e devolvem cópias dos objetos. A persistência em banco e autenticação real permanecem fora desta etapa. Os seeds de usuários e unidades mantêm a mesma referência `unit-01`.
 
