@@ -2,7 +2,7 @@
 import type { AppError } from '~/domain/app-error'
 import type { UserRole } from '~/domain/user'
 
-defineProps<{ loading: boolean; error: AppError | null }>()
+defineProps<{ loading: boolean; error: AppError | null; showDemoAccess: boolean }>()
 const emit = defineEmits<{ submit: [email: string, password: string] }>()
 
 const email = ref('morador@example.com')
@@ -41,7 +41,7 @@ function submit() {
         <p v-if="error" class="login-error" role="alert">{{ error.message }}</p>
         <button class="primary-button login-submit" type="submit" :disabled="loading">{{ loading ? 'Entrando...' : 'Entrar no CondoVale' }}</button>
       </form>
-      <div class="demo-access"><span>Testar como</span><div class="role-grid"><button v-for="option in roleOptions" :key="option.role" type="button" :class="['role-chip', { selected: email === option.email }]" @click="selectRole(option.email)">{{ option.label }}</button></div><small>Senha de demonstração: <strong>condovale</strong></small></div>
+      <div v-if="showDemoAccess" class="demo-access"><span>Testar como</span><div class="role-grid"><button v-for="option in roleOptions" :key="option.role" type="button" :class="['role-chip', { selected: email === option.email }]" @click="selectRole(option.email)">{{ option.label }}</button></div><small>Senha de demonstração: <strong>condovale</strong></small></div>
     </section>
   </main>
 </template>

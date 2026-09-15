@@ -15,6 +15,8 @@ import { mockAuthRepository } from '../app/repositories/mock/mock-auth-repositor
 import { mockConfig } from '../app/repositories/mock/mock-config'
 import { mockReservations } from '../app/repositories/mock/state'
 import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
+import { can, rolePermissions, type UseCase } from '../app/domain/permissions'
+import type { UserRole } from '../app/domain/user'
 
 const response = <T>(data: T): ApiResponse<T> => ({ data, message: null })
 
@@ -162,5 +164,33 @@ describe('autenticação mock por classificação', () => {
     const service = createAuthService(mockAuthRepository)
     await expect(service.authenticate({ email: 'admin@example.com', password: 'errada' }))
       .rejects.toMatchObject({ code: 'UNAUTHENTICATED' })
+  })
+})
+
+describe('permissões do diagrama de casos de uso', () => {
+  const residentCases: UseCase[] = [
+    'login', 'update-own-profile', 'view-notices', 'create-occurrence', 'track-own-occurrences',
+    'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
+  ]
+  const employeeCases: UseCase[] = ['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']
+  const syndicCases: UseCase[] = ['login', 'publish-notices', 'generate-reports']
+  const adminCases: UseCase[] = [
+    'login', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
+    'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
+  ]
+
+  it.each([
+    ['resident', residentCases], ['employee', employeeCases], ['syndic', syndicCases], ['admin', adminCases],
+  ] as Array<[UserRole, UseCase[]]>)('%s possui exatamente os casos de uso previstos', (role, allowed) => {
+    const allCases = [...rolePermissions[role]]
+    expect([...rolePermissions[role]]).toEqual(allowed)
+    for (const useCase of allCases) expect(can(role, useCase)).toBe(allowed.includes(useCase))
+  })
+
+  it('não concede operações administrativas a moradores ou funcionários', () => {
+    const restricted: UseCase[] = ['manage-units', 'manage-residents', 'link-residents-to-units', 'publish-notices', 'approve-or-reject-reservation', 'generate-reports']
+    for (const role of ['resident', 'employee'] as UserRole[]) {
+      for (const useCase of restricted) expect(can(role, useCase)).toBe(false)
+    }
   })
 })

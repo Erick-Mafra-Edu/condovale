@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommonArea, Reservation } from '~/domain/reservation'
+import { can } from '~/domain/permissions'
 
 const active = ref('Início')
 const showOccurrence = ref(false)
@@ -14,6 +15,7 @@ const detailTarget = ref<{ type: 'occurrence' | 'reservation' | 'notice'; id: st
 const isScrolled = ref(false)
 
 const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, logout } = useAuth()
+const { public: runtimeConfig } = useRuntimeConfig()
 const { users, loadUsers } = useUsers()
 const { occurrences, loadOccurrences, createOccurrence } = useOccurrences()
 const { reservations, loadReservations, listAreas } = useReservations()
@@ -25,7 +27,7 @@ const navItems = [
 ] as const
 
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
-const canCreateOccurrence = computed(() => authUser.value?.role === 'resident')
+const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence') : false)
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
 const areaById = computed(() => new Map(areas.value.map(area => [area.id, area])))
 const activeResidents = computed(() => users.value.filter(user => user.role === 'resident' && user.status === 'active'))
@@ -103,7 +105,7 @@ const selectNav = (label: string) => { active.value = label }
 </script>
 
 <template>
-  <LoginScreen v-if="!authUser" :loading="authLoading" :error="authError" @submit="handleLogin" />
+  <LoginScreen v-if="!authUser" :loading="authLoading" :error="authError" :show-demo-access="runtimeConfig.dataSource !== 'api'" @submit="handleLogin" />
   <div v-else class="app-shell">
     <AppSidebar :active="active" :items="navItems" @select="selectNav" />
 
