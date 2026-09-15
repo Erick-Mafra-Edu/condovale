@@ -1,0 +1,14 @@
+{
+  "name": "condovale-frontend",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "typecheck": "nuxt typecheck"
+  },
+  "devDependencies": {
+    "nuxt": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vue-tsc": "^3.3.11"
+  }
+}
