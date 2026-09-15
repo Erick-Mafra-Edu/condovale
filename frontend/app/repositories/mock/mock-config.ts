@@ -1,3 +1,6 @@
+import { reactive } from 'vue'
+import { AppError } from '~/domain/app-error'
+
 export const mockConfig = reactive({
   latency: 350,
   shouldFail: false,
@@ -9,4 +12,3 @@ export async function simulateRequest(): Promise<void> {
     throw new AppError('SERVER_ERROR', 'Erro simulado do servidor')
   }
 }
-import { AppError } from '~/domain/app-error'

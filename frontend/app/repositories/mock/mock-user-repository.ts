@@ -6,6 +6,8 @@ import { simulateRequest } from './mock-config'
 
 export const mockUsers: User[] = [
   { id: 'user-01', name: 'Morador exemplo', email: 'morador@example.com', role: 'resident', status: 'active', unitId: 'unit-01' },
+  { id: 'user-employee', name: 'Equipe de manutenção', email: 'funcionario@example.com', role: 'employee', status: 'active' },
+  { id: 'user-syndic', name: 'Síndica Vale Verde', email: 'sindica@example.com', role: 'syndic', status: 'active' },
   { id: 'user-admin', name: 'Administração', email: 'admin@example.com', role: 'admin', status: 'active' },
 ]
 
