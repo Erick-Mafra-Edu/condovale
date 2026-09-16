@@ -30,6 +30,13 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **PDF e Excel:** ambos recebem todos os registros filtrados; a paginação permanece apenas na visualização da tabela.
 - **Validação:** exportar a partir de qualquer página deve incluir todos os registros que atendem aos filtros.
 
+## RN13 — Seleção de datas do relatório
+
+- **Solicitação:** os filtros de data devem seguir o padrão visual dos demais inputs e usar um ícone de calendário.
+- **Comportamento esperado:** clicar no campo abre um modal acessível com o componente `UCalendar` do Nuxt UI.
+- **Formato de dados:** a seleção continua sendo convertida para `YYYY-MM-DD`, compatível com `ReportQuery` e com a API futura.
+- **Acessibilidade:** o botão informa o valor atual, o estado aberto/fechado e permite cancelar sem alterar o filtro.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
@@ -38,3 +45,4 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 15/09/2026 | Relatórios conforme papel do usuário | RN10 |
 | 15/09/2026 | Filtros e paginação preparados no relatório | RN11 |
 | 15/09/2026 | Exportação consulta todos os dados antes de gerar arquivo | RN12 |
+| 15/09/2026 | Filtros de data com calendário acessível em modal | RN13 |
