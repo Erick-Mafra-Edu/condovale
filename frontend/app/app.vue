@@ -8,6 +8,7 @@ const occurrenceTitle = ref('')
 const occurrenceCategory = ref('Manutenção')
 const occurrenceDescription = ref('')
 const submittingOccurrence = ref(false)
+const reviewingReservation = ref(false)
 const areas = ref<CommonArea[]>([])
 const selectedAreaId = ref<string | null>(null)
 const showNotifications = ref(false)
@@ -18,7 +19,7 @@ const { user: authUser, loading: authLoading, error: authError, authenticate, re
 const { public: runtimeConfig } = useRuntimeConfig()
 const { users, loadUsers } = useUsers()
 const { occurrences, loadOccurrences, createOccurrence } = useOccurrences()
-const { reservations, loadReservations, listAreas } = useReservations()
+const { reservations, loadReservations, listAreas, updateReservationStatus } = useReservations()
 const { notices, loadNotices } = useNotices()
 
 const navItems = [
@@ -63,7 +64,7 @@ const selectedReservation = computed(() => detailTarget.value?.type === 'reserva
 const selectedNotice = computed(() => detailTarget.value?.type === 'notice' ? notices.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
 const recentNotices = computed(() => [...notices.value].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3))
 const getArea = (areaId: string) => areaById.value.get(areaId)
-const reservationMeta = (reservation: Reservation) => `${formatDate(reservation.date)} · ${reservation.startTime}–${reservation.endTime}`
+const reservationMeta = (reservation: Reservation) => `${formatDate(reservation.date)} · ${reservation.startTime && reservation.endTime ? `${reservation.startTime}–${reservation.endTime}` : 'Dia inteiro'}`
 const noticeMeta = (publishedAt: string, status: string) => status === 'published' ? `Publicado em ${formatDateTime(publishedAt)}` : 'Rascunho'
 const noticeLabel = (status: string) => status === 'published' ? 'Publicado' : 'Rascunho'
 const noticeTone = (status: string) => status === 'published' ? 'green' : 'gray'
@@ -94,6 +95,15 @@ async function submitOccurrence() {
     occurrenceDescription.value = ''
     showOccurrence.value = false
   } finally { submittingOccurrence.value = false }
+}
+
+async function reviewReservation(status: 'approved' | 'rejected') {
+  if (!selectedReservation.value || !hasAccess('approve-or-reject-reservation')) return
+  reviewingReservation.value = true
+  try {
+    await updateReservationStatus(selectedReservation.value.id, status)
+    detailTarget.value = null
+  } finally { reviewingReservation.value = false }
 }
 
 function updateScrollMaterial() {
@@ -135,7 +145,7 @@ const selectNav = (label: string) => { active.value = label }
         </div>
 
         <ReportPage v-else-if="active === 'Relatórios' && hasAccess('generate-reports')" :occurrences="occurrences" />
-        <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" @reservation-created="loadReservations" />
+        <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="loadReservations" @reservation-cancelled="loadReservations" @open-details="openDetail('reservation', $event)" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && canCreateOccurrence" class="primary-button" @click="showOccurrence = true">Nova ocorrência</button></section>
           <article class="panel detail-panel" v-if="active === 'Comunicados'"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="detail-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon large"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em><span class="arrow"></span></button></article>
@@ -147,7 +157,7 @@ const selectNav = (label: string) => { active.value = label }
     <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
     <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory"><option>Manutenção</option><option>Convivência</option><option>Segurança</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..."></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || !resident" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
     <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div></dl></DetailModal>
-    <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl></DetailModal>
+    <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl><div v-if="hasAccess('approve-or-reject-reservation') && selectedReservation.status === 'pending'" class="modal-actions reservation-review-actions"><button class="outline-button danger-action" :disabled="reviewingReservation" @click="reviewReservation('rejected')"><SvgIcon name="reject" />Reprovar</button><button class="primary-button approve-action" :disabled="reviewingReservation" @click="reviewReservation('approved')"><SvgIcon name="approve" />{{ reviewingReservation ? 'Salvando...' : 'Aprovar reserva' }}</button></div></DetailModal>
     <DetailModal v-if="selectedNotice" title="Detalhes do comunicado" icon="message" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="noticeTone(selectedNotice.status)">{{ noticeLabel(selectedNotice.status) }}</em></dd></div><div><dt>Publicado em</dt><dd>{{ formatDateTime(selectedNotice.publishedAt) }}</dd></div><div class="full"><dt>Mensagem</dt><dd>{{ selectedNotice.content }}</dd></div></dl></DetailModal>
   </div>
 </template>
@@ -302,4 +312,5 @@ const selectNav = (label: string) => { active.value = label }
 @keyframes desktop-nav-select{from{transform:translateX(-3px) scale(.985);filter:saturate(.9)}to{transform:translateX(0) scale(1);filter:saturate(1)}}
 @keyframes material-rise{from{opacity:0;transform:translateY(8px) scale(.975);filter:blur(2px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){.nav-item,.nav-item .svg-icon,.unit-card{transition:none!important}.nav-item.selected,.modal{animation:none!important}}
+.reservation-review-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.reservation-review-actions button{min-height:42px;justify-content:center}.reservation-review-actions .svg-icon{width:16px;height:16px}.danger-action{display:inline-flex;align-items:center;gap:7px;border-color:#efb5b9!important;background:#fff5f5!important;color:#b4232c!important}.danger-action:hover{border-color:#dc2626!important;background:#fee8e9!important}.danger-action .svg-icon{filter:invert(22%) sepia(79%) saturate(3299%) hue-rotate(347deg) brightness(89%) contrast(88%)}.approve-action{background:#008c9e}.approve-action:hover{background:#006a78}.danger-action:focus-visible,.approve-action:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.danger-action{border-color:#8c3d45!important;background:#3e242a!important;color:#ffb6bc!important}.danger-action:hover{background:#512a31!important}.reservation-review-actions{border-color:rgba(180,215,225,.14)}}
 </style>

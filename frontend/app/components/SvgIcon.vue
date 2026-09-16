@@ -5,8 +5,10 @@ import calendar from '~/assets/icons/calendar.svg'
 import home from '~/assets/icons/home.svg'
 import message from '~/assets/icons/message.svg'
 import users from '~/assets/icons/users.svg'
+import approve from '~/assets/icons/approve.svg'
+import reject from '~/assets/icons/reject.svg'
 
-const icons = { alert, building, calendar, home, message, users }
+const icons = { alert, approve, building, calendar, home, message, reject, users }
 type IconName = keyof typeof icons
 
 withDefaults(defineProps<{ name: IconName; label?: string }>(), { label: '' })

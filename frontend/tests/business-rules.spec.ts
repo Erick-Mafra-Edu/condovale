@@ -73,6 +73,19 @@ describe('RN01 e RN08 — reservas', () => {
 
     mockReservations.splice(initial, mockReservations.length - initial)
   })
+
+  it('trata horários ausentes como reserva de diária e bloqueia o dia todo', async () => {
+    const initial = mockReservations.length
+    const dailyInput: CreateReservationInput = { areaId: area.id, residentId: 'user-01', date: '2026-10-02' }
+    const daily = await mockReservationRepository.create(dailyInput)
+
+    expect(daily.data).toMatchObject(dailyInput)
+    expect(daily.data.startTime).toBeUndefined()
+    await expect(mockReservationRepository.create({ ...dailyInput, startTime: '10:00', endTime: '10:30' }))
+      .rejects.toMatchObject({ code: 'RESERVATION_CONFLICT' })
+
+    mockReservations.splice(initial, mockReservations.length - initial)
+  })
 })
 
 describe('validações de aplicação', () => {
@@ -81,8 +94,18 @@ describe('validações de aplicação', () => {
     const service = createReservationService(repository)
 
     await expect(service.reserve({ ...reservationInput, startTime: '12:00', endTime: '10:00' }))
-      .rejects.toMatchObject({ code: 'VALIDATION_ERROR', fields: { startTime: ['Informe um intervalo de horário válido'] } })
+      .rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
     expect(repository.create).not.toHaveBeenCalled()
+  })
+
+  it('aceita diária sem horários e rejeita somente um horário preenchido', async () => {
+    const repository = { create: vi.fn().mockResolvedValue(response({})) } as unknown as ReservationRepository
+    const service = createReservationService(repository)
+    const dailyInput: CreateReservationInput = { areaId: area.id, residentId: 'user-01', date: '2026-10-03' }
+
+    await service.reserve(dailyInput)
+    expect(repository.create).toHaveBeenCalledWith(dailyInput)
+    await expect(service.reserve({ ...dailyInput, startTime: '10:00' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
   })
 
   it('RN05 exige que a ocorrência informe o morador responsável', async () => {

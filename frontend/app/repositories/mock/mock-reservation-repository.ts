@@ -16,7 +16,9 @@ function ensureReservation(id: string): Reservation {
 }
 
 function ensureNoConflict(input: CreateReservationInput, excludeId?: string) {
-  if (mockReservations.some(item => item.id !== excludeId && item.areaId === input.areaId && item.date === input.date && (item.status === 'pending' || item.status === 'approved') && item.startTime < input.endTime && item.endTime > input.startTime)) {
+  const inputStart = input.startTime ?? '00:00'
+  const inputEnd = input.endTime ?? '23:59'
+  if (mockReservations.some(item => item.id !== excludeId && item.areaId === input.areaId && item.date === input.date && (item.status === 'pending' || item.status === 'approved') && (item.startTime ?? '00:00') < inputEnd && (item.endTime ?? '23:59') > inputStart)) {
     throw new AppError('RESERVATION_CONFLICT', 'Já existe uma reserva neste horário')
   }
 }

@@ -17,7 +17,8 @@ export function createReservationService(repository: ReservationRepository) {
       if (!input.areaId) fields.areaId = ['Selecione uma área']
       if (!input.residentId) fields.residentId = ['Informe o morador']
       if (!input.date) fields.date = ['Informe uma data']
-      if (!input.startTime || !input.endTime || input.startTime >= input.endTime) fields.startTime = ['Informe um intervalo de horário válido']
+      const hasOnlyOneTime = Boolean(input.startTime) !== Boolean(input.endTime)
+      if (hasOnlyOneTime || (input.startTime && input.endTime && input.startTime >= input.endTime)) fields.startTime = ['Informe os dois horários ou deixe ambos vazios para reservar o dia inteiro']
       if (Object.keys(fields).length) throw new AppError('VALIDATION_ERROR', 'Revise os dados da reserva', fields)
       return repository.create(input)
     },

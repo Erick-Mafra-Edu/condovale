@@ -43,7 +43,10 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Disponibilidade:** um dia é disponível quando nenhum horário está reservado; parcialmente ocupado quando há horários reservados e livres; ocupado quando não há horários livres; áreas inativas ou fora do período permitido são indisponíveis.
 - **Comportamento esperado:** somente horários livres são selecionáveis. Horários ocupados exibem apenas o estado reservado e não parecem interativos.
 - **Solicitação:** o botão “Solicitar reserva” só pode ser acionado após a seleção de um horário livre e deve usar o morador autenticado, sem aceitar identidade arbitrária na interface.
+- **Granularidade:** reservas por horário são compostas por blocos contíguos de 30 minutos, selecionáveis por clique, teclado ou arraste do ponteiro, respeitando a duração máxima configurada.
+- **Diária:** quando `startTime` e `endTime` estão ausentes, a reserva representa o dia inteiro e bloqueia qualquer outro período da mesma área/data. Informar apenas um dos horários é inválido.
 - **Privacidade:** a agenda não exibe nome, apartamento ou qualquer dado pessoal do morador que realizou outra reserva.
+- **Análise administrativa:** usuários com `approve-or-reject-reservation` abrem os detalhes no modal administrativo e podem aprovar ou reprovar somente solicitações pendentes; moradores não visualizam essas ações.
 - **Validação:** o mock deve demonstrar disponibilidade, ocupação parcial e ocupação total para permitir a validação visual e funcional da tela.
 
 ## Histórico de solicitações

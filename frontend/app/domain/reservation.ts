@@ -18,8 +18,9 @@ export interface Reservation {
   areaId: string
   residentId: string
   date: string
-  startTime: string
-  endTime: string
+  /** Ausentes em reservas de diária (dia inteiro). */
+  startTime?: string
+  endTime?: string
   status: ReservationStatus
   createdAt: string
   rejectionReason?: string
