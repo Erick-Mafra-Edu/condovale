@@ -16,9 +16,25 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Comportamento esperado:** somente o papel `syndic` possui `generate-reports` e visualiza o módulo Relatórios.
 - **Validação:** a matriz de permissões e a navegação devem continuar testando esta restrição.
 
+## RN11 — Consulta de relatório com filtros e paginação
+
+- **Solicitação:** a interface de relatório deve aceitar filtros e estar preparada para paginação.
+- **Comportamento esperado:** a consulta usa `ReportQuery`, com período, categoria, status, `page` e `perPage`.
+- **Comportamento no mock:** os filtros são aplicados localmente e a tabela exibe somente a página selecionada.
+- **Compatibilidade futura:** um repositório/API pode receber a mesma consulta sem alterar o componente visual.
+
+## RN12 — Exportação sempre consulta o conjunto completo
+
+- **Solicitação:** ao exportar, todos os dados devem ser obtidos antes de gerar o documento.
+- **Comportamento esperado:** a exportação envia `exportAll: true`, usa `perPage: 0` e ignora a página atual.
+- **PDF e Excel:** ambos recebem todos os registros filtrados; a paginação permanece apenas na visualização da tabela.
+- **Validação:** exportar a partir de qualquer página deve incluir todos os registros que atendem aos filtros.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
 | --- | --- | --- |
 | 15/09/2026 | PDF sempre em modo claro | RN09 |
 | 15/09/2026 | Relatórios conforme papel do usuário | RN10 |
+| 15/09/2026 | Filtros e paginação preparados no relatório | RN11 |
+| 15/09/2026 | Exportação consulta todos os dados antes de gerar arquivo | RN12 |
