@@ -40,3 +40,16 @@ export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> =
 export function can(role: UserRole, useCase: UseCase): boolean {
   return rolePermissions[role].has(useCase)
 }
+
+export type AppModule = 'Início' | 'Ocorrências' | 'Reservas' | 'Comunicados' | 'Relatórios'
+
+const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly UseCase[]>> = {
+  Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
+  Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
+  Comunicados: ['view-notices', 'publish-notices'],
+  Relatórios: ['generate-reports'],
+}
+
+export function canViewModule(role: UserRole, module: AppModule): boolean {
+  return module === 'Início' || modulePermissions[module].some(useCase => can(role, useCase))
+}

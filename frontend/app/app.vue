@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CommonArea, Reservation } from '~/domain/reservation'
-import { can, type UseCase } from '~/domain/permissions'
+import { can, canViewModule, type UseCase } from '~/domain/permissions'
 
 const active = ref('Início')
 const showOccurrence = ref(false)
@@ -30,13 +30,7 @@ function hasAccess(useCase: UseCase) {
   return authUser.value ? can(authUser.value.role, useCase) : false
 }
 
-const navPermissions: Record<string, UseCase[]> = {
-  Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
-  Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
-  Comunicados: ['view-notices', 'publish-notices'],
-  Relatórios: ['generate-reports'],
-}
-const visibleNavItems = computed(() => navItems.filter(item => item.label === 'Início' || navPermissions[item.label]?.some(hasAccess)))
+const visibleNavItems = computed(() => navItems.filter(item => authUser.value ? canViewModule(authUser.value.role, item.label) : false))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
 const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence') : false)
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))

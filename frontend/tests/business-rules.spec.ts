@@ -15,7 +15,7 @@ import { mockAuthRepository } from '../app/repositories/mock/mock-auth-repositor
 import { mockConfig } from '../app/repositories/mock/mock-config'
 import { mockReservations } from '../app/repositories/mock/state'
 import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
-import { can, rolePermissions, type UseCase } from '../app/domain/permissions'
+import { can, canViewModule, rolePermissions, type UseCase } from '../app/domain/permissions'
 import type { UserRole } from '../app/domain/user'
 
 const response = <T>(data: T): ApiResponse<T> => ({ data, message: null })
@@ -192,5 +192,15 @@ describe('permissões do diagrama de casos de uso', () => {
     for (const role of ['resident', 'employee'] as UserRole[]) {
       for (const useCase of restricted) expect(can(role, useCase)).toBe(false)
     }
+  })
+
+  it.each([
+    ['resident', ['Início', 'Ocorrências', 'Reservas', 'Comunicados']],
+    ['employee', ['Início', 'Ocorrências']],
+    ['syndic', ['Início', 'Comunicados', 'Relatórios']],
+    ['admin', ['Início', 'Ocorrências', 'Reservas', 'Comunicados']],
+  ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
+    const modules = ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
+    expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
   })
 })
