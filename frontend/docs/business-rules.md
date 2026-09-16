@@ -37,6 +37,15 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Formato de dados:** a seleção continua sendo convertida para `YYYY-MM-DD`, compatível com `ReportQuery` e com a API futura.
 - **Acessibilidade:** o botão informa o valor atual, o estado aberto/fechado e permite cancelar sem alterar o filtro.
 
+## RN14 — Consulta e solicitação de reservas
+
+- **Solicitação:** o morador deve consultar a disponibilidade de uma área comum por dia e horário, com estados compreensíveis sem depender apenas de cor.
+- **Disponibilidade:** um dia é disponível quando nenhum horário está reservado; parcialmente ocupado quando há horários reservados e livres; ocupado quando não há horários livres; áreas inativas ou fora do período permitido são indisponíveis.
+- **Comportamento esperado:** somente horários livres são selecionáveis. Horários ocupados exibem apenas o estado reservado e não parecem interativos.
+- **Solicitação:** o botão “Solicitar reserva” só pode ser acionado após a seleção de um horário livre e deve usar o morador autenticado, sem aceitar identidade arbitrária na interface.
+- **Privacidade:** a agenda não exibe nome, apartamento ou qualquer dado pessoal do morador que realizou outra reserva.
+- **Validação:** o mock deve demonstrar disponibilidade, ocupação parcial e ocupação total para permitir a validação visual e funcional da tela.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
@@ -46,3 +55,4 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 15/09/2026 | Filtros e paginação preparados no relatório | RN11 |
 | 15/09/2026 | Exportação consulta todos os dados antes de gerar arquivo | RN12 |
 | 15/09/2026 | Filtros de data com calendário acessível em modal | RN13 |
+| 15/09/2026 | Tela de reservas com disponibilidade por dia e horário | RN14 |
