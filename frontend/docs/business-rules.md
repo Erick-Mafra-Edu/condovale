@@ -77,6 +77,14 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Contrato API:** `PATCH /users/me`; o backend deve ignorar qualquer tentativa de enviar papel, status, unidade ou identificador de outro usuário.
 - **Validação:** testes devem garantir isolamento da identidade e preservação dos campos protegidos.
 
+## RN18 — Visualização de comunicados publicados
+
+- **Solicitação:** moradores devem visualizar todos os comunicados publicados, sem limitar a tela principal do módulo aos três registros do painel inicial.
+- **Visibilidade:** comunicados com status `draft` não podem aparecer na listagem, no resumo inicial nem nas notificações dos moradores.
+- **Ordenação:** os comunicados publicados são exibidos do mais recente para o mais antigo.
+- **Resumo:** painel inicial e notificações continuam limitados aos três comunicados publicados mais recentes.
+- **Validação:** testes devem cobrir filtro, ordenação e uma coleção com mais de três comunicados publicados.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
@@ -90,3 +98,4 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 17/09/2026 | Ocorrências atribuídas e ações do funcionário | RN15 |
 | 17/09/2026 | Relatórios de auditoria administrativa | RN16 |
 | 17/09/2026 | Atualização restrita do cadastro do morador | RN17 |
+| 17/09/2026 | Listagem completa somente de comunicados publicados | RN18 |

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../app/domain/app-error'
 import type { ApiResponse } from '../app/domain/common'
-import type { CreateNoticeInput, Notice } from '../app/domain/notice'
+import { getPublishedNotices, type CreateNoticeInput, type Notice } from '../app/domain/notice'
 import type { CreateOccurrenceInput, Occurrence, OccurrenceHistory } from '../app/domain/occurrence'
 import type { CommonArea, CreateReservationInput, Reservation } from '../app/domain/reservation'
 import type { NoticeRepository } from '../app/repositories/contracts/notice-repository'
@@ -109,6 +109,18 @@ describe('RN01 e RN08 — reservas', () => {
 })
 
 describe('validações de aplicação', () => {
+  it('exibe todos os comunicados publicados, do mais recente ao mais antigo', () => {
+    const notices: Notice[] = [
+      { id: 'old', title: 'Antigo', content: '', authorId: 'admin', publishedAt: '2026-09-10T10:00:00Z', status: 'published' },
+      { id: 'draft', title: 'Rascunho', content: '', authorId: 'admin', publishedAt: '2026-09-17T10:00:00Z', status: 'draft' },
+      { id: 'new', title: 'Novo', content: '', authorId: 'admin', publishedAt: '2026-09-15T10:00:00Z', status: 'published' },
+      { id: 'middle', title: 'Intermediário', content: '', authorId: 'admin', publishedAt: '2026-09-12T10:00:00Z', status: 'published' },
+      { id: 'newest', title: 'Mais novo', content: '', authorId: 'admin', publishedAt: '2026-09-16T10:00:00Z', status: 'published' },
+    ]
+
+    expect(getPublishedNotices(notices).map(notice => notice.id)).toEqual(['newest', 'new', 'middle', 'old'])
+  })
+
   it('RN02 valida campos e intervalo de horário da reserva', async () => {
     const repository = { create: vi.fn() } as unknown as ReservationRepository
     const service = createReservationService(repository)

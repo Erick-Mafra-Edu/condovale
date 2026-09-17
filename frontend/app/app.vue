@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CommonArea, Reservation } from '~/domain/reservation'
 import { can, canViewModule, type UseCase } from '~/domain/permissions'
+import { getPublishedNotices } from '~/domain/notice'
 import type { UpdateOwnProfileInput } from '~/domain/user'
 
 const active = ref('Início')
@@ -76,7 +77,8 @@ const filteredReservations = computed(() => selectedAreaId.value ? upcomingReser
 const selectedOccurrence = computed(() => detailTarget.value?.type === 'occurrence' ? occurrences.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
 const selectedReservation = computed(() => detailTarget.value?.type === 'reservation' ? reservations.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
 const selectedNotice = computed(() => detailTarget.value?.type === 'notice' ? notices.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
-const recentNotices = computed(() => [...notices.value].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3))
+const publishedNotices = computed(() => getPublishedNotices(notices.value))
+const recentNotices = computed(() => publishedNotices.value.slice(0, 3))
 const getArea = (areaId: string) => areaById.value.get(areaId)
 const reservationMeta = (reservation: Reservation) => `${formatDate(reservation.date)} · ${reservation.startTime && reservation.endTime ? `${reservation.startTime}–${reservation.endTime}` : 'Dia inteiro'}`
 const noticeMeta = (publishedAt: string, status: string) => status === 'published' ? `Publicado em ${formatDateTime(publishedAt)}` : 'Rascunho'
@@ -205,7 +207,7 @@ const selectNav = (label: string) => {
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="loadReservations" @reservation-cancelled="loadReservations" @open-details="openDetail('reservation', $event)" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && canCreateOccurrence" class="primary-button" @click="showOccurrence = true">Nova ocorrência</button></section>
-          <article class="panel detail-panel" v-if="active === 'Comunicados'"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="detail-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon large"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em><span class="arrow"></span></button></article>
+          <article class="panel detail-panel" v-if="active === 'Comunicados'"><div v-if="!publishedNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in publishedNotices" :key="item.id" class="detail-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon large"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em><span class="arrow"></span></button></article>
           <article class="panel detail-panel" v-else><div v-if="!sortedOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in sortedOccurrences" :key="item.id" class="detail-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="row-icon large"><SvgIcon name="alert" /></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em><span class="arrow"></span></button></article>
         </div>
       </div>
