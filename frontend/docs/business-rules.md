@@ -45,8 +45,12 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Comportamento esperado:** somente horários livres são selecionáveis. Horários ocupados exibem apenas o estado reservado e não parecem interativos.
 - **Solicitação:** o botão “Solicitar reserva” só pode ser acionado após a seleção de um horário livre e deve usar o morador autenticado, sem aceitar identidade arbitrária na interface.
 - **Granularidade:** reservas por horário são compostas por blocos contíguos de 30 minutos, selecionáveis por clique, teclado ou arraste do ponteiro, respeitando a duração máxima configurada.
+- **Datas:** o calendário parte da data corrente; datas passadas e células externas ao mês visível não podem ser selecionadas.
+- **Duração:** o limite exibido e aplicado pela seleção vem de `maxReservationMinutes` da área comum, com duas horas como compatibilidade padrão quando o campo não for informado.
 - **Diária:** quando `startTime` e `endTime` estão ausentes, a reserva representa o dia inteiro e bloqueia qualquer outro período da mesma área/data. Informar apenas um dos horários é inválido.
 - **Privacidade:** a agenda não exibe nome, apartamento ou qualquer dado pessoal do morador que realizou outra reserva.
+- **Consulta:** a listagem pessoal recebe somente as reservas do morador autenticado; a disponibilidade usa um contrato separado e anonimizado com data e períodos ocupados.
+- **Aprovação:** áreas com `requiresApproval` criam solicitações pendentes; áreas sem essa exigência são confirmadas automaticamente no mock.
 - **Análise administrativa:** usuários com `approve-or-reject-reservation` abrem os detalhes no modal administrativo e podem aprovar ou reprovar somente solicitações pendentes; moradores não visualizam essas ações.
 - **Validação:** o mock deve demonstrar disponibilidade, ocupação parcial e ocupação total para permitir a validação visual e funcional da tela.
 
@@ -95,6 +99,7 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 15/09/2026 | Exportação consulta todos os dados antes de gerar arquivo | RN12 |
 | 15/09/2026 | Filtros de data com calendário acessível em modal | RN13 |
 | 15/09/2026 | Tela de reservas com disponibilidade por dia e horário | RN14 |
+| 17/09/2026 | Datas dinâmicas, consulta pessoal e disponibilidade anonimizada | RN14 |
 | 17/09/2026 | Ocorrências atribuídas e ações do funcionário | RN15 |
 | 17/09/2026 | Relatórios de auditoria administrativa | RN16 |
 | 17/09/2026 | Atualização restrita do cadastro do morador | RN17 |

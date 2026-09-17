@@ -25,7 +25,7 @@ import type { UpdateOwnProfileInput, UserRole } from '../app/domain/user'
 const response = <T>(data: T): ApiResponse<T> => ({ data, message: null })
 
 const area: CommonArea = {
-  id: 'area-test',
+  id: 'area-03',
   name: 'Área de teste',
   openingTime: '08:00',
   closingTime: '22:00',
@@ -35,7 +35,6 @@ const area: CommonArea = {
 
 const reservationInput: CreateReservationInput = {
   areaId: area.id,
-  residentId: 'user-01',
   date: '2026-09-30',
   startTime: '10:00',
   endTime: '12:00',
@@ -54,6 +53,7 @@ afterEach(() => {
 
 describe('RN01 e RN08 — reservas', () => {
   it('recusa sobreposição de reservas que bloqueiam a agenda', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
     const initial = mockReservations.length
     const first = await mockReservationRepository.create(reservationInput)
 
@@ -68,19 +68,30 @@ describe('RN01 e RN08 — reservas', () => {
   })
 
   it('libera o período quando a reserva é cancelada', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
     const initial = mockReservations.length
     const created = await mockReservationRepository.create(reservationInput)
     await mockReservationRepository.cancel(created.data.id)
 
-    const available = await mockReservationRepository.getBlockingReservations(area.id, reservationInput.date)
-    expect(available.data.some(item => item.id === created.data.id)).toBe(false)
+    const available = await mockReservationRepository.listOccupancy(area.id, reservationInput.date, reservationInput.date)
+    expect(available.data).toEqual([])
 
     mockReservations.splice(initial, mockReservations.length - initial)
   })
 
+  it('impede o morador de cancelar uma reserva de terceiros', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const reservation = mockReservations.find(item => item.residentId === 'user-02')!
+    const originalStatus = reservation.status
+
+    await expect(mockReservationRepository.cancel(reservation.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(reservation.status).toBe(originalStatus)
+  })
+
   it('trata horários ausentes como reserva de diária e bloqueia o dia todo', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
     const initial = mockReservations.length
-    const dailyInput: CreateReservationInput = { areaId: area.id, residentId: 'user-01', date: '2026-10-02' }
+    const dailyInput: CreateReservationInput = { areaId: area.id, date: '2026-10-02' }
     const daily = await mockReservationRepository.create(dailyInput)
 
     expect(daily.data).toMatchObject(dailyInput)
@@ -89,6 +100,25 @@ describe('RN01 e RN08 — reservas', () => {
       .rejects.toMatchObject({ code: 'RESERVATION_CONFLICT' })
 
     mockReservations.splice(initial, mockReservations.length - initial)
+  })
+
+  it('aprova automaticamente a área configurada e anonimiza sua ocupação', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const initial = mockReservations.length
+    const input: CreateReservationInput = { areaId: 'area-02', date: '2026-12-10', startTime: '10:00', endTime: '11:00' }
+
+    try {
+      const created = await mockReservationRepository.create(input)
+      const occupancy = await mockReservationRepository.listOccupancy(input.areaId, input.date, input.date)
+
+      expect(created.data.status).toBe('approved')
+      expect(occupancy.data).toEqual([{ date: input.date, startTime: input.startTime, endTime: input.endTime }])
+      expect(occupancy.data[0]).not.toHaveProperty('residentId')
+      expect(occupancy.data[0]).not.toHaveProperty('id')
+      expect((await mockReservationRepository.listMine()).data.every(item => item.residentId === 'user-01')).toBe(true)
+    } finally {
+      mockReservations.splice(initial, mockReservations.length - initial)
+    }
   })
 
   it('audita a decisão de reserva e restringe a operação ao administrador', async () => {
@@ -133,7 +163,7 @@ describe('validações de aplicação', () => {
   it('aceita diária sem horários e rejeita somente um horário preenchido', async () => {
     const repository = { create: vi.fn().mockResolvedValue(response({})) } as unknown as ReservationRepository
     const service = createReservationService(repository)
-    const dailyInput: CreateReservationInput = { areaId: area.id, residentId: 'user-01', date: '2026-10-03' }
+    const dailyInput: CreateReservationInput = { areaId: area.id, date: '2026-10-03' }
 
     await service.reserve(dailyInput)
     expect(repository.create).toHaveBeenCalledWith(dailyInput)

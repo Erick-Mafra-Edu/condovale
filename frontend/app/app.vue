@@ -27,7 +27,7 @@ const { user: authUser, loading: authLoading, error: authError, authenticate, re
 const { public: runtimeConfig } = useRuntimeConfig()
 const { users, loadUsers, updateOwnProfile } = useUsers()
 const { occurrences, history: occurrenceHistory, loadOccurrences, createOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
-const { reservations, loadReservations, listAreas, updateReservationStatus } = useReservations()
+const { reservations, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
 const { notices, loadNotices } = useNotices()
 const { auditLogs, loadAuditLogs } = useAuditLogs()
 
@@ -94,9 +94,12 @@ async function openOccurrenceDetail(id: string) {
 }
 
 async function loadDashboard() {
-  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), loadOccurrences(), loadReservations(), loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve()])
+  const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
+  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve()])
   areas.value = areasResponse.data
 }
+
+const reloadReservations = () => resident.value ? loadMyReservations() : loadReservations()
 
 async function handleLogin(email: string, password: string) {
   await authenticate({ email, password })
@@ -204,7 +207,7 @@ const selectNav = (label: string) => {
 
         <ProfilePage v-else-if="active === 'Meu cadastro' && resident" :user="resident" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
-        <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="loadReservations" @reservation-cancelled="loadReservations" @open-details="openDetail('reservation', $event)" />
+        <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && canCreateOccurrence" class="primary-button" @click="showOccurrence = true">Nova ocorrência</button></section>
           <article class="panel detail-panel" v-if="active === 'Comunicados'"><div v-if="!publishedNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in publishedNotices" :key="item.id" class="detail-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon large"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em><span class="arrow"></span></button></article>

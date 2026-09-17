@@ -2,9 +2,9 @@ import type { Occurrence } from '~/domain/occurrence'
 import type { CommonArea, Reservation } from '~/domain/reservation'
 
 export const mockAreas: CommonArea[] = [
-  { id: 'area-01', name: 'Salão de festas', description: 'Espaço para eventos', capacity: 50, openingTime: '08:00', closingTime: '23:00', requiresApproval: true, status: 'available' },
-  { id: 'area-02', name: 'Churrasqueira', capacity: 20, openingTime: '09:00', closingTime: '22:00', requiresApproval: false, status: 'available' },
-  { id: 'area-03', name: 'Quadra', description: 'Quadra poliesportiva', capacity: 12, openingTime: '08:00', closingTime: '22:00', requiresApproval: false, status: 'available' },
+  { id: 'area-01', name: 'Salão de festas', description: 'Espaço para eventos', capacity: 50, openingTime: '08:00', closingTime: '23:00', maxReservationMinutes: 240, requiresApproval: true, status: 'available' },
+  { id: 'area-02', name: 'Churrasqueira', capacity: 20, openingTime: '09:00', closingTime: '22:00', maxReservationMinutes: 120, requiresApproval: false, status: 'available' },
+  { id: 'area-03', name: 'Quadra', description: 'Quadra poliesportiva', capacity: 12, openingTime: '08:00', closingTime: '22:00', maxReservationMinutes: 120, requiresApproval: false, status: 'available' },
 ]
 
 export const mockReservations: Reservation[] = [

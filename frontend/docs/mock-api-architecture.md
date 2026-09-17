@@ -14,7 +14,7 @@ Validações de input novas usam **Zod**. O schema vive no domínio do caso de u
 
 ## Decisões
 
-- **Availability:** `getBlockingReservations(areaId, date)` retorna reservas `pending` ou `approved` de uma área em uma data; não calcula slots. O nome explicita as reservas ocupando a agenda, preservando o domínio simples. Não existe DTO de disponibilidade preventiva.
+- **Disponibilidade:** `listOccupancy(areaId, startDate, endDate)` retorna somente data e horários ocupados por reservas `pending` ou `approved`. Identificador da reserva e do morador não são expostos. A API equivalente é `GET /common-areas/{id}/occupancy?startDate=&endDate=`.
 - **Paginação:** nenhuma tela usa paginação; `list()` retorna a coleção completa em mock e API, no envelope `{ data, message }`. Paginação será acrescentada ao contrato somente quando houver necessidade real.
 - **Erros:** `AppError` contém `code`, `message` e `fields?`. Validações dos services e erros do mock usam esse formato; `repositories/api/request.ts` traduz falhas HTTP. Composables mantêm o erro completo, incluindo campos, e não inspecionam Laravel ou fetch. Códigos incluem `VALIDATION_ERROR`, `RESERVATION_CONFLICT`, `NETWORK_ERROR`, `SERVER_ERROR` e `NOT_FOUND`.
 - **User ↔ Unit:** `User.unitId` é a única referência persistida. `Unit.residentIds` foi removido porque não havia consumidor ou requisito que exigisse o campo. A lista de moradores de uma unidade pode ser derivada filtrando usuários por `unitId`.
@@ -24,7 +24,7 @@ Validações de input novas usam **Zod**. O schema vive no domínio do caso de u
 
 | Módulo | Operações |
 | --- | --- |
-| Reservations | Listagem, consulta individual, criação, cancelamento, status, áreas e reservas ocupando a agenda |
+| Reservations | Listagem administrativa, listagem própria, consulta individual, criação, cancelamento, status, áreas e ocupação anonimizada |
 | Occurrences | Listagem, consulta individual, criação, atribuição, status, conclusão e histórico |
 | Notices | `list`, `findById`, `create`, `update`, `remove` |
 | Users | `list`, `findById`, `create`, `update`, `updateOwnProfile`, `deactivate` |
@@ -44,7 +44,7 @@ Todos os caminhos, verbos e envelopes abaixo são provisórios, não representam
 - Notices: `DELETE /notices/{id}` retorna `{ data: null, message: null }`.
 - Users: `POST /users/{id}/deactivate` retorna o usuário com status `inactive`.
 - Perfil autenticado: `PATCH /users/me` altera somente nome e e-mail; a identidade deve vir da sessão.
-- Reservations consulta reservas bloqueantes com `GET /common-areas/{id}/blocking-reservations?date=...`.
+- Reservations usa `GET /reservations/me` para a agenda do morador, `POST /reservations` sem `residentId` e `GET /common-areas/{id}/occupancy?startDate=...&endDate=...` para períodos ocupados anonimizados. Identidade e propriedade devem vir da sessão.
 - Occurrences usa `PATCH /{id}/assign`, `PATCH /{id}/status`, `POST /{id}/finish` e `GET /{id}/history` dentro de `/occurrences`. `userId` identifica explicitamente o autor dos registros do histórico, provisoriamente até existir autenticação.
 - Sucesso retorna `ApiResponse<T>`; listas completas não recebem parâmetros de paginação. Um backend com envelope, paginação ou resposta `204` diferente precisará de adaptação no ApiRepository.
 - Erros podem informar `{ code, message, fields }`; o adaptador também aceita `errors` para validação e usa o status HTTP quando não há código explícito.
