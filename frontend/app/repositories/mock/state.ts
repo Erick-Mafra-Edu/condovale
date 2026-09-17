@@ -16,6 +16,8 @@ export const mockReservations: Reservation[] = [
 ]
 
 export const mockOccurrences: Occurrence[] = [
-  { id: 'occurrence-01', title: 'Vazamento na garagem B', description: 'Há água escorrendo próximo às vagas do subsolo.', category: 'Manutenção', residentId: 'user-01', unitId: 'unit-01', status: 'open', createdAt: '2026-09-14T10:00:00Z', updatedAt: '2026-09-14T10:00:00Z' },
-  { id: 'occurrence-02', title: 'Portão social não fecha', description: 'O portão de acesso social permanece aberto após a passagem.', category: 'Segurança', residentId: 'user-01', unitId: 'unit-01', status: 'analysis', createdAt: '2026-09-13T15:30:00Z', updatedAt: '2026-09-14T08:00:00Z' },
+  { id: 'occurrence-01', title: 'Vazamento na garagem B', description: 'Há água escorrendo próximo às vagas do subsolo.', category: 'Manutenção', residentId: 'user-01', unitId: 'unit-01', assignedEmployeeId: 'user-employee', status: 'in_progress', createdAt: '2026-09-14T10:00:00Z', updatedAt: '2026-09-16T10:00:00Z' },
+  { id: 'occurrence-02', title: 'Portão social não fecha', description: 'O portão de acesso social permanece aberto após a passagem.', category: 'Segurança', residentId: 'user-01', unitId: 'unit-01', assignedEmployeeId: 'user-employee-security', status: 'assigned', createdAt: '2026-09-13T15:30:00Z', updatedAt: '2026-09-14T08:00:00Z' },
+  { id: 'occurrence-03', title: 'Iluminação da garagem', description: 'Duas luminárias estão apagadas próximas ao elevador.', category: 'Conservação', residentId: 'user-01', unitId: 'unit-01', assignedEmployeeId: 'user-employee-services', status: 'assigned', createdAt: '2026-09-15T09:00:00Z', updatedAt: '2026-09-15T09:00:00Z' },
+  { id: 'occurrence-04', title: 'Interfone sem áudio', description: 'O interfone da unidade não transmite áudio.', category: 'Manutenção', residentId: 'user-01', unitId: 'unit-01', status: 'open', createdAt: '2026-09-16T14:00:00Z', updatedAt: '2026-09-16T14:00:00Z' },
 ]

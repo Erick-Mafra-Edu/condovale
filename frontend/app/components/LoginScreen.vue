@@ -9,7 +9,9 @@ const email = ref('morador@example.com')
 const password = ref('condovale')
 const roleOptions: Array<{ role: UserRole; label: string; email: string }> = [
   { role: 'resident', label: 'Morador', email: 'morador@example.com' },
-  { role: 'employee', label: 'Funcionário', email: 'funcionario@example.com' },
+  { role: 'employee', label: 'Manutenção', email: 'funcionario@example.com' },
+  { role: 'employee', label: 'Segurança', email: 'funcionario.seguranca@example.com' },
+  { role: 'employee', label: 'Conservação', email: 'funcionario.conservacao@example.com' },
   { role: 'syndic', label: 'Síndico', email: 'sindica@example.com' },
   { role: 'admin', label: 'Administrador', email: 'admin@example.com' },
 ]
@@ -41,7 +43,7 @@ function submit() {
         <p v-if="error" class="login-error" role="alert">{{ error.message }}</p>
         <button class="primary-button login-submit" type="submit" :disabled="loading">{{ loading ? 'Entrando...' : 'Entrar no CondoVale' }}</button>
       </form>
-      <div v-if="showDemoAccess" class="demo-access"><span>Testar como</span><div class="role-grid"><button v-for="option in roleOptions" :key="option.role" type="button" :class="['role-chip', { selected: email === option.email }]" @click.prevent="email = option.email">{{ option.label }}</button></div><small>Senha de demonstração: <strong>condovale</strong></small></div>
+      <div v-if="showDemoAccess" class="demo-access"><span>Testar como</span><div class="role-grid"><button v-for="option in roleOptions" :key="option.email" type="button" :class="['role-chip', { selected: email === option.email }]" @click.prevent="email = option.email">{{ option.label }}</button></div><small>Senha de demonstração: <strong>condovale</strong></small></div>
     </section>
   </main>
 </template>

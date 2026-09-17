@@ -49,6 +49,15 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Análise administrativa:** usuários com `approve-or-reject-reservation` abrem os detalhes no modal administrativo e podem aprovar ou reprovar somente solicitações pendentes; moradores não visualizam essas ações.
 - **Validação:** o mock deve demonstrar disponibilidade, ocupação parcial e ocupação total para permitir a validação visual e funcional da tela.
 
+## RN15 — Atendimento de ocorrências por funcionário
+
+- **Solicitação:** o funcionário deve consultar, atualizar o andamento e finalizar somente ocorrências atribuídas a ele.
+- **Dados de demonstração:** o mock possui funcionários distintos de manutenção, segurança e conservação, cada um com uma ocorrência atribuída para validar o isolamento.
+- **Transições permitidas:** o funcionário responsável pode alterar `assigned` para `in_progress` e depois finalizar como `completed`, com observação opcional registrada no histórico.
+- **Autorização:** outro funcionário, usuário inativo ou papel diferente não pode alterar nem finalizar o atendimento.
+- **Interface:** a listagem é filtrada pela identidade autenticada e o modal de detalhes oferece apenas a ação compatível com o status atual.
+- **Validação:** testes devem cobrir o isolamento entre funcionários, as transições e o histórico gerado.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
@@ -59,3 +68,4 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 15/09/2026 | Exportação consulta todos os dados antes de gerar arquivo | RN12 |
 | 15/09/2026 | Filtros de data com calendário acessível em modal | RN13 |
 | 15/09/2026 | Tela de reservas com disponibilidade por dia e horário | RN14 |
+| 17/09/2026 | Ocorrências atribuídas e ações do funcionário | RN15 |

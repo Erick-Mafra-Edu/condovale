@@ -13,7 +13,8 @@ import { createReservationService } from '../app/services/reservation-service'
 import { createAuthService } from '../app/services/auth-service'
 import { mockAuthRepository } from '../app/repositories/mock/mock-auth-repository'
 import { mockConfig } from '../app/repositories/mock/mock-config'
-import { mockReservations } from '../app/repositories/mock/state'
+import { mockOccurrences, mockReservations } from '../app/repositories/mock/state'
+import { mockOccurrenceRepository } from '../app/repositories/mock/mock-occurrence-repository'
 import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
 import { can, canViewModule, rolePermissions, type UseCase } from '../app/domain/permissions'
 import type { UserRole } from '../app/domain/user'
@@ -169,12 +170,37 @@ describe('RN06 — histórico de ocorrência', () => {
     expect(repository.updateStatus).toHaveBeenCalledWith(occurrence.id, 'in_progress', 'employee-user')
     expect(repository.finish).toHaveBeenCalledWith(occurrence.id, 'employee-user', 'Concluído')
   })
+
+  it('permite atualizar e finalizar somente a ocorrência atribuída ao funcionário', async () => {
+    const occurrence: Occurrence = {
+      id: 'occurrence-employee-test', title: 'Portão travando', description: 'Falha intermitente', category: 'Manutenção',
+      residentId: 'user-01', assignedEmployeeId: 'user-employee', status: 'assigned', createdAt: '', updatedAt: '',
+    }
+    mockOccurrences.push(occurrence)
+
+    try {
+      await expect(mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress', 'user-employee-security'))
+        .rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress', 'user-employee')
+      await mockOccurrenceRepository.finish(occurrence.id, 'user-employee', 'Portão regulado')
+
+      expect(occurrence.status).toBe('completed')
+      expect((await mockOccurrenceRepository.history(occurrence.id)).data).toMatchObject([
+        { type: 'status_changed', userId: 'user-employee', newStatus: 'in_progress' },
+        { type: 'completed', userId: 'user-employee', newStatus: 'completed', message: 'Portão regulado' },
+      ])
+    } finally {
+      mockOccurrences.splice(mockOccurrences.indexOf(occurrence), 1)
+    }
+  })
 })
 
 describe('autenticação mock por classificação', () => {
   it.each([
     ['resident', 'morador@example.com'],
     ['employee', 'funcionario@example.com'],
+    ['employee', 'funcionario.seguranca@example.com'],
+    ['employee', 'funcionario.conservacao@example.com'],
     ['syndic', 'sindica@example.com'],
     ['admin', 'admin@example.com'],
   ])('permite login como %s', async (role, email) => {
