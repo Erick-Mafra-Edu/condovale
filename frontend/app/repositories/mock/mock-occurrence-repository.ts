@@ -5,6 +5,7 @@ import type { OccurrenceRepository } from '~/repositories/contracts/occurrence-r
 import { mockOccurrences } from './state'
 import { mockUsers } from './mock-user-repository'
 import { simulateRequest } from './mock-config'
+import { recordAudit } from './mock-audit-repository'
 
 const entries: OccurrenceHistory[] = []
 
@@ -66,7 +67,9 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     const employee = ensureActiveUser(employeeId)
     if (employee.role !== 'employee') throw new AppError('VALIDATION_ERROR', 'Selecione um funcionário ativo')
     occurrence.assignedEmployeeId = employeeId
-    return changeStatus(occurrence, 'assigned', userId, 'assigned')
+    const result = changeStatus(occurrence, 'assigned', userId, 'assigned')
+    recordAudit({ userId, action: 'occurrence.assigned', entity: 'occurrence', entityId: id, metadata: { employeeId } })
+    return result
   },
   async updateStatus(id, status, userId) {
     await simulateRequest()
@@ -76,14 +79,19 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
       ensureAssignedEmployee(occurrence, userId)
       if (occurrence.status !== 'assigned' || status !== 'in_progress') throw new AppError('INVALID_STATUS_TRANSITION', 'O atendimento só pode avançar de atribuído para em andamento')
     } else if (actor.role !== 'admin') throw new AppError('FORBIDDEN', 'Usuário não autorizado')
-    return changeStatus(occurrence, status, userId, 'status_changed')
+    const previousStatus = occurrence.status
+    const result = changeStatus(occurrence, status, userId, 'status_changed')
+    recordAudit({ userId, action: 'occurrence.status_updated', entity: 'occurrence', entityId: id, metadata: { from: previousStatus, to: status } })
+    return result
   },
   async finish(id, userId, message) {
     await simulateRequest()
     const occurrence = ensureOccurrence(id)
     ensureAssignedEmployee(occurrence, userId)
     if (occurrence.status !== 'in_progress') throw new AppError('INVALID_STATUS_TRANSITION', 'Somente atendimentos em andamento podem ser finalizados')
-    return changeStatus(occurrence, 'completed', userId, 'completed', message)
+    const result = changeStatus(occurrence, 'completed', userId, 'completed', message)
+    recordAudit({ userId, action: 'occurrence.completed', entity: 'occurrence', entityId: id, metadata: message ? { message } : undefined })
+    return result
   },
   async history(id) {
     await simulateRequest()

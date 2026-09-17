@@ -72,7 +72,7 @@ Toda mudança deve registrar ocorrência, autor autenticado, data, estado anteri
 | **RF03** — morador reserva área disponível por data e horário | **Parcial** | Consulta, seleção de blocos, diária, criação e conflito funcionam. Horário permitido, status da área e duração máxima ainda precisam ser validados no service/repositório/backend, não apenas na interface. |
 | **RF04** — morador abre ocorrência com descrição textual | **Atendido no frontend/mock** | A criação exige título, categoria, descrição e morador responsável. O backend deverá derivar o morador da sessão. |
 | **RF05** — síndico/administrador publica comunicados | **Parcial** | A matriz de permissões inclui os dois papéis e existem contrato/service/adaptadores; falta tela de publicação e autorização no repositório/backend. |
-| **RF06** — síndico/administrador gera relatórios de reservas e manutenções | **Parcial e divergente** | Existe relatório de ocorrências somente para síndico. Administrador não possui `generate-reports` e relatórios de reservas ainda não foram implementados. |
+| **RF06** — síndico/administrador gera relatórios de reservas e manutenções | **Parcial** | Síndico e administrador possuem `generate-reports`, e o administrador também consulta auditoria. Relatórios de reservas ainda não foram implementados. |
 
 ## Requisitos não funcionais
 
@@ -81,7 +81,7 @@ Toda mudança deve registrar ocorrência, autor autenticado, data, estado anteri
 | **RNF01** — consultas abaixo de 2 segundos | **Depende do backend** | Não há banco, carga padrão definida, métricas nem teste de desempenho. Deve ser validado com volume, ambiente e percentil acordados. |
 | **RNF02** — senhas exclusivamente com Argon2id | **Depende do backend** | O domínio frontend não armazena hash ou token. A senha fixa `condovale` existe somente no mock de desenvolvimento. Laravel deverá usar Argon2id e nunca devolver o hash. |
 | **RNF03** — responsividade e navegadores modernos | **Parcial** | As telas possuem estilos responsivos e acessibilidade básica; falta uma matriz automatizada/manual para Chrome, Firefox e Edge. |
-| **RNF04** — auditoria de operações críticas | **Parcial** | Ocorrências possuem histórico com autoria. Cadastro/inativação de usuários, reservas, comunicados e demais ações administrativas ainda não têm trilha de auditoria uniforme. |
+| **RNF04** — auditoria de operações críticas | **Parcial** | Existe relatório administrativo e o mock registra ações de ocorrências e decisões de reservas. Cadastro/inativação de usuários, comunicados e demais ações administrativas ainda precisam integrar a trilha uniforme. |
 
 ## Regras de negócio formais
 
@@ -103,16 +103,17 @@ As regras abaixo foram criadas durante a implementação e não vieram na especi
 | Regra adicional | Relação com os requisitos formais | Compatibilidade |
 | --- | --- | --- |
 | **RN09** — PDF sempre em modo claro | Detalha apresentação e acessibilidade dos relatórios relacionados ao RF06 e RNF03. | **Complementar, sem conflito.** |
-| **RN10** — relatórios restritos ao síndico | Define quem possui `generate-reports`. | **Conflita com RF06**, que permite relatórios ao síndico e ao administrador. Recomendação: atualizar RN10 e a matriz de permissões para os dois papéis. |
+| **RN10** — relatórios operacionais do síndico e administrador | Define quem possui `generate-reports` e restringe auditoria ao administrador. | **Compatível após revisão pelo RF06.** |
 | **RN11** — filtros e paginação de relatórios | Detalha a interface e o contrato de consulta do RF06. | **Complementar, sem conflito.** |
 | **RN12** — exportação consulta todos os registros | Garante que a paginação visual não corte PDF/Excel do RF06. | **Complementar, sem conflito.** |
 | **RN13** — seleção de datas com calendário | Detalha acessibilidade e formato dos filtros do RF06/RNF03. | **Complementar, sem conflito.** |
 | **RN14** — disponibilidade e solicitação de reservas | Expande RF03, RN01, RN02 e RN08 com blocos de 30 minutos, diária, privacidade e aprovação. | **Complementar.** Exige que as validações deixem de depender apenas da UI. |
 | **RN15** — atendimento por funcionário atribuído | Expande RN05 e RN06, definindo isolamento e transições do funcionário. | **Complementar, sem conflito.** A etapa administrativa de atribuição ainda precisa ser implementada. |
+| **RN16** — relatórios de auditoria | Detalha RNF04 com campos mínimos, acesso administrativo, filtros, paginação e exportação. | **Complementar, sem conflito.** |
 
 ## Divergências prioritárias
 
-1. **RF06 × RN10:** conceder `generate-reports` também ao administrador e acrescentar relatório de reservas, caso o RF06 seja confirmado como fonte vigente.
+1. **RF06:** acrescentar relatório de reservas; o acesso operacional de síndico e administrador já foi alinhado.
 2. **RN06/RN15:** implementar a análise e atribuição administrativa na interface.
 3. **RN04/RN07:** mover autorização efetiva para repositories mock e, posteriormente, policies do backend.
 4. **RF01/RN03:** implementar telas administrativas de usuários/unidades e registrar auditoria.
@@ -121,7 +122,6 @@ As regras abaixo foram criadas durante a implementação e não vieram na especi
 
 ## Decisões ainda necessárias
 
-- Confirmar que o RF06 substitui a restrição anterior da RN10.
 - Definir quem pode cancelar uma ocorrência e em quais estados.
 - Definir se o administrador pode reatribuir atendimento já iniciado e se justificativa é obrigatória.
 - Definir se ocorrências concluídas podem ser reabertas.

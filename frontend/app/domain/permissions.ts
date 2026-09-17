@@ -23,6 +23,7 @@ export type UseCase =
   | 'update-occurrence-progress'
   | 'finish-occurrence'
   | 'generate-reports'
+  | 'view-audit-reports'
 
 export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> = {
   resident: new Set([
@@ -34,6 +35,7 @@ export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> =
   admin: new Set([
     'login', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
+    'generate-reports', 'view-audit-reports',
   ]),
 }
 
@@ -47,7 +49,7 @@ const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly
   Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
   Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
   Comunicados: ['view-notices', 'publish-notices'],
-  Relatórios: ['generate-reports'],
+  Relatórios: ['generate-reports', 'view-audit-reports'],
 }
 
 export function canViewModule(role: UserRole, module: AppModule): boolean {

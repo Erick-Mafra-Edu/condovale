@@ -30,6 +30,7 @@ Validações de input novas usam **Zod**. O schema vive no domínio do caso de u
 | Users | `list`, `findById`, `create`, `update`, `deactivate` |
 | Units | `list`, `findById` |
 | Auth | autenticar, restaurar sessão e logout; retorna somente usuário sanitizado |
+| Audit | listagem de eventos críticos para relatório administrativo |
 
 Os mocks são mutáveis em memória e devolvem cópias dos objetos. A persistência em banco e autenticação real permanecem fora desta etapa. Os seeds de usuários e unidades mantêm a mesma referência `unit-01`.
 
@@ -38,6 +39,7 @@ Os mocks são mutáveis em memória e devolvem cópias dos objetos. A persistên
 Todos os caminhos, verbos e envelopes abaixo são provisórios, não representam um contrato Laravel validado:
 
 - Coleções: `/api/reservations`, `/api/occurrences`, `/api/notices`, `/api/users`, `/api/units`.
+- Auditoria: `GET /api/audit-logs`; o backend deve limitar a consulta a administradores e derivar autoria/data da sessão e do servidor.
 - Leitura: `GET` coleção ou `GET /{id}`. Criação: `POST` coleção. Alteração: `PATCH /{id}`.
 - Notices: `DELETE /notices/{id}` retorna `{ data: null, message: null }`.
 - Users: `POST /users/{id}/deactivate` retorna o usuário com status `inactive`.
@@ -65,12 +67,14 @@ app/
       notice-repository.ts
       user-repository.ts
       unit-repository.ts
+      audit-repository.ts
     mock/
       mock-reservation-repository.ts
       mock-occurrence-repository.ts
       mock-notice-repository.ts
       mock-user-repository.ts
       mock-unit-repository.ts
+      mock-audit-repository.ts
       mock-config.ts
       state.ts
     api/
@@ -79,6 +83,7 @@ app/
       api-notice-repository.ts
       api-user-repository.ts
       api-unit-repository.ts
+      api-audit-repository.ts
       request.ts
   services/
     index.ts
@@ -87,12 +92,14 @@ app/
     notice-service.ts
     user-service.ts
     unit-service.ts
+    audit-service.ts
   composables/
     use-reservations.ts
     use-occurrences.ts
     use-notices.ts
     use-users.ts
     use-units.ts
+    use-audit-logs.ts
 ```
 
 ## Validação
@@ -114,6 +121,7 @@ A verificação final também aprovou o fluxo de Occurrences: criação, atribui
 | Notices | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Users | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Units | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Audit | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Os services dependem somente dos contratos e do domínio; os composables dependem dos services e do domínio. A seleção central é o único ponto que conhece as duas implementações. A validação não utilizou Laravel real.
 

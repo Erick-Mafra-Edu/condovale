@@ -4,6 +4,8 @@ import type { CommonArea, CreateReservationInput, Reservation, ReservationStatus
 import type { ReservationRepository } from '~/repositories/contracts/reservation-repository'
 import { mockAreas, mockReservations } from './state'
 import { simulateRequest } from './mock-config'
+import { mockUsers } from './mock-user-repository'
+import { recordAudit } from './mock-audit-repository'
 
 function response<T>(data: T): ApiResponse<T> {
   return { data: structuredClone(data), message: null }
@@ -47,12 +49,15 @@ export const mockReservationRepository: ReservationRepository = {
     reservation.status = 'cancelled'
     return response(reservation)
   },
-  async updateStatus(id, status: ReservationStatus, rejectionReason?: string) {
+  async updateStatus(id, status: ReservationStatus, userId: string, rejectionReason?: string) {
     await simulateRequest()
     const reservation = ensureReservation(id)
+    const user = mockUsers.find(item => item.id === userId && item.status === 'active')
+    if (user?.role !== 'admin') throw new AppError('FORBIDDEN', 'Somente a administração pode analisar reservas')
     if (status === 'pending' || status === 'approved') ensureNoConflict(reservation, id)
     reservation.status = status
     reservation.rejectionReason = rejectionReason
+    recordAudit({ userId, action: `reservation.${status}`, entity: 'reservation', entityId: id, metadata: rejectionReason ? { reason: rejectionReason } : undefined })
     return response(reservation)
   },
   async listAreas(): Promise<ApiResponse<CommonArea[]>> {

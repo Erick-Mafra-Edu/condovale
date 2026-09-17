@@ -3,7 +3,7 @@ import { AppError } from '../app/domain/app-error'
 import type { ApiResponse } from '../app/domain/common'
 import type { CreateNoticeInput, Notice } from '../app/domain/notice'
 import type { CreateOccurrenceInput, Occurrence, OccurrenceHistory } from '../app/domain/occurrence'
-import type { CommonArea, CreateReservationInput } from '../app/domain/reservation'
+import type { CommonArea, CreateReservationInput, Reservation } from '../app/domain/reservation'
 import type { NoticeRepository } from '../app/repositories/contracts/notice-repository'
 import type { OccurrenceRepository } from '../app/repositories/contracts/occurrence-repository'
 import type { ReservationRepository } from '../app/repositories/contracts/reservation-repository'
@@ -15,6 +15,7 @@ import { mockAuthRepository } from '../app/repositories/mock/mock-auth-repositor
 import { mockConfig } from '../app/repositories/mock/mock-config'
 import { mockOccurrences, mockReservations } from '../app/repositories/mock/state'
 import { mockOccurrenceRepository } from '../app/repositories/mock/mock-occurrence-repository'
+import { mockAuditLogs } from '../app/repositories/mock/mock-audit-repository'
 import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
 import { can, canViewModule, rolePermissions, type UseCase } from '../app/domain/permissions'
 import type { UserRole } from '../app/domain/user'
@@ -86,6 +87,22 @@ describe('RN01 e RN08 — reservas', () => {
       .rejects.toMatchObject({ code: 'RESERVATION_CONFLICT' })
 
     mockReservations.splice(initial, mockReservations.length - initial)
+  })
+
+  it('audita a decisão de reserva e restringe a operação ao administrador', async () => {
+    const reservation: Reservation = { id: 'reservation-audit-test', areaId: area.id, residentId: 'user-01', date: '2026-11-01', status: 'pending', createdAt: '' }
+    const initialAuditLogs = mockAuditLogs.length
+    mockReservations.push(reservation)
+
+    try {
+      await expect(mockReservationRepository.updateStatus(reservation.id, 'approved', 'user-employee'))
+        .rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await mockReservationRepository.updateStatus(reservation.id, 'approved', 'user-admin')
+      expect(mockAuditLogs[0]).toMatchObject({ action: 'reservation.approved', userId: 'user-admin', entityId: reservation.id })
+    } finally {
+      mockReservations.splice(mockReservations.indexOf(reservation), 1)
+      mockAuditLogs.splice(0, mockAuditLogs.length - initialAuditLogs)
+    }
   })
 })
 
@@ -176,6 +193,7 @@ describe('RN06 — histórico de ocorrência', () => {
       id: 'occurrence-employee-test', title: 'Portão travando', description: 'Falha intermitente', category: 'Manutenção',
       residentId: 'user-01', assignedEmployeeId: 'user-employee', status: 'assigned', createdAt: '', updatedAt: '',
     }
+    const initialAuditLogs = mockAuditLogs.length
     mockOccurrences.push(occurrence)
 
     try {
@@ -189,8 +207,13 @@ describe('RN06 — histórico de ocorrência', () => {
         { type: 'status_changed', userId: 'user-employee', newStatus: 'in_progress' },
         { type: 'completed', userId: 'user-employee', newStatus: 'completed', message: 'Portão regulado' },
       ])
+      expect(mockAuditLogs.slice(0, 2)).toMatchObject([
+        { action: 'occurrence.completed', userId: 'user-employee', entityId: occurrence.id },
+        { action: 'occurrence.status_updated', userId: 'user-employee', entityId: occurrence.id },
+      ])
     } finally {
       mockOccurrences.splice(mockOccurrences.indexOf(occurrence), 1)
+      mockAuditLogs.splice(0, mockAuditLogs.length - initialAuditLogs)
     }
   })
 })
@@ -226,6 +249,7 @@ describe('permissões do diagrama de casos de uso', () => {
   const adminCases: UseCase[] = [
     'login', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
+    'generate-reports', 'view-audit-reports',
   ]
 
   it.each([
@@ -247,7 +271,7 @@ describe('permissões do diagrama de casos de uso', () => {
     ['resident', ['Início', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Ocorrências']],
     ['syndic', ['Início', 'Comunicados', 'Relatórios']],
-    ['admin', ['Início', 'Ocorrências', 'Reservas', 'Comunicados']],
+    ['admin', ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
     const modules = ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
     expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)

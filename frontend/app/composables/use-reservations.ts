@@ -41,8 +41,8 @@ export function useReservations() {
     reservations.value = result.data
   }
 
-  async function updateReservationStatus(id: string, status: ReservationStatus, reason?: string) {
-    const result = await execute(() => reservationService.updateStatus(id, status, reason))
+  async function updateReservationStatus(id: string, status: ReservationStatus, userId: string, reason?: string) {
+    const result = await execute(() => reservationService.updateStatus(id, status, userId, reason))
     const index = reservations.value.findIndex(item => item.id === id)
     if (index >= 0) reservations.value[index] = result.data
     return result.data

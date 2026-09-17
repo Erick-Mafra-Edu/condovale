@@ -11,6 +11,7 @@ const submittingOccurrence = ref(false)
 const updatingOccurrence = ref(false)
 const occurrenceNote = ref('')
 const reviewingReservation = ref(false)
+const reportView = ref<'operations' | 'audit'>('operations')
 const areas = ref<CommonArea[]>([])
 const selectedAreaId = ref<string | null>(null)
 const showNotifications = ref(false)
@@ -23,6 +24,7 @@ const { users, loadUsers } = useUsers()
 const { occurrences, history: occurrenceHistory, loadOccurrences, createOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
 const { reservations, loadReservations, listAreas, updateReservationStatus } = useReservations()
 const { notices, loadNotices } = useNotices()
+const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
   { label: 'Início', icon: 'home' }, { label: 'Ocorrências', icon: 'alert' },
@@ -86,12 +88,13 @@ async function openOccurrenceDetail(id: string) {
 }
 
 async function loadDashboard() {
-  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), loadOccurrences(), loadReservations(), loadNotices()])
+  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), loadOccurrences(), loadReservations(), loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve()])
   areas.value = areasResponse.data
 }
 
 async function handleLogin(email: string, password: string) {
   await authenticate({ email, password })
+  reportView.value = 'operations'
   await loadDashboard()
 }
 
@@ -115,7 +118,7 @@ async function reviewReservation(status: 'approved' | 'rejected') {
   if (!selectedReservation.value || !hasAccess('approve-or-reject-reservation')) return
   reviewingReservation.value = true
   try {
-    await updateReservationStatus(selectedReservation.value.id, status)
+    await updateReservationStatus(selectedReservation.value.id, status, authUser.value!.id)
     detailTarget.value = null
   } finally { reviewingReservation.value = false }
 }
@@ -149,7 +152,10 @@ onMounted(() => {
   window.addEventListener('scroll', updateScrollMaterial, { passive: true })
 })
 onBeforeUnmount(() => window.removeEventListener('scroll', updateScrollMaterial))
-const selectNav = (label: string) => { active.value = label }
+const selectNav = (label: string) => {
+  active.value = label
+  if (label === 'Relatórios' && hasAccess('view-audit-reports')) loadAuditLogs().catch(() => undefined)
+}
 </script>
 
 <template>
@@ -177,7 +183,7 @@ const selectNav = (label: string) => { active.value = label }
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
 
-        <ReportPage v-else-if="active === 'Relatórios' && hasAccess('generate-reports')" :occurrences="occurrences" />
+        <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="loadReservations" @reservation-cancelled="loadReservations" @open-details="openDetail('reservation', $event)" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && canCreateOccurrence" class="primary-button" @click="showOccurrence = true">Nova ocorrência</button></section>
@@ -347,4 +353,5 @@ const selectNav = (label: string) => { active.value = label }
 @media(prefers-reduced-motion:reduce){.nav-item,.nav-item .svg-icon,.unit-card{transition:none!important}.nav-item.selected,.modal{animation:none!important}}
 .reservation-review-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.reservation-review-actions button{min-height:42px;justify-content:center}.reservation-review-actions .svg-icon{width:16px;height:16px}.danger-action{display:inline-flex;align-items:center;gap:7px;border-color:#efb5b9!important;background:#fff5f5!important;color:#b4232c!important}.danger-action:hover{border-color:#dc2626!important;background:#fee8e9!important}.danger-action .svg-icon{filter:invert(22%) sepia(79%) saturate(3299%) hue-rotate(347deg) brightness(89%) contrast(88%)}.approve-action{background:#008c9e}.approve-action:hover{background:#006a78}.danger-action:focus-visible,.approve-action:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.danger-action{border-color:#8c3d45!important;background:#3e242a!important;color:#ffb6bc!important}.danger-action:hover{background:#512a31!important}.reservation-review-actions{border-color:rgba(180,215,225,.14)}}
 .occurrence-history{display:grid;gap:10px}.occurrence-history span{display:flex;justify-content:space-between;gap:16px}.occurrence-history small{color:var(--neutral);text-align:right}.occurrence-note{display:grid;gap:8px;margin-top:18px;font-size:12px;font-weight:700}.occurrence-note textarea{min-height:82px}.occurrence-actions{margin-top:16px}.occurrence-actions .primary-button{margin-left:auto;min-height:42px}
+.report-kind-tabs{max-width:1180px;margin:0 auto 24px;display:flex;gap:8px;padding:5px;width:max-content;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.55)}.report-kind-tabs button{min-height:38px;padding:0 18px;border-radius:9px;color:var(--neutral);font-weight:700}.report-kind-tabs button.selected{background:#008c9e;color:#fff}.report-kind-tabs button:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.report-kind-tabs{background:rgba(12,39,50,.7)}.report-kind-tabs button.selected{background:#008c9e;color:#fff}}
 </style>

@@ -18,7 +18,7 @@ export function createApiReservationRepository(): ReservationRepository {
     findById: id => api<Reservation>(`/reservations/${id}`),
     create: input => api<Reservation>('/reservations', { method: 'POST', body: input }),
     cancel: id => api<Reservation>(`/reservations/${id}/cancel`, { method: 'POST' }),
-    updateStatus: (id, status: ReservationStatus, rejectionReason?: string) => api<Reservation>(`/reservations/${id}/status`, { method: 'PATCH', body: { status, rejectionReason } }),
+    updateStatus: (id, status: ReservationStatus, userId: string, rejectionReason?: string) => api<Reservation>(`/reservations/${id}/status`, { method: 'PATCH', body: { status, userId, rejectionReason } }),
     listAreas: () => api<CommonArea[]>('/common-areas'),
     getBlockingReservations: (areaId, date) => api<Reservation[]>(`/common-areas/${areaId}/blocking-reservations`, { query: { date } }),
   }

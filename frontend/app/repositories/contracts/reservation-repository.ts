@@ -6,7 +6,7 @@ export interface ReservationRepository {
   findById(id: string): Promise<ApiResponse<Reservation>>
   create(input: CreateReservationInput): Promise<ApiResponse<Reservation>>
   cancel(id: string): Promise<ApiResponse<Reservation>>
-  updateStatus(id: string, status: ReservationStatus, rejectionReason?: string): Promise<ApiResponse<Reservation>>
+  updateStatus(id: string, status: ReservationStatus, userId: string, rejectionReason?: string): Promise<ApiResponse<Reservation>>
   listAreas(): Promise<ApiResponse<CommonArea[]>>
   getBlockingReservations(areaId: string, date: string): Promise<ApiResponse<Reservation[]>>
 }

@@ -10,10 +10,11 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Persistência:** a classe é removida após a exportação; o tema visual da aplicação não é alterado.
 - **Validação:** exportar um relatório com o sistema em tema escuro deve gerar PDF claro.
 
-## RN10 — Relatórios restritos ao síndico
+## RN10 — Relatórios operacionais do síndico e administrador
 
 - **Solicitação:** disponibilizar a opção de relatórios conforme o caso de uso do diagrama.
-- **Comportamento esperado:** somente o papel `syndic` possui `generate-reports` e visualiza o módulo Relatórios.
+- **Comportamento esperado:** os papéis `syndic` e `admin` possuem `generate-reports` e visualizam o módulo Relatórios, conforme o RF06 consolidado.
+- **Auditoria:** somente o administrador possui `view-audit-reports`; o síndico não recebe acesso automático aos eventos de auditoria.
 - **Validação:** a matriz de permissões e a navegação devem continuar testando esta restrição.
 
 ## RN11 — Consulta de relatório com filtros e paginação
@@ -58,6 +59,15 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Interface:** a listagem é filtrada pela identidade autenticada e o modal de detalhes oferece apenas a ação compatível com o status atual.
 - **Validação:** testes devem cobrir o isolamento entre funcionários, as transições e o histórico gerado.
 
+## RN16 — Relatórios de auditoria
+
+- **Solicitação:** operações críticas realizadas por administradores e funcionários devem compor um relatório de auditoria.
+- **Dados mínimos:** autor, ação, entidade, identificador do registro, data/hora e detalhes relevantes.
+- **Acesso:** somente administradores podem consultar e exportar o relatório de auditoria.
+- **Comportamento esperado:** a consulta permite filtrar por período, entidade e responsável, possui paginação e exporta todos os registros filtrados para PDF ou Excel.
+- **Integridade:** o frontend apenas consulta os eventos; em produção, autoria e data devem ser determinadas pelo backend a partir da sessão autenticada, sem confiar em identidade enviada pelo cliente.
+- **Escopo mock:** atribuição, andamento e conclusão de ocorrências, além da aprovação/reprovação de reservas, geram eventos durante a simulação.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
@@ -69,3 +79,4 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 15/09/2026 | Filtros de data com calendário acessível em modal | RN13 |
 | 15/09/2026 | Tela de reservas com disponibilidade por dia e horário | RN14 |
 | 17/09/2026 | Ocorrências atribuídas e ações do funcionário | RN15 |
+| 17/09/2026 | Relatórios de auditoria administrativa | RN16 |
