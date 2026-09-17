@@ -1,5 +1,5 @@
 import { toAppError, type AppError } from '~/domain/app-error'
-import type { User, CreateUserInput, UpdateUserInput } from '~/domain/user'
+import type { User, CreateUserInput, UpdateOwnProfileInput, UpdateUserInput } from '~/domain/user'
 import { useServices } from '~/services'
 
 export function useUsers() {
@@ -42,6 +42,13 @@ export function useUsers() {
     return result.data
   }
 
+  async function updateOwnProfile(input: UpdateOwnProfileInput) {
+    const result = await execute(() => userService.updateOwnProfile(input))
+    const index = users.value.findIndex(item => item.id === result.data.id)
+    if (index >= 0) users.value[index] = result.data
+    return result.data
+  }
+
   async function deactivateUser(id: string) {
     const result = await execute(() => userService.deactivate(id))
     const index = users.value.findIndex(item => item.id === id)
@@ -49,6 +56,5 @@ export function useUsers() {
     return result.data
   }
 
-  return { users, loading, error, loadUsers, findUser, createUser, updateUser, deactivateUser }
+  return { users, loading, error, loadUsers, findUser, createUser, updateUser, updateOwnProfile, deactivateUser }
 }
-

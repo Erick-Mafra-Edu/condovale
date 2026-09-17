@@ -11,14 +11,16 @@ import { createNoticeService } from '../app/services/notice-service'
 import { createOccurrenceService } from '../app/services/occurrence-service'
 import { createReservationService } from '../app/services/reservation-service'
 import { createAuthService } from '../app/services/auth-service'
+import { createUserService } from '../app/services/user-service'
 import { mockAuthRepository } from '../app/repositories/mock/mock-auth-repository'
+import { mockUserRepository, mockUsers } from '../app/repositories/mock/mock-user-repository'
 import { mockConfig } from '../app/repositories/mock/mock-config'
 import { mockOccurrences, mockReservations } from '../app/repositories/mock/state'
 import { mockOccurrenceRepository } from '../app/repositories/mock/mock-occurrence-repository'
 import { mockAuditLogs } from '../app/repositories/mock/mock-audit-repository'
 import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
 import { can, canViewModule, rolePermissions, type UseCase } from '../app/domain/permissions'
-import type { UserRole } from '../app/domain/user'
+import type { UpdateOwnProfileInput, UserRole } from '../app/domain/user'
 
 const response = <T>(data: T): ApiResponse<T> => ({ data, message: null })
 
@@ -239,6 +241,29 @@ describe('autenticação mock por classificação', () => {
   })
 })
 
+describe('atualização do próprio cadastro', () => {
+  it('permite ao morador autenticado alterar somente nome e e-mail', async () => {
+    const auth = createAuthService(mockAuthRepository)
+    const service = createUserService(mockUserRepository)
+    const resident = mockUsers.find(user => user.id === 'user-01')!
+    const original = structuredClone(resident)
+
+    try {
+      await auth.authenticate({ email: original.email, password: 'condovale' })
+      const maliciousInput = { name: 'Maria Moradora', email: 'maria@example.com', role: 'admin' } as unknown as UpdateOwnProfileInput
+      const result = await service.updateOwnProfile(maliciousInput)
+      expect(result.data).toMatchObject({ id: original.id, name: 'Maria Moradora', email: 'maria@example.com', role: 'resident', status: 'active', unitId: original.unitId })
+
+      await auth.authenticate({ email: 'admin@example.com', password: 'condovale' })
+      await expect(service.updateOwnProfile({ name: 'Admin alterado', email: 'outro@example.com' }))
+        .rejects.toMatchObject({ code: 'FORBIDDEN' })
+    } finally {
+      Object.assign(resident, original)
+      await auth.logout()
+    }
+  })
+})
+
 describe('permissões do diagrama de casos de uso', () => {
   const residentCases: UseCase[] = [
     'login', 'update-own-profile', 'view-notices', 'create-occurrence', 'track-own-occurrences',
@@ -268,12 +293,12 @@ describe('permissões do diagrama de casos de uso', () => {
   })
 
   it.each([
-    ['resident', ['Início', 'Ocorrências', 'Reservas', 'Comunicados']],
+    ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Ocorrências']],
     ['syndic', ['Início', 'Comunicados', 'Relatórios']],
     ['admin', ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
-    const modules = ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
+    const modules = ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
     expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
   })
 })

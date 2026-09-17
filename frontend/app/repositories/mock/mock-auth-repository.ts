@@ -4,6 +4,7 @@ import type { ApiResponse } from '~/domain/common'
 import type { AuthRepository } from '~/repositories/contracts/auth-repository'
 import { mockUsers } from './mock-user-repository'
 import { simulateRequest } from './mock-config'
+import { setMockAuthenticatedUserId } from './mock-session'
 
 let session: AuthSession | null = null
 
@@ -18,6 +19,7 @@ export const mockAuthRepository: AuthRepository = {
     const user = mockUsers.find(item => item.email === input.email && item.status === 'active')
     if (!user || input.password !== 'condovale') throw new AppError('UNAUTHENTICATED', 'E-mail ou senha inválidos')
     session = { user }
+    setMockAuthenticatedUserId(user.id)
     return response(session)
   },
   async currentSession() {
@@ -27,6 +29,7 @@ export const mockAuthRepository: AuthRepository = {
   async logout() {
     await simulateRequest()
     session = null
+    setMockAuthenticatedUserId(null)
     return response(null)
   },
 }

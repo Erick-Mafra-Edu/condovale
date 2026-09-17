@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ active: string; items: ReadonlyArray<{ label: string; icon: 'home' | 'alert' | 'calendar' | 'message' | 'building' }> }>()
+defineProps<{ active: string; items: ReadonlyArray<{ label: string; icon: 'home' | 'alert' | 'calendar' | 'message' | 'building' | 'users' }> }>()
 defineEmits<{ select: [label: string] }>()
 </script>
 

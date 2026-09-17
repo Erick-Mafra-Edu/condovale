@@ -110,6 +110,7 @@ As regras abaixo foram criadas durante a implementação e não vieram na especi
 | **RN14** — disponibilidade e solicitação de reservas | Expande RF03, RN01, RN02 e RN08 com blocos de 30 minutos, diária, privacidade e aprovação. | **Complementar.** Exige que as validações deixem de depender apenas da UI. |
 | **RN15** — atendimento por funcionário atribuído | Expande RN05 e RN06, definindo isolamento e transições do funcionário. | **Complementar, sem conflito.** A etapa administrativa de atribuição ainda precisa ser implementada. |
 | **RN16** — relatórios de auditoria | Detalha RNF04 com campos mínimos, acesso administrativo, filtros, paginação e exportação. | **Complementar, sem conflito.** |
+| **RN17** — atualização do próprio cadastro | Formaliza o caso de uso do morador com nome/e-mail editáveis e campos estruturais protegidos. | **Complementar, sem conflito.** |
 
 ## Divergências prioritárias
 

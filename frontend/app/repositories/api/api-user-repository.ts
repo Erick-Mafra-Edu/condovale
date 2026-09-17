@@ -10,7 +10,7 @@ export function createApiUserRepository(): UserRepository {
     findById: id => api<User>(`/users/${encodeURIComponent(id)}`),
     create: input => api<User>('/users', { method: 'POST', body: input }),
     update: (id, input) => api<User>(`/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: input }),
+    updateOwnProfile: input => api<User>('/users/me', { method: 'PATCH', body: input }),
     deactivate: id => api<User>(`/users/${encodeURIComponent(id)}/deactivate`, { method: 'POST' }),
   }
 }
-

@@ -27,7 +27,7 @@ Validações de input novas usam **Zod**. O schema vive no domínio do caso de u
 | Reservations | Listagem, consulta individual, criação, cancelamento, status, áreas e reservas ocupando a agenda |
 | Occurrences | Listagem, consulta individual, criação, atribuição, status, conclusão e histórico |
 | Notices | `list`, `findById`, `create`, `update`, `remove` |
-| Users | `list`, `findById`, `create`, `update`, `deactivate` |
+| Users | `list`, `findById`, `create`, `update`, `updateOwnProfile`, `deactivate` |
 | Units | `list`, `findById` |
 | Auth | autenticar, restaurar sessão e logout; retorna somente usuário sanitizado |
 | Audit | listagem de eventos críticos para relatório administrativo |
@@ -43,6 +43,7 @@ Todos os caminhos, verbos e envelopes abaixo são provisórios, não representam
 - Leitura: `GET` coleção ou `GET /{id}`. Criação: `POST` coleção. Alteração: `PATCH /{id}`.
 - Notices: `DELETE /notices/{id}` retorna `{ data: null, message: null }`.
 - Users: `POST /users/{id}/deactivate` retorna o usuário com status `inactive`.
+- Perfil autenticado: `PATCH /users/me` altera somente nome e e-mail; a identidade deve vir da sessão.
 - Reservations consulta reservas bloqueantes com `GET /common-areas/{id}/blocking-reservations?date=...`.
 - Occurrences usa `PATCH /{id}/assign`, `PATCH /{id}/status`, `POST /{id}/finish` e `GET /{id}/history` dentro de `/occurrences`. `userId` identifica explicitamente o autor dos registros do histórico, provisoriamente até existir autenticação.
 - Sucesso retorna `ApiResponse<T>`; listas completas não recebem parâmetros de paginação. Um backend com envelope, paginação ou resposta `204` diferente precisará de adaptação no ApiRepository.

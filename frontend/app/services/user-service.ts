@@ -1,5 +1,5 @@
 import { AppError } from '~/domain/app-error'
-import type { CreateUserInput, UpdateUserInput } from '~/domain/user'
+import type { CreateUserInput, UpdateOwnProfileInput, UpdateUserInput } from '~/domain/user'
 import type { UserRepository } from '~/repositories/contracts/user-repository'
 
 function validate(input: UpdateUserInput) {
@@ -21,7 +21,10 @@ export function createUserService(repository: UserRepository) {
       validate(input)
       return repository.update(id, input)
     },
+    async updateOwnProfile(input: UpdateOwnProfileInput) {
+      validate(input)
+      return repository.updateOwnProfile(input)
+    },
     deactivate: (id: string) => repository.deactivate(id),
   }
 }
-

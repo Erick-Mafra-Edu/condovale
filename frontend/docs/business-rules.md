@@ -68,6 +68,15 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Integridade:** o frontend apenas consulta os eventos; em produção, autoria e data devem ser determinadas pelo backend a partir da sessão autenticada, sem confiar em identidade enviada pelo cliente.
 - **Escopo mock:** atribuição, andamento e conclusão de ocorrências, além da aprovação/reprovação de reservas, geram eventos durante a simulação.
 
+## RN17 — Atualização do próprio cadastro
+
+- **Solicitação:** o morador autenticado pode atualizar o próprio cadastro.
+- **Campos editáveis:** somente nome e e-mail; perfil, situação e unidade vinculada são protegidos.
+- **Autorização:** a operação usa a identidade da sessão e não aceita escolher o usuário por ID.
+- **Integridade:** o e-mail deve ser válido e único entre os usuários.
+- **Contrato API:** `PATCH /users/me`; o backend deve ignorar qualquer tentativa de enviar papel, status, unidade ou identificador de outro usuário.
+- **Validação:** testes devem garantir isolamento da identidade e preservação dos campos protegidos.
+
 ## Histórico de solicitações
 
 | Data | Solicitação | Regra registrada |
@@ -80,3 +89,4 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 | 15/09/2026 | Tela de reservas com disponibilidade por dia e horário | RN14 |
 | 17/09/2026 | Ocorrências atribuídas e ações do funcionário | RN15 |
 | 17/09/2026 | Relatórios de auditoria administrativa | RN16 |
+| 17/09/2026 | Atualização restrita do cadastro do morador | RN17 |
