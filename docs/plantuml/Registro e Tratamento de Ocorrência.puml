@@ -1,0 +1,108 @@
+
+@startuml
+title Diagrama de Sequência: Registro e Tratamento de Ocorrência
+
+actor M as "Morador"
+actor AD as "Administrador"
+actor F as "Funcionário"
+
+participant N as "Nuxt.js"
+participant A as "API Laravel"
+database P as "PostgreSQL"
+
+note over M,A
+RF04: abertura de ocorrência/manutenção
+RN05: ocorrência vinculada ao morador e com status
+RN06: somente usuários autorizados podem
+alterar status ou finalizar a ocorrência
+end note
+
+M -> N: Informar descrição da ocorrência
+N -> A: HTTP/HTTPS: registrar ocorrência
+activate A
+
+A -> A: Validar dados
+
+A -> P: SQL: inserir ocorrência\ncom morador e status inicial
+activate P
+P --> A: Ocorrência registrada
+deactivate P
+
+A --> N: JSON: ocorrência criada
+deactivate A
+N --> M: Exibir confirmação
+
+AD -> N: Consultar ocorrências
+N -> A: HTTP/HTTPS: solicitar ocorrências
+activate A
+
+A -> P: SQL: consultar ocorrências pendentes
+activate P
+P --> A: Lista de ocorrências
+deactivate P
+
+A --> N: JSON: ocorrências
+deactivate A
+N --> AD: Exibir ocorrências
+
+AD -> N: Selecionar ocorrência e responsável
+N -> A: HTTP/HTTPS: encaminhar ocorrência
+activate A
+
+A -> A: Validar permissão
+
+A -> P: SQL: atualizar responsável e status
+activate P
+P --> A: Atualização confirmada
+deactivate P
+
+A --> N: JSON: encaminhamento confirmado
+deactivate A
+N --> AD: Exibir confirmação
+
+F -> N: Consultar ocorrência atribuída
+N -> A: HTTP/HTTPS: consultar ocorrência
+activate A
+
+A -> P: SQL: buscar ocorrência
+activate P
+P --> A: Dados da ocorrência
+deactivate P
+
+A --> N: JSON: ocorrência
+deactivate A
+N --> F: Exibir ocorrência
+
+loop Durante o atendimento
+    F -> N: Atualizar andamento
+    N -> A: HTTP/HTTPS: enviar novo status
+    activate A
+
+    A -> A: Validar permissão e transição de status
+
+    A -> P: SQL: atualizar status
+    activate P
+    P --> A: Atualização confirmada
+    deactivate P
+
+    A --> N: JSON: status atualizado
+    deactivate A
+    N --> F: Exibir confirmação
+end
+
+F -> N: Finalizar atendimento
+N -> A: HTTP/HTTPS: finalizar ocorrência
+activate A
+
+A -> A: Validar permissão
+
+A -> P: SQL: atualizar status para finalizado
+activate P
+P --> A: Finalização confirmada
+deactivate P
+
+A --> N: JSON: ocorrência finalizada
+deactivate A
+N --> F: Exibir confirmação
+
+@enduml

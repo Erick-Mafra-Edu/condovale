@@ -1,0 +1,80 @@
+
+@startuml
+title Diagrama de Sequência: Solicitação e Cancelamento de Reserva
+
+actor M as "Morador"
+
+participant N as "Nuxt.js"
+participant A as "API Laravel"
+database P as "PostgreSQL"
+
+note over M,A
+RF03: reserva de áreas comuns
+RN01: impedir conflito de reservas
+RN02: respeitar disponibilidade e regras da área
+RN08: cancelamento libera novamente o período
+end note
+
+M -> N: Consultar áreas disponíveis
+N -> A: HTTP/HTTPS: consultar disponibilidade
+activate A
+
+A -> P: SQL: consultar áreas e horários
+activate P
+P --> A: Disponibilidades
+deactivate P
+
+A --> N: JSON: áreas disponíveis
+deactivate A
+N --> M: Exibir áreas e horários
+
+M -> N: Selecionar área, data e horário
+N -> A: HTTP/HTTPS: solicitar reserva
+activate A
+
+A -> A: Validar dados da solicitação
+
+A -> P: SQL: verificar conflito de reserva
+activate P
+P --> A: Resultado da consulta
+deactivate P
+
+A -> A: Aplicar RN01 e RN02
+
+alt Área e horário disponíveis
+    A -> P: SQL: inserir reserva
+    activate P
+    P --> A: Reserva registrada
+    deactivate P
+
+    A --> N: JSON: reserva confirmada
+    N --> M: Exibir confirmação
+
+else Área ou horário indisponível
+    A --> N: JSON: reserva rejeitada
+    N --> M: Exibir motivo da indisponibilidade
+end
+
+deactivate A
+
+opt Morador deseja cancelar a reserva
+    M -> N: Solicitar cancelamento
+    N -> A: HTTP/HTTPS: cancelar reserva
+    activate A
+
+    A -> A: Validar usuário e reserva
+
+    A -> P: SQL: cancelar reserva
+    activate P
+    P --> A: Reserva cancelada
+    deactivate P
+
+    A -> A: Liberar período conforme RN08
+
+    A --> N: JSON: cancelamento confirmado
+    deactivate A
+
+    N --> M: Exibir confirmação
+end
+
+@enduml
