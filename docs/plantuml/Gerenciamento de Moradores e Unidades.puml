@@ -1,0 +1,64 @@
+
+@startuml
+title Diagrama de Sequência: Gerenciamento de Moradores e Unidades
+
+actor AD as "Administrador"
+participant N as "Nuxt.js"
+participant A as "API Laravel"
+database P as "PostgreSQL"
+
+note over AD,A
+RF01: cadastro, edição e inativação de usuários
+RN03: alterações estruturais de unidades
+restritas ao Síndico/Administrador
+end note
+
+AD -> N: Acessar gerenciamento de moradores
+N -> A: HTTP/HTTPS: solicitar dados
+activate A
+
+A -> P: SQL: consultar moradores e unidades
+activate P
+P --> A: Dados cadastrados
+deactivate P
+
+A --> N: JSON: moradores e unidades
+deactivate A
+N --> AD: Exibir cadastros
+
+AD -> N: Informar dados do morador
+N -> A: HTTP/HTTPS: salvar morador
+activate A
+
+A -> A: Validar dados e permissões
+
+alt Dados válidos
+    A -> P: SQL: inserir/atualizar morador
+    activate P
+    P --> A: Operação confirmada
+    deactivate P
+
+    A --> N: JSON: cadastro atualizado
+    N --> AD: Exibir confirmação
+else Dados inválidos
+    A --> N: JSON: erro de validação
+    N --> AD: Exibir erros
+end
+
+deactivate A
+
+AD -> N: Vincular morador à unidade
+N -> A: HTTP/HTTPS: enviar vínculo
+activate A
+
+A -> A: Validar vínculo
+A -> P: SQL: associar morador à unidade
+activate P
+P --> A: Vínculo registrado
+deactivate P
+
+A --> N: JSON: vínculo confirmado
+deactivate A
+N --> AD: Exibir confirmação
+
+@enduml

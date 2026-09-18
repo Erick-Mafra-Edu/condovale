@@ -1,0 +1,134 @@
+
+@startuml
+title Diagrama de Classes: CondoVale
+
+skinparam classAttributeIconSize 0
+
+class Usuario {
+    - id: int
+    - nome: string
+    - email: string
+    - senhaHash: string
+    - ativo: boolean
+    - perfil: PerfilUsuario
+
+    + autenticar(email: string, senha: string): boolean
+    + atualizarDados(): void
+    + inativar(): void
+}
+
+enum PerfilUsuario {
+    MORADOR
+    FUNCIONARIO
+    SINDICO_ADMINISTRADOR
+}
+
+class Unidade {
+    - id: int
+    - identificacao: string
+    - bloco: string
+    - ativa: boolean
+
+    + atualizarDados(): void
+    + inativar(): void
+}
+
+class AreaComum {
+    - id: int
+    - nome: string
+    - descricao: string
+    - horarioInicio: time
+    - horarioFim: time
+    - ativa: boolean
+
+    + verificarDisponibilidade(data: date, inicio: time, fim: time): boolean
+}
+
+class Reserva {
+    - id: int
+    - data: date
+    - horaInicio: time
+    - horaFim: time
+    - status: StatusReserva
+
+    + solicitar(): void
+    + cancelar(): void
+    + validarConflito(): boolean
+}
+
+enum StatusReserva {
+    ATIVA
+    CANCELADA
+}
+
+class Ocorrencia {
+    - id: int
+    - descricao: string
+    - dataAbertura: datetime
+    - status: StatusOcorrencia
+
+    + registrar(): void
+    + encaminhar(funcionario: Usuario): void
+    + atualizarStatus(status: StatusOcorrencia): void
+    + finalizar(): void
+}
+
+enum StatusOcorrencia {
+    ABERTA
+    EM_ANALISE
+    ENCAMINHADA
+    EM_ATENDIMENTO
+    FINALIZADA
+}
+
+class Comunicado {
+    - id: int
+    - titulo: string
+    - conteudo: string
+    - dataPublicacao: datetime
+    - ativo: boolean
+
+    + publicar(): void
+    + excluir(): void
+}
+
+Usuario "1" --> "0..*" Reserva : realiza
+Usuario "1" --> "0..*" Ocorrencia : abre
+Usuario "0..1" --> "0..*" Ocorrencia : atende
+
+Usuario "0..*" -- "0..*" Unidade : vinculado a
+
+AreaComum "1" --> "0..*" Reserva : possui
+Reserva "*" --> "1" AreaComum : referencia
+
+Usuario "1" --> "0..*" Comunicado : publica
+
+Usuario --> PerfilUsuario
+Reserva --> StatusReserva
+Ocorrencia --> StatusOcorrencia
+
+note right of Reserva
+RN01: não permitir conflito
+para mesma área, data e horário
+
+RN02: respeitar disponibilidade
+e regras da área
+
+RN08: cancelamento libera
+novamente o período
+end note
+
+note right of Ocorrencia
+RN05: ocorrência permanece
+associada ao morador responsável
+
+RN06: apenas usuários autorizados
+podem alterar status ou finalizar
+end note
+
+note right of Comunicado
+RN07: somente Síndico/Administrador
+pode publicar comunicados oficiais
+end note
+
+@enduml

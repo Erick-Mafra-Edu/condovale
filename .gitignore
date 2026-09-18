@@ -49,3 +49,5 @@
 # Artefatos temporários de validação visual local
 /frontend/.tmp-*
 /frontend/*-liquid-glass.png
+AGENTS.MD
+.codex/*

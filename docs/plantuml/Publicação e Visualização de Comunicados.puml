@@ -1,0 +1,54 @@
+
+@startuml
+title Diagrama de Sequência: Publicação e Visualização de Comunicado
+
+actor S as "Síndico/Administrador"
+actor M as "Morador"
+
+participant N as "Nuxt.js"
+participant A as "API Laravel"
+database P as "PostgreSQL"
+
+note over S,A
+RF05: publicação de comunicados oficiais
+RN07: somente Síndico/Administrador
+pode publicar comunicados
+end note
+
+S -> N: Informar título e conteúdo
+N -> A: HTTP/HTTPS: publicar comunicado
+activate A
+
+A -> A: Validar dados
+A -> A: Validar perfil do usuário
+
+alt Perfil autorizado
+    A -> P: SQL: inserir comunicado
+    activate P
+    P --> A: Comunicado registrado
+    deactivate P
+
+    A --> N: JSON: publicação confirmada
+    deactivate A
+    N --> S: Exibir confirmação
+
+    M -> N: Acessar comunicados
+    N -> A: HTTP/HTTPS: consultar comunicados
+    activate A
+
+    A -> P: SQL: buscar comunicados publicados
+    activate P
+    P --> A: Lista de comunicados
+    deactivate P
+
+    A --> N: JSON: comunicados
+    deactivate A
+    N --> M: Exibir comunicados
+
+else Perfil não autorizado
+    A --> N: JSON: acesso negado
+    deactivate A
+    N --> S: Exibir erro de permissão
+end
+
+@enduml
