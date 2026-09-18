@@ -284,6 +284,14 @@ describe('autenticação mock por classificação', () => {
 })
 
 describe('atualização do próprio cadastro', () => {
+  it('rejeita e-mail sem domínio válido', async () => {
+    const service = createUserService({ updateOwnProfile: vi.fn() } as unknown as Parameters<typeof createUserService>[0])
+
+    await expect(service.updateOwnProfile({ name: 'Maria Moradora', email: 'maria@example.com' })).resolves.toBeUndefined()
+    await expect(service.updateOwnProfile({ name: 'Maria Moradora', email: 'maria@.com' }))
+      .rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+  })
+
   it('permite ao morador autenticado alterar somente nome e e-mail', async () => {
     const auth = createAuthService(mockAuthRepository)
     const service = createUserService(mockUserRepository)

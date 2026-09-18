@@ -25,7 +25,7 @@ function formatCalendarHeading(date: DateValue) {
 </script>
 
 <template>
-  <label class="report-date-field">{{ label }}<button type="button" class="report-date-input" :aria-expanded="open" :aria-label="`${label}: ${displayValue}`" @click="open = true"><span>{{ displayValue }}</span><SvgIcon name="calendar" /></button></label>
+  <div class="report-date-field">{{ label }}<button type="button" class="report-date-input" :aria-expanded="open" :aria-label="`${label}: ${displayValue}`" @click="open = true"><span>{{ displayValue }}</span><SvgIcon name="calendar" /></button></div>
   <div v-if="open" class="date-modal-backdrop" role="presentation" @click.self="open = false">
     <section class="date-modal glass" role="dialog" aria-modal="true" :aria-label="`Selecionar ${label.toLowerCase()}`">
       <div class="date-modal-head"><div><span class="eyebrow">Filtro do relatório</span><h3>Selecionar data</h3></div><button type="button" class="date-modal-close" aria-label="Fechar calendário" @click="open = false">×</button></div>
