@@ -7,21 +7,18 @@ export function createReservationService(repository: ReservationRepository) {
     list: () => repository.list(),
     listAreas: () => repository.listAreas(),
     findById: (id: string) => repository.findById(id),
-    getBlockingReservations: (areaId: string, date: string) => repository.getBlockingReservations(areaId, date),
-    getMyReservations: async (residentId: string) => {
-      const result = await repository.list()
-      return { ...result, data: result.data.filter(item => item.residentId === residentId) }
-    },
+    listOccupancy: (areaId: string, startDate: string, endDate: string) => repository.listOccupancy(areaId, startDate, endDate),
+    getMyReservations: () => repository.listMine(),
     async reserve(input: CreateReservationInput) {
       const fields: Record<string, string[]> = {}
       if (!input.areaId) fields.areaId = ['Selecione uma área']
-      if (!input.residentId) fields.residentId = ['Informe o morador']
       if (!input.date) fields.date = ['Informe uma data']
-      if (!input.startTime || !input.endTime || input.startTime >= input.endTime) fields.startTime = ['Informe um intervalo de horário válido']
+      const hasOnlyOneTime = Boolean(input.startTime) !== Boolean(input.endTime)
+      if (hasOnlyOneTime || (input.startTime && input.endTime && input.startTime >= input.endTime)) fields.startTime = ['Informe os dois horários ou deixe ambos vazios para reservar o dia inteiro']
       if (Object.keys(fields).length) throw new AppError('VALIDATION_ERROR', 'Revise os dados da reserva', fields)
       return repository.create(input)
     },
     cancel: (id: string) => repository.cancel(id),
-    updateStatus: (id: string, status: ReservationStatus, reason?: string) => repository.updateStatus(id, status, reason),
+    updateStatus: (id: string, status: ReservationStatus, userId: string, reason?: string) => repository.updateStatus(id, status, userId, reason),
   }
 }

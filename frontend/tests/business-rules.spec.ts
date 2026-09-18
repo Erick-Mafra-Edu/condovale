@@ -1,0 +1,346 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AppError } from '../app/domain/app-error'
+import type { ApiResponse } from '../app/domain/common'
+import { getPublishedNotices, type CreateNoticeInput, type Notice } from '../app/domain/notice'
+import type { CreateOccurrenceInput, Occurrence, OccurrenceHistory } from '../app/domain/occurrence'
+import type { CommonArea, CreateReservationInput, Reservation } from '../app/domain/reservation'
+import type { NoticeRepository } from '../app/repositories/contracts/notice-repository'
+import type { OccurrenceRepository } from '../app/repositories/contracts/occurrence-repository'
+import type { ReservationRepository } from '../app/repositories/contracts/reservation-repository'
+import { createNoticeService } from '../app/services/notice-service'
+import { createOccurrenceService } from '../app/services/occurrence-service'
+import { createReservationService } from '../app/services/reservation-service'
+import { createAuthService } from '../app/services/auth-service'
+import { createUserService } from '../app/services/user-service'
+import { mockAuthRepository } from '../app/repositories/mock/mock-auth-repository'
+import { mockUserRepository, mockUsers } from '../app/repositories/mock/mock-user-repository'
+import { mockConfig } from '../app/repositories/mock/mock-config'
+import { mockOccurrences, mockReservations } from '../app/repositories/mock/state'
+import { mockOccurrenceRepository } from '../app/repositories/mock/mock-occurrence-repository'
+import { mockAuditLogs } from '../app/repositories/mock/mock-audit-repository'
+import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
+import { can, canViewModule, rolePermissions, type UseCase } from '../app/domain/permissions'
+import type { UpdateOwnProfileInput, UserRole } from '../app/domain/user'
+
+const response = <T>(data: T): ApiResponse<T> => ({ data, message: null })
+
+const area: CommonArea = {
+  id: 'area-03',
+  name: 'Área de teste',
+  openingTime: '08:00',
+  closingTime: '22:00',
+  requiresApproval: false,
+  status: 'available',
+}
+
+const reservationInput: CreateReservationInput = {
+  areaId: area.id,
+  date: '2026-09-30',
+  startTime: '10:00',
+  endTime: '12:00',
+}
+
+async function expectAppError(action: () => Promise<unknown>, code: string) {
+  const failure = action()
+  await expect(failure).rejects.toBeInstanceOf(AppError)
+  await expect(failure).rejects.toMatchObject({ code })
+}
+
+afterEach(() => {
+  mockConfig.latency = 0
+  mockConfig.shouldFail = false
+})
+
+describe('RN01 e RN08 — reservas', () => {
+  it('recusa sobreposição de reservas que bloqueiam a agenda', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const initial = mockReservations.length
+    const first = await mockReservationRepository.create(reservationInput)
+
+    await expect(mockReservationRepository.create({
+      ...reservationInput,
+      startTime: '11:00',
+      endTime: '13:00',
+    })).rejects.toMatchObject({ code: 'RESERVATION_CONFLICT' })
+
+    mockReservations.splice(initial, mockReservations.length - initial)
+    expect(first.data.areaId).toBe(area.id)
+  })
+
+  it('libera o período quando a reserva é cancelada', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const initial = mockReservations.length
+    const created = await mockReservationRepository.create(reservationInput)
+    await mockReservationRepository.cancel(created.data.id)
+
+    const available = await mockReservationRepository.listOccupancy(area.id, reservationInput.date, reservationInput.date)
+    expect(available.data).toEqual([])
+
+    mockReservations.splice(initial, mockReservations.length - initial)
+  })
+
+  it('impede o morador de cancelar uma reserva de terceiros', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const reservation = mockReservations.find(item => item.residentId === 'user-02')!
+    const originalStatus = reservation.status
+
+    await expect(mockReservationRepository.cancel(reservation.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(reservation.status).toBe(originalStatus)
+  })
+
+  it('trata horários ausentes como reserva de diária e bloqueia o dia todo', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const initial = mockReservations.length
+    const dailyInput: CreateReservationInput = { areaId: area.id, date: '2026-10-02' }
+    const daily = await mockReservationRepository.create(dailyInput)
+
+    expect(daily.data).toMatchObject(dailyInput)
+    expect(daily.data.startTime).toBeUndefined()
+    await expect(mockReservationRepository.create({ ...dailyInput, startTime: '10:00', endTime: '10:30' }))
+      .rejects.toMatchObject({ code: 'RESERVATION_CONFLICT' })
+
+    mockReservations.splice(initial, mockReservations.length - initial)
+  })
+
+  it('aprova automaticamente a área configurada e anonimiza sua ocupação', async () => {
+    await createAuthService(mockAuthRepository).authenticate({ email: 'morador@example.com', password: 'condovale' })
+    const initial = mockReservations.length
+    const input: CreateReservationInput = { areaId: 'area-02', date: '2026-12-10', startTime: '10:00', endTime: '11:00' }
+
+    try {
+      const created = await mockReservationRepository.create(input)
+      const occupancy = await mockReservationRepository.listOccupancy(input.areaId, input.date, input.date)
+
+      expect(created.data.status).toBe('approved')
+      expect(occupancy.data).toEqual([{ date: input.date, startTime: input.startTime, endTime: input.endTime }])
+      expect(occupancy.data[0]).not.toHaveProperty('residentId')
+      expect(occupancy.data[0]).not.toHaveProperty('id')
+      expect((await mockReservationRepository.listMine()).data.every(item => item.residentId === 'user-01')).toBe(true)
+    } finally {
+      mockReservations.splice(initial, mockReservations.length - initial)
+    }
+  })
+
+  it('audita a decisão de reserva e restringe a operação ao administrador', async () => {
+    const reservation: Reservation = { id: 'reservation-audit-test', areaId: area.id, residentId: 'user-01', date: '2026-11-01', status: 'pending', createdAt: '' }
+    const initialAuditLogs = mockAuditLogs.length
+    mockReservations.push(reservation)
+
+    try {
+      await expect(mockReservationRepository.updateStatus(reservation.id, 'approved', 'user-employee'))
+        .rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await mockReservationRepository.updateStatus(reservation.id, 'approved', 'user-admin')
+      expect(mockAuditLogs[0]).toMatchObject({ action: 'reservation.approved', userId: 'user-admin', entityId: reservation.id })
+    } finally {
+      mockReservations.splice(mockReservations.indexOf(reservation), 1)
+      mockAuditLogs.splice(0, mockAuditLogs.length - initialAuditLogs)
+    }
+  })
+})
+
+describe('validações de aplicação', () => {
+  it('exibe todos os comunicados publicados, do mais recente ao mais antigo', () => {
+    const notices: Notice[] = [
+      { id: 'old', title: 'Antigo', content: '', authorId: 'admin', publishedAt: '2026-09-10T10:00:00Z', status: 'published' },
+      { id: 'draft', title: 'Rascunho', content: '', authorId: 'admin', publishedAt: '2026-09-17T10:00:00Z', status: 'draft' },
+      { id: 'new', title: 'Novo', content: '', authorId: 'admin', publishedAt: '2026-09-15T10:00:00Z', status: 'published' },
+      { id: 'middle', title: 'Intermediário', content: '', authorId: 'admin', publishedAt: '2026-09-12T10:00:00Z', status: 'published' },
+      { id: 'newest', title: 'Mais novo', content: '', authorId: 'admin', publishedAt: '2026-09-16T10:00:00Z', status: 'published' },
+    ]
+
+    expect(getPublishedNotices(notices).map(notice => notice.id)).toEqual(['newest', 'new', 'middle', 'old'])
+  })
+
+  it('RN02 valida campos e intervalo de horário da reserva', async () => {
+    const repository = { create: vi.fn() } as unknown as ReservationRepository
+    const service = createReservationService(repository)
+
+    await expect(service.reserve({ ...reservationInput, startTime: '12:00', endTime: '10:00' }))
+      .rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+
+  it('aceita diária sem horários e rejeita somente um horário preenchido', async () => {
+    const repository = { create: vi.fn().mockResolvedValue(response({})) } as unknown as ReservationRepository
+    const service = createReservationService(repository)
+    const dailyInput: CreateReservationInput = { areaId: area.id, date: '2026-10-03' }
+
+    await service.reserve(dailyInput)
+    expect(repository.create).toHaveBeenCalledWith(dailyInput)
+    await expect(service.reserve({ ...dailyInput, startTime: '10:00' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+  })
+
+  it('RN05 exige que a ocorrência informe o morador responsável', async () => {
+    const repository = { create: vi.fn() } as unknown as OccurrenceRepository
+    const service = createOccurrenceService(repository)
+    const input = { title: 'Falha', description: 'Detalhes', category: 'Manutenção', residentId: '' } as CreateOccurrenceInput
+
+    await expect(service.create(input)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+
+  it('valida título e conteúdo de comunicado', async () => {
+    const repository = { create: vi.fn() } as unknown as NoticeRepository
+    const service = createNoticeService(repository)
+    const input = { title: ' ', content: '', authorId: 'user-01', publishedAt: '', status: 'draft' } as CreateNoticeInput
+
+    await expect(service.create(input)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      fields: { title: ['Informe o título'], content: ['Informe o conteúdo'] },
+    })
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('RN06 — histórico de ocorrência', () => {
+  it('exige usuário nas operações de atribuição, status e conclusão', async () => {
+    const repository = {
+      assign: vi.fn(),
+      updateStatus: vi.fn(),
+      finish: vi.fn(),
+    } as unknown as OccurrenceRepository
+    const service = createOccurrenceService(repository)
+
+    await expectAppError(() => service.assign('occurrence-01', 'employee-01', ''), 'VALIDATION_ERROR')
+    await expectAppError(() => service.updateStatus('occurrence-01', 'in_progress', ''), 'VALIDATION_ERROR')
+    await expectAppError(() => service.finish('occurrence-01', ''), 'VALIDATION_ERROR')
+    expect(repository.assign).not.toHaveBeenCalled()
+    expect(repository.updateStatus).not.toHaveBeenCalled()
+    expect(repository.finish).not.toHaveBeenCalled()
+  })
+
+  it('encaminha autoria explícita para registrar alterações', async () => {
+    const occurrence: Occurrence = {
+      id: 'occurrence-01', title: 'Falha', description: 'Detalhes', category: 'Manutenção',
+      residentId: 'user-01', status: 'open', createdAt: '', updatedAt: '',
+    }
+    const history: OccurrenceHistory[] = []
+    const repository = {
+      assign: vi.fn().mockResolvedValue(response(occurrence)),
+      updateStatus: vi.fn().mockResolvedValue(response(occurrence)),
+      finish: vi.fn().mockResolvedValue(response(occurrence)),
+      history: vi.fn().mockResolvedValue(response(history)),
+    } as unknown as OccurrenceRepository
+    const service = createOccurrenceService(repository)
+
+    await service.assign(occurrence.id, 'employee-01', 'employee-user')
+    await service.updateStatus(occurrence.id, 'in_progress', 'employee-user')
+    await service.finish(occurrence.id, 'employee-user', 'Concluído')
+
+    expect(repository.assign).toHaveBeenCalledWith(occurrence.id, 'employee-01', 'employee-user')
+    expect(repository.updateStatus).toHaveBeenCalledWith(occurrence.id, 'in_progress', 'employee-user')
+    expect(repository.finish).toHaveBeenCalledWith(occurrence.id, 'employee-user', 'Concluído')
+  })
+
+  it('permite atualizar e finalizar somente a ocorrência atribuída ao funcionário', async () => {
+    const occurrence: Occurrence = {
+      id: 'occurrence-employee-test', title: 'Portão travando', description: 'Falha intermitente', category: 'Manutenção',
+      residentId: 'user-01', assignedEmployeeId: 'user-employee', status: 'assigned', createdAt: '', updatedAt: '',
+    }
+    const initialAuditLogs = mockAuditLogs.length
+    mockOccurrences.push(occurrence)
+
+    try {
+      await expect(mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress', 'user-employee-security'))
+        .rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress', 'user-employee')
+      await mockOccurrenceRepository.finish(occurrence.id, 'user-employee', 'Portão regulado')
+
+      expect(occurrence.status).toBe('completed')
+      expect((await mockOccurrenceRepository.history(occurrence.id)).data).toMatchObject([
+        { type: 'status_changed', userId: 'user-employee', newStatus: 'in_progress' },
+        { type: 'completed', userId: 'user-employee', newStatus: 'completed', message: 'Portão regulado' },
+      ])
+      expect(mockAuditLogs.slice(0, 2)).toMatchObject([
+        { action: 'occurrence.completed', userId: 'user-employee', entityId: occurrence.id },
+        { action: 'occurrence.status_updated', userId: 'user-employee', entityId: occurrence.id },
+      ])
+    } finally {
+      mockOccurrences.splice(mockOccurrences.indexOf(occurrence), 1)
+      mockAuditLogs.splice(0, mockAuditLogs.length - initialAuditLogs)
+    }
+  })
+})
+
+describe('autenticação mock por classificação', () => {
+  it.each([
+    ['resident', 'morador@example.com'],
+    ['employee', 'funcionario@example.com'],
+    ['employee', 'funcionario.seguranca@example.com'],
+    ['employee', 'funcionario.conservacao@example.com'],
+    ['syndic', 'sindica@example.com'],
+    ['admin', 'admin@example.com'],
+  ])('permite login como %s', async (role, email) => {
+    const service = createAuthService(mockAuthRepository)
+    const result = await service.authenticate({ email, password: 'condovale' })
+    expect(result.data.user).toMatchObject({ email, role, status: 'active' })
+  })
+
+  it('rejeita senha inválida sem criar sessão', async () => {
+    const service = createAuthService(mockAuthRepository)
+    await expect(service.authenticate({ email: 'admin@example.com', password: 'errada' }))
+      .rejects.toMatchObject({ code: 'UNAUTHENTICATED' })
+  })
+})
+
+describe('atualização do próprio cadastro', () => {
+  it('permite ao morador autenticado alterar somente nome e e-mail', async () => {
+    const auth = createAuthService(mockAuthRepository)
+    const service = createUserService(mockUserRepository)
+    const resident = mockUsers.find(user => user.id === 'user-01')!
+    const original = structuredClone(resident)
+
+    try {
+      await auth.authenticate({ email: original.email, password: 'condovale' })
+      const maliciousInput = { name: 'Maria Moradora', email: 'maria@example.com', role: 'admin' } as unknown as UpdateOwnProfileInput
+      const result = await service.updateOwnProfile(maliciousInput)
+      expect(result.data).toMatchObject({ id: original.id, name: 'Maria Moradora', email: 'maria@example.com', role: 'resident', status: 'active', unitId: original.unitId })
+
+      await auth.authenticate({ email: 'admin@example.com', password: 'condovale' })
+      await expect(service.updateOwnProfile({ name: 'Admin alterado', email: 'outro@example.com' }))
+        .rejects.toMatchObject({ code: 'FORBIDDEN' })
+    } finally {
+      Object.assign(resident, original)
+      await auth.logout()
+    }
+  })
+})
+
+describe('permissões do diagrama de casos de uso', () => {
+  const residentCases: UseCase[] = [
+    'login', 'update-own-profile', 'view-notices', 'create-occurrence', 'track-own-occurrences',
+    'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
+  ]
+  const employeeCases: UseCase[] = ['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']
+  const syndicCases: UseCase[] = ['login', 'publish-notices', 'generate-reports']
+  const adminCases: UseCase[] = [
+    'login', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
+    'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
+    'generate-reports', 'view-audit-reports',
+  ]
+
+  it.each([
+    ['resident', residentCases], ['employee', employeeCases], ['syndic', syndicCases], ['admin', adminCases],
+  ] as Array<[UserRole, UseCase[]]>)('%s possui exatamente os casos de uso previstos', (role, allowed) => {
+    const allCases = [...rolePermissions[role]]
+    expect([...rolePermissions[role]]).toEqual(allowed)
+    for (const useCase of allCases) expect(can(role, useCase)).toBe(allowed.includes(useCase))
+  })
+
+  it('não concede operações administrativas a moradores ou funcionários', () => {
+    const restricted: UseCase[] = ['manage-units', 'manage-residents', 'link-residents-to-units', 'publish-notices', 'approve-or-reject-reservation', 'generate-reports']
+    for (const role of ['resident', 'employee'] as UserRole[]) {
+      for (const useCase of restricted) expect(can(role, useCase)).toBe(false)
+    }
+  })
+
+  it.each([
+    ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
+    ['employee', ['Início', 'Ocorrências']],
+    ['syndic', ['Início', 'Comunicados', 'Relatórios']],
+    ['admin', ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios']],
+  ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
+    const modules = ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
+    expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
+  })
+})

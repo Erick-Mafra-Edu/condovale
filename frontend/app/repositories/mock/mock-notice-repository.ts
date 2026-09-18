@@ -6,6 +6,10 @@ import { simulateRequest } from './mock-config'
 
 const notices: Notice[] = [
   { id: 'notice-01', title: 'Bem-vindos ao CondoVale', content: 'Acompanhe os comunicados do condomínio.', authorId: 'user-admin', publishedAt: '2026-09-10T10:00:00Z', status: 'published' },
+  { id: 'notice-02', title: 'Manutenção preventiva dos elevadores', content: 'Os elevadores passarão por manutenção preventiva no dia 18 de setembro.', authorId: 'user-admin', publishedAt: '2026-09-15T14:00:00Z', status: 'published' },
+  { id: 'notice-03', title: 'Assembleia geral do condomínio', content: 'A assembleia será realizada no salão de festas no dia 25 de setembro.', authorId: 'user-syndic', publishedAt: '2026-09-13T18:00:00Z', status: 'published' },
+  { id: 'notice-04', title: 'Atualização das regras de acesso', content: 'Consulte as orientações atualizadas para visitantes e prestadores de serviço.', authorId: 'user-syndic', publishedAt: '2026-09-12T09:00:00Z', status: 'published' },
+  { id: 'notice-05', title: 'Comunicado em preparação', content: 'Este rascunho não deve ser exibido aos moradores.', authorId: 'user-admin', publishedAt: '2026-09-17T10:00:00Z', status: 'draft' },
 ]
 
 function response<T>(data: T): ApiResponse<T> {
@@ -46,4 +50,3 @@ export const mockNoticeRepository: NoticeRepository = {
     return response(null)
   },
 }
-

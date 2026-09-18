@@ -16,6 +16,9 @@ import { createUnitService } from './unit-service'
 import { createApiAuthRepository } from '~/repositories/api/api-auth-repository'
 import { mockAuthRepository } from '~/repositories/mock/mock-auth-repository'
 import { createAuthService } from './auth-service'
+import { createApiAuditRepository } from '~/repositories/api/api-audit-repository'
+import { mockAuditRepository } from '~/repositories/mock/mock-audit-repository'
+import { createAuditService } from './audit-service'
 
 export function useServices() {
   const { public: config } = useRuntimeConfig()
@@ -23,6 +26,7 @@ export function useServices() {
 
   return {
     authService: createAuthService(useMock ? mockAuthRepository : createApiAuthRepository()),
+    auditService: createAuditService(useMock ? mockAuditRepository : createApiAuditRepository()),
     reservationService: createReservationService(useMock ? mockReservationRepository : createApiReservationRepository()),
     occurrenceService: createOccurrenceService(useMock ? mockOccurrenceRepository : createApiOccurrenceRepository()),
     noticeService: createNoticeService(useMock ? mockNoticeRepository : createApiNoticeRepository()),

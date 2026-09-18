@@ -20,3 +20,4 @@ export interface Unit {
 
 export type CreateUserInput = Omit<User, 'id'>
 export type UpdateUserInput = Partial<CreateUserInput>
+export type UpdateOwnProfileInput = Pick<User, 'name' | 'email'>

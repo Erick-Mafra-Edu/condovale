@@ -9,6 +9,7 @@ export interface CommonArea {
   capacity?: number
   openingTime?: string
   closingTime?: string
+  maxReservationMinutes?: number
   requiresApproval: boolean
   status: CommonAreaStatus
 }
@@ -18,11 +19,13 @@ export interface Reservation {
   areaId: string
   residentId: string
   date: string
-  startTime: string
-  endTime: string
+  /** Ausentes em reservas de diária (dia inteiro). */
+  startTime?: string
+  endTime?: string
   status: ReservationStatus
   createdAt: string
   rejectionReason?: string
 }
 
-export type CreateReservationInput = Pick<Reservation, 'areaId' | 'residentId' | 'date' | 'startTime' | 'endTime'>
+export type CreateReservationInput = Pick<Reservation, 'areaId' | 'date' | 'startTime' | 'endTime'>
+export type ReservationOccupancy = Pick<Reservation, 'date' | 'startTime' | 'endTime'>

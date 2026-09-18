@@ -36,13 +36,13 @@ export function useReservations() {
     if (index >= 0) reservations.value[index] = result.data
   }
 
-  async function loadMyReservations(residentId: string) {
-    const result = await execute(() => reservationService.getMyReservations(residentId))
+  async function loadMyReservations() {
+    const result = await execute(() => reservationService.getMyReservations())
     reservations.value = result.data
   }
 
-  async function updateReservationStatus(id: string, status: ReservationStatus, reason?: string) {
-    const result = await execute(() => reservationService.updateStatus(id, status, reason))
+  async function updateReservationStatus(id: string, status: ReservationStatus, userId: string, reason?: string) {
+    const result = await execute(() => reservationService.updateStatus(id, status, userId, reason))
     const index = reservations.value.findIndex(item => item.id === id)
     if (index >= 0) reservations.value[index] = result.data
     return result.data
@@ -50,7 +50,7 @@ export function useReservations() {
 
   const listAreas = () => execute(() => reservationService.listAreas())
   const findReservation = (id: string) => execute(() => reservationService.findById(id))
-  const getBlockingReservations = (areaId: string, date: string) => execute(() => reservationService.getBlockingReservations(areaId, date))
+  const listOccupancy = (areaId: string, startDate: string, endDate: string) => execute(() => reservationService.listOccupancy(areaId, startDate, endDate))
 
-  return { reservations, loading, error, loadReservations, loadMyReservations, createReservation, cancelReservation, updateReservationStatus, listAreas, findReservation, getBlockingReservations }
+  return { reservations, loading, error, loadReservations, loadMyReservations, createReservation, cancelReservation, updateReservationStatus, listAreas, findReservation, listOccupancy }
 }
