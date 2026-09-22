@@ -1,16 +1,27 @@
-# To prevent access to .env and other files
+# Arquivo usado apenas no host compartilhado (InfinityFree), onde o projeto
+# inteiro fica na raiz da conta e o document root não aponta para public/.
+# Localmente o `php artisan serve` não lê este arquivo.
+
+# Identifica o ambiente ANTES de a aplicação subir: com APP_ENV definido pelo
+# servidor, o Laravel carrega .env.production em vez de .env.
+<IfModule mod_env.c>
+SetEnv APP_ENV production
+</IfModule>
+
+# Impede o acesso direto a arquivos ocultos (.env, .env.production, .git...).
 <Files .*>
-# Apache 2.2
 <IfModule !mod_authz_core.c>
 Order deny,allow
 Deny from all
 </IfModule>
-# Apache 2.4
 <IfModule mod_authz_core.c>
 Require all denied
 </IfModule>
 </Files>
 
-<IfModule mod_alias.c>
-RedirectMatch 301 ^/$ https://condoval.wuaze.com/public
+# Encaminha tudo para o front controller dentro de public/.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

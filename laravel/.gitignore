@@ -6,9 +6,14 @@
 /storage/*.key
 /storage/pail
 /vendor
+
+# Nenhum arquivo de ambiente é versionado, exceto o exemplo. O .env local e o
+# .env.prod (credenciais do host compartilhado) contêm segredos e ficam fora do
+# repositório.
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+
 .phpactor.json
 .phpunit.result.cache
 Homestead.json

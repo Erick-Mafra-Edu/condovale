@@ -2,22 +2,24 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
+    use WithoutModelEvents;
+
     /**
-     * Seed the application's database.
+     * Run the database seeds, in the order the foreign keys require.
+     *
+     * Each module brings its own seeder plus the JSON of its table, in
+     * database/seeders/json, and registers the class in the list below. The
+     * reference tables come first, then the tables that depend on them.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            //
         ]);
     }
 }

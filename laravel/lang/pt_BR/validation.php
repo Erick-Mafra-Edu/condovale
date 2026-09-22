@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * Mensagens de validação em português para as regras usadas pela API.
+ * As chaves de erro devolvidas ao frontend continuam em camelCase (areaId,
+ * startTime, ...), exatamente como os campos enviados pelo cliente.
+ */
+return [
+
+    'accepted' => 'O campo :attribute deve ser aceito.',
+    'after' => 'O campo :attribute deve conter uma data posterior a :date.',
+    'after_or_equal' => 'O campo :attribute deve conter uma data igual ou posterior a :date.',
+    'array' => 'O campo :attribute deve ser uma lista.',
+    'before' => 'O campo :attribute deve conter uma data anterior a :date.',
+    'boolean' => 'O campo :attribute deve ser verdadeiro ou falso.',
+    'confirmed' => 'A confirmação do campo :attribute não confere.',
+    'date' => 'O campo :attribute não é uma data válida.',
+    'date_format' => 'O campo :attribute não corresponde ao formato :format.',
+    'different' => 'Os campos :attribute e :other devem ser diferentes.',
+    'email' => 'O campo :attribute deve ser um e-mail válido.',
+    'exists' => 'O valor informado em :attribute não existe.',
+    'filled' => 'O campo :attribute deve ter um valor.',
+    'in' => 'O valor informado em :attribute é inválido.',
+    'integer' => 'O campo :attribute deve ser um número inteiro.',
+    'max' => [
+        'array' => 'O campo :attribute não pode ter mais que :max itens.',
+        'file' => 'O campo :attribute não pode ter mais que :max kilobytes.',
+        'numeric' => 'O campo :attribute não pode ser maior que :max.',
+        'string' => 'O campo :attribute não pode ter mais que :max caracteres.',
+    ],
+    'min' => [
+        'array' => 'O campo :attribute deve ter pelo menos :min itens.',
+        'file' => 'O campo :attribute deve ter pelo menos :min kilobytes.',
+        'numeric' => 'O campo :attribute deve ser pelo menos :min.',
+        'string' => 'O campo :attribute deve ter pelo menos :min caracteres.',
+    ],
+    'nullable' => 'O campo :attribute pode ficar vazio.',
+    'numeric' => 'O campo :attribute deve ser um número.',
+    'prohibited' => 'O campo :attribute não pode ser enviado.',
+    'regex' => 'O formato do campo :attribute é inválido.',
+    'required' => 'O campo :attribute é obrigatório.',
+    'required_with' => 'O campo :attribute é obrigatório quando :values está presente.',
+    'string' => 'O campo :attribute deve ser um texto.',
+    'unique' => 'O valor informado em :attribute já está em uso.',
+
+    'attributes' => [
+        'assigned_employee_id' => 'funcionário responsável',
+        'author_id' => 'autor',
+        'block' => 'bloco',
+        'capacity' => 'capacidade',
+        'category' => 'categoria',
+        'closing_time' => 'horário de fechamento',
+        'common_area_id' => 'área comum',
+        'content' => 'conteúdo',
+        'date' => 'data',
+        'description' => 'descrição',
+        'email' => 'e-mail',
+        'employee_id' => 'funcionário',
+        'end_date' => 'data final',
+        'end_time' => 'horário final',
+        'max_reservation_minutes' => 'duração máxima',
+        'message' => 'observação',
+        'name' => 'nome',
+        'number' => 'número',
+        'opening_time' => 'horário de abertura',
+        'password' => 'senha',
+        'published_at' => 'data de publicação',
+        'rejection_reason' => 'motivo da reprovação',
+        'requires_approval' => 'exige aprovação',
+        'role' => 'perfil',
+        'start_date' => 'data inicial',
+        'start_time' => 'horário inicial',
+        'status' => 'situação',
+        'title' => 'título',
+        'unit_id' => 'unidade',
+    ],
+
+];
