@@ -67,6 +67,16 @@ class User extends Authenticatable
         return $this->hasMany(Occurrence::class, 'assigned_employee_id');
     }
 
+    public function unit(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function unitOccupancies(): HasMany
+    {
+        return $this->hasMany(UnitOccupancy::class);
+    }
+
     public function isActive(): bool
     {
         return $this->status === UserStatus::Active;

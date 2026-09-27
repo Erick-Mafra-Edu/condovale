@@ -30,16 +30,20 @@ class CreateReservationAction
         self::checkArea($commonArea);
         self::checkDate($date);
         self::checkPeriod($commonArea, $startTime, $endTime);
-        CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime);
 
-        return Reservation::create([
-            'common_area_id' => $commonArea->id,
-            'resident_id' => $resident->id,
-            'date' => $date,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'status' => $commonArea->requires_approval ? ReservationStatus::Pending : ReservationStatus::Approved,
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($resident, $commonArea, $date, $startTime, $endTime) {
+            CommonArea::where('id', $commonArea->id)->lockForUpdate()->first();
+            CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime);
+
+            return Reservation::create([
+                'common_area_id' => $commonArea->id,
+                'resident_id' => $resident->id,
+                'date' => $date,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'status' => $commonArea->requires_approval ? ReservationStatus::Pending : ReservationStatus::Approved,
+            ]);
+        });
     }
 
     private static function checkArea(CommonArea $commonArea): void
