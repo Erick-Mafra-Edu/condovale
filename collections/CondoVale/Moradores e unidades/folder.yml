@@ -1,7 +1,7 @@
 info:
-  name: Implantação
+  name: Moradores e unidades
   type: folder
-  seq: 4
+  seq: 3
 
 request:
   auth: inherit

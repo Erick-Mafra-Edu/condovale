@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -67,7 +68,16 @@ class User extends Authenticatable
         return $this->hasMany(Occurrence::class, 'assigned_employee_id');
     }
 
-    public function unit(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /**
+     * Unidade vigente do morador.
+     *
+     * É um atalho denormalizado: a fonte de verdade do vínculo é
+     * unit_occupancies, e esta coluna guarda a ocupação ativa mais recente
+     * para que listagens e o payload do usuário não precisem de junção. Quem
+     * mantém as duas em acordo é a LinkResidentToUnitAction, dentro da mesma
+     * transação — nenhum outro ponto do sistema deve escrever em unit_id.
+     */
+    public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
@@ -75,6 +85,25 @@ class User extends Authenticatable
     public function unitOccupancies(): HasMany
     {
         return $this->hasMany(UnitOccupancy::class);
+    }
+
+    public function activeUnitOccupancies(): HasMany
+    {
+        return $this->unitOccupancies()->where('is_active', true);
+    }
+
+    /**
+     * O morador responde por uma unidade; os demais papéis respondem pelo
+     * condomínio inteiro e por isso não precisam de vínculo.
+     */
+    public function requiresUnitLink(): bool
+    {
+        return $this->role === UserRole::Resident;
+    }
+
+    public function belongsToUnit(): bool
+    {
+        return $this->activeUnitOccupancies()->exists();
     }
 
     public function isActive(): bool

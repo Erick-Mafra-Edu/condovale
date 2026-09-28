@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\UnitOccupancyController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -86,6 +87,36 @@ Route::middleware('user.active')->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
 });
 
-Route::middleware(['auth', 'user.active'])->group(function () {
+/*
+|--------------------------------------------------------------------------
+| Vínculo entre morador e unidade
+|--------------------------------------------------------------------------
+|
+| Origem: diagrama de sequência "Gerenciamento de Moradores e Unidades" e a
+| associação Usuario-Unidade do diagrama de classes.
+|
+| O caso de uso link-residents-to-units pertence só ao administrador, então é
+| o grupo de rota que resolve a autorização — nenhum controller verifica
+| permissão.
+*/
+Route::middleware(['auth', 'user.active', 'use.case:link-residents-to-units'])->group(function () {
+    Route::get('unit-occupancies', [UnitOccupancyController::class, 'index']);
+    Route::get('unit-occupancies/{id}', [UnitOccupancyController::class, 'show']);
+    Route::post('unit-occupancies', [UnitOccupancyController::class, 'store']);
+    Route::delete('unit-occupancies/{id}', [UnitOccupancyController::class, 'destroy']);
+});
+
+/*
+| Área do morador.
+|
+| Além de autenticado e ativo, aqui o usuário precisa estar associado a uma
+| unidade: reserva e ocorrência sem vínculo produziriam registro órfão, sem a
+| que unidade cobrar a reserva nem de onde partiu a ocorrência. O middleware
+| unit.linked deixa passar quem responde pelo condomínio inteiro — síndico,
+| administrador e funcionário —, exigindo vínculo apenas do morador.
+|
+| As rotas de cada módulo entram aqui com a task correspondente.
+*/
+Route::middleware(['auth', 'user.active', 'unit.linked'])->group(function () {
     //
 });
