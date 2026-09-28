@@ -18,7 +18,7 @@ class UnitOccupancySeeder extends Seeder
             UnitOccupancy::firstOrCreate(
                 ['user_id' => $morador1->id, 'unit_id' => $morador1->unit_id],
                 [
-                    'occupant_type' => 'OWNER',
+                    'occupant_type' => 'owner',
                     'started_at' => now()->subMonths(6)->toDateString(),
                     'ended_at' => null,
                     'is_active' => true,
@@ -30,7 +30,7 @@ class UnitOccupancySeeder extends Seeder
             UnitOccupancy::firstOrCreate(
                 ['user_id' => $morador2->id, 'unit_id' => $morador2->unit_id],
                 [
-                    'occupant_type' => 'TENANT',
+                    'occupant_type' => 'tenant',
                     'started_at' => now()->subYear()->toDateString(),
                     'ended_at' => null,
                     'is_active' => true,
@@ -42,7 +42,7 @@ class UnitOccupancySeeder extends Seeder
             UnitOccupancy::firstOrCreate(
                 ['user_id' => $morador3->id, 'unit_id' => $morador3->unit_id],
                 [
-                    'occupant_type' => 'OWNER',
+                    'occupant_type' => 'owner',
                     'started_at' => now()->subMonths(3)->toDateString(),
                     'ended_at' => null,
                     'is_active' => true,

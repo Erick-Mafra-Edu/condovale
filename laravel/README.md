@@ -440,6 +440,73 @@ A RN04 tem duas metades: a Action recusa o login de quem está inativo, e o
 middleware `user.active` encerra a sessão de quem for inativado **durante** o
 uso — verificar apenas no login deixaria a sessão aberta valendo até expirar.
 
+## Vínculo entre morador e unidade
+
+Origem: diagrama de sequência "Gerenciamento de Moradores e Unidades" e a
+associação `Usuario "0..*" -- "0..*" Unidade` do diagrama de classes.
+
+| Rota | Efeito |
+| --- | --- |
+| `GET /api/unit-occupancies` | lista os vínculos, paginada |
+| `GET /api/unit-occupancies/{id}` | um vínculo |
+| `POST /api/unit-occupancies` | vincula morador a unidade |
+| `DELETE /api/unit-occupancies/{id}` | encerra o vínculo |
+
+Todas no grupo `use.case:link-residents-to-units`, que só o administrador
+possui.
+
+**`unit_occupancies` é a fonte de verdade do vínculo**, e guarda o histórico
+inteiro: encerrar não apaga a linha, apenas marca `is_active = false` e
+preenche `ended_at`. É isso que permite saber quem ocupava a unidade na data de
+uma ocorrência antiga.
+
+`users.unit_id` é um atalho denormalizado da ocupação vigente, para que
+listagens e o payload do usuário não precisem de junção. **Só a
+`LinkResidentToUnitAction` escreve nessa coluna**, dentro da mesma transação do
+vínculo — é o que impede as duas fontes de divergirem. Ao encerrar um vínculo,
+a coluna é reapontada para a ocupação ativa que restou, ou zerada quando não
+resta nenhuma.
+
+O que é validado antes de gravar, tudo antes da primeira escrita para que
+nenhum `return` antecipado precise desfazer transação pela metade:
+
+- o usuário e a unidade existem;
+- o usuário tem perfil de morador — funcionário, síndico e administrador
+  respondem pelo condomínio inteiro, e vinculá-los a uma unidade lhes daria um
+  endereço que não têm;
+- o usuário está ativo e a unidade está ativa;
+- não existe outro vínculo vigente entre os dois. O mesmo morador pode ocupar a
+  mesma unidade de novo no futuro; o que não pode é ter dois vínculos ativos
+  com ela ao mesmo tempo.
+
+### Middleware `unit.linked`
+
+Responde à pergunta "esta pessoa está associada a uma unidade ou ao
+condomínio?". Morador precisa de vínculo ativo; síndico, administrador e
+funcionário passam sem nenhum, porque respondem pelo condomínio inteiro —
+exigir unidade deles travaria a administração do sistema.
+
+Reservar área comum ou abrir ocorrência sem unidade vinculada produziria
+registro órfão: não haveria a que unidade cobrar a reserva nem de onde partiu a
+ocorrência. Por isso a checagem é de acesso, no grupo de rota, e não validação
+de formulário.
+
+### Correções feitas nas migrations
+
+Quatro problemas encontrados ao conferir o schema, todos corrigidos nas
+migrations originais — o projeto ainda não tem base em produção, e a carga
+inicial é `migrate:fresh`, então não havia o que preservar:
+
+1. **`users.unit_id` não tinha chave estrangeira** e aceitava id de unidade
+   inexistente. A restrição é criada na migration de `units`, porque `users` é
+   migrada antes e a referência ainda não existiria.
+2. **`units` não tinha coluna de situação**, embora o diagrama de classes
+   especifique `Unidade.ativa` e o frontend declare `status`.
+3. **`occupant_type` gravava em maiúsculas** (`OWNER`/`TENANT`), destoando de
+   todos os outros enums do projeto. Virou minúsculas com `App\Enums\OccupantType`.
+4. **Nada indexava a busca por vínculo ativo duplicado.** A unicidade em si
+   fica na Action, porque índice parcial não é portável entre SQLite e MySQL.
+
 ## Autorização
 
 O grupo da rota é o modelo de autorização: o middleware `use.case` recebe os

@@ -17,6 +17,7 @@ enum TypeLogEnum: int
     case RESERVATION = 6;
     case OCCURRENCE = 7;
     case NOTICE = 8;
+    case UNIT_OCCUPANCY = 9;
 
     /**
      * Entity name exposed by the audit report (RN16).
@@ -25,7 +26,7 @@ enum TypeLogEnum: int
     {
         return match ($this) {
             self::LOGIN, self::LOGOUT, self::USER => 'user',
-            self::UNIT => 'unit',
+            self::UNIT, self::UNIT_OCCUPANCY => 'unit',
             self::COMMON_AREA => 'common_area',
             self::RESERVATION => 'reservation',
             self::OCCURRENCE => 'occurrence',

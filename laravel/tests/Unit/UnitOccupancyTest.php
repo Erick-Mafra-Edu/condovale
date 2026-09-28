@@ -22,7 +22,7 @@ class UnitOccupancyTest extends TestCase
         $firstOccupancy = UnitOccupancy::create([
             'unit_id' => $unit1->id,
             'user_id' => $user->id,
-            'occupant_type' => 'TENANT',
+            'occupant_type' => 'tenant',
             'started_at' => now()->subYear()->toDateString(),
             'ended_at' => now()->subDay()->toDateString(),
             'is_active' => false,
@@ -31,7 +31,7 @@ class UnitOccupancyTest extends TestCase
         $secondOccupancy = UnitOccupancy::create([
             'unit_id' => $unit2->id,
             'user_id' => $user->id,
-            'occupant_type' => 'OWNER',
+            'occupant_type' => 'owner',
             'started_at' => now()->toDateString(),
             'ended_at' => null,
             'is_active' => true,

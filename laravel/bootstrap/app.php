@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckUseCase;
 use App\Http\Middleware\EnsureDeployToken;
+use App\Http\Middleware\EnsureUserBelongsToUnit;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Services\MessageService;
 use Illuminate\Auth\AuthenticationException;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'user.active' => EnsureUserIsActive::class,
             'use.case' => CheckUseCase::class,
+            'unit.linked' => EnsureUserBelongsToUnit::class,
             'deploy.token' => EnsureDeployToken::class,
         ]);
     })
