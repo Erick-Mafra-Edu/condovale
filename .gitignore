@@ -28,6 +28,10 @@
 /frontend/.tmp-*
 /frontend/*-liquid-glass.png
 
+# Python — cache de bytecode gerado ao importar os scripts de publicação
+__pycache__/
+*.pyc
+
 # Publicação no InfinityFree — credenciais de FTP e estado do último envio
 .env.deploy
 /tools/.deploy-state.json
