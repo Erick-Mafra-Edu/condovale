@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +61,30 @@ use Illuminate\Support\Facades\Route;
 */
 Route::post('deploy/migrate', [DeployController::class, 'migrate'])
     ->middleware(['throttle:deploy', 'deploy.token']);
+
+/*
+|--------------------------------------------------------------------------
+| Autenticação — UC02 / RF02
+|--------------------------------------------------------------------------
+|
+| As três rotas são públicas por natureza: quem chega ainda não tem sessão.
+| A restrição de quem entra é a credencial, e a RN04 é aplicada dentro da
+| AuthenticateUserAction, que recusa usuário inativo.
+|
+| O `user.active` também cobre as rotas de sessão e de saída: ele ignora
+| visitante e, quando encontra um usuário inativado no meio da sessão, encerra
+| a sessão ali mesmo.
+|
+| O limitador do login é nomeado e chaveado pela conta, nunca pelo IP: os
+| moradores acessam pela mesma rede do condomínio, e um limite por endereço
+| bloquearia o prédio inteiro por causa de uma pessoa errando a senha.
+*/
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+Route::middleware('user.active')->group(function () {
+    Route::get('auth/session', [AuthController::class, 'session']);
+    Route::post('auth/logout', [AuthController::class, 'logout']);
+});
 
 Route::middleware(['auth', 'user.active'])->group(function () {
     //

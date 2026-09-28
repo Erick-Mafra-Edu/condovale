@@ -1,32 +1,10 @@
-# Laravel — regras restritas ao backend
-/backend/.env
-/backend/.env.*
-!/backend/.env.example
-/backend/vendor/
-/backend/node_modules/
-/backend/public/build/
-/backend/public/hot
-/backend/public/storage
-/backend/bootstrap/cache/*.php
-!/backend/bootstrap/cache/.gitignore
-/backend/storage/*.key
-/backend/storage/pail/
-/backend/storage/logs/*
-!/backend/storage/logs/.gitignore
-/backend/storage/framework/cache/*
-!/backend/storage/framework/cache/.gitignore
-/backend/storage/framework/sessions/*
-!/backend/storage/framework/sessions/.gitignore
-/backend/storage/framework/testing/*
-!/backend/storage/framework/testing/.gitignore
-/backend/storage/framework/views/*
-!/backend/storage/framework/views/.gitignore
-/backend/.phpunit.result.cache
-/backend/.phpactor.json
-/backend/auth.json
-/backend/Homestead.yaml
-/backend/Homestead.json
-/backend/.vagrant/
+# Regras do repositório inteiro.
+#
+# O backend Laravel fica em /laravel e tem o próprio .gitignore, que cobre
+# vendor, storage, cache e todos os arquivos .env — inclusive o .env.production,
+# com as credenciais do host compartilhado. Essas regras não são repetidas aqui
+# para não existirem duas fontes de verdade.
+# (O bloco antigo apontava para /backend/, diretório que não existe.)
 
 # Nuxt — dependências, artefatos de build e configuração local
 /frontend/node_modules/
@@ -49,5 +27,12 @@
 # Artefatos temporários de validação visual local
 /frontend/.tmp-*
 /frontend/*-liquid-glass.png
+
+# Publicação no InfinityFree — credenciais de FTP e estado do último envio
+.env.deploy
+/tools/.deploy-state.json
+/tools/.deploy-progress.txt
+
+# Configuração de outros agentes
 AGENTS.MD
 .codex/*

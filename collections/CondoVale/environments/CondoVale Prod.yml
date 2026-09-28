@@ -1,0 +1,22 @@
+name: CondoVale Prod
+variables:
+  - name: BASE_URL
+    value: https://condoval.wuaze.com
+  - name: API_URL
+    value: "{{BASE_URL}}/api"
+  - name: AUTH_LOGIN_ENDPOINT
+    value: /auth/login
+  - name: USER_LOGIN
+    value: admin@condovale.com
+  - name: USER_LOGIN
+    value: sindico@condovale.com
+    disabled: true
+  - name: USER_LOGIN
+    value: morador1@condovale.com
+    disabled: true
+  - name: USER_PASSWORD
+    value: "senha123"
+  - name: DEPLOY_TOKEN
+    value: PREENCHER_LOCALMENTE
+  - name: authUserId
+    value: AUTO_GENERATED
