@@ -1,0 +1,60 @@
+opencollection: 1.0.0
+
+info:
+  name: CondoVale
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  scripts:
+    - type: before-request
+      code: |
+        const requestUrl = bru.interpolate(req.getUrl().toString());
+        const loginUrl = bru.interpolate('{{API_URL}}{{AUTH_LOGIN_ENDPOINT}}');
+
+        // A propria requisicao de login nao pode se autenticar, senao vira recursao infinita.
+        if (requestUrl === loginUrl) {
+            return;
+        }
+
+        let credentials = {
+            email: '{{USER_LOGIN}}',
+            password: '{{USER_PASSWORD}}'
+        };
+
+        credentials = bru.interpolate(JSON.stringify(credentials));
+
+        const loginRequest = {
+            url: loginUrl,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            data: credentials
+        };
+
+        await bru.sendRequest(loginRequest, async function (err, response) {
+            // Esta API nao devolve token: a sessao viaja no cookie HttpOnly
+            // condovale_session, que o Bruno guarda e reenvia sozinho. Por isso
+            // nenhuma requisicao carrega header Authorization.
+            // O id do usuario fica guardado so para dar visibilidade de quem
+            // esta autenticado no ambiente atual.
+            bru.setVar('authUserId', response.data.data.user.id);
+        });
+
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

@@ -1,0 +1,20 @@
+info:
+  name: migrate
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{API_URL}}/deploy/migrate"
+  headers:
+    - name: Accept
+      value: application/json
+    - name: X-Deploy-Token
+      value: "{{DEPLOY_TOKEN}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
