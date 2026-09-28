@@ -2,8 +2,10 @@
 # inteiro fica na raiz da conta e o document root não aponta para public/.
 # Localmente o `php artisan serve` não lê este arquivo.
 
-# Identifica o ambiente ANTES de a aplicação subir: com APP_ENV definido pelo
-# servidor, o Laravel carrega .env.production em vez de .env.
+# Identifica o ambiente ANTES de a aplicação subir. O arquivo enviado para o
+# servidor se chama .env (e já traz APP_ENV=production dentro), então o Laravel
+# procura .env.production, não encontra e cai no .env — o site sobe mesmo se o
+# mod_env estiver desabilitado.
 <IfModule mod_env.c>
 SetEnv APP_ENV production
 </IfModule>

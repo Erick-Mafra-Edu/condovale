@@ -1,0 +1,103 @@
+name: Deploy da API para o InfinityFree
+
+# O InfinityFree não tem Git nem SSH: o único caminho de entrega é FTP. O
+# administrador do serviço autoriza este uso ("using GitHub actions is no
+# problem"), com a ressalva de não sobrecarregar o servidor FTP — por isso o
+# sync é incremental (o action guarda o estado em .ftp-deploy-sync-state.json
+# no servidor e envia só o que mudou) e a concorrência é serializada.
+
+# Sem gatilho por push, de propósito: um commit de quem não conhece a
+# configuração do host publicaria direto em produção. A publicação do dia a dia
+# é feita por tools/deploy-infinityfree.py; este workflow fica como caminho
+# alternativo, sempre acionado à mão em Actions -> Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      recreate_database:
+        description: 'Recriar o banco (migrate:fresh --seed). APAGA TODOS OS DADOS.'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-infinityfree
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publicar
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar o PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, bcmath, intl, sodium
+          coverage: none
+
+      # Roda a suíte antes de publicar: sem SSH no host, um erro que chega lá
+      # só é descoberto pela aplicação quebrada.
+      - name: Instalar dependências e testar
+        working-directory: laravel
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          php artisan test --compact
+
+      # A árvore enviada não pode ter dependência de desenvolvimento: são
+      # milhares de arquivos a mais, e a conta tem cota de inodes.
+      - name: Reinstalar apenas o que roda em produção
+        working-directory: laravel
+        run: |
+          rm -rf vendor
+          composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
+
+      # No servidor o arquivo se chama .env, não .env.production: assim a
+      # aplicação sobe mesmo que o mod_env esteja desabilitado e o SetEnv do
+      # .htaccess não tenha efeito. O APP_ENV=production está dentro do próprio
+      # arquivo.
+      - name: Escrever o .env de produção
+        working-directory: laravel
+        env:
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+        run: |
+          printf '%s' "$ENV_PRODUCTION" > .env
+          grep -q '^APP_KEY=base64:' .env || { echo 'O secret ENV_PRODUCTION não tem APP_KEY.'; exit 1; }
+          grep -q '^APP_ENV=production' .env || { echo 'O secret ENV_PRODUCTION não está marcado como production.'; exit 1; }
+
+      - name: Enviar por FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./laravel/
+          server-dir: htdocs/
+          log-level: minimal
+          exclude: |
+            **/node_modules/**
+            tests/**
+            phpunit.xml
+            .phpunit.result.cache
+            .env.example
+            .editorconfig
+            .gitattributes
+            README.md
+            package.json
+            vite.config.js
+            postcss.config.js
+            tailwind.config.js
+            resources/css/**
+            resources/js/**
+
+      # Só em execução manual e com a caixa marcada: derruba todas as tabelas.
+      - name: Recriar o banco
+        if: github.event_name == 'workflow_dispatch' && inputs.recreate_database
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          curl -fsS -X POST "$APP_URL/api/deploy/migrate" -H "X-Deploy-Token: $DEPLOY_TOKEN"

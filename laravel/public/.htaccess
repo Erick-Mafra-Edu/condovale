@@ -1,3 +1,9 @@
+# A raiz do site é a interface, não a API: sem isto o Apache poderia escolher o
+# index.php do Laravel como página inicial do diretório.
+<IfModule mod_dir.c>
+    DirectoryIndex index.html index.php
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -17,6 +23,25 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
+
+    # O front estático do Nuxt é publicado neste mesmo diretório, de modo que a
+    # interface e a API compartilhem a origem — assim o cookie de sessão viaja
+    # sem SameSite=None e não há CORS entre as duas metades do sistema.
+    #
+    # A API e o health check vão direto ao front controller. A separação é feita
+    # pelo caminho relativo a este diretório, e não por %{REQUEST_URI}: o
+    # .htaccess da raiz já reescreveu a URL para public/… antes de este arquivo
+    # rodar, então REQUEST_URI aqui vale "/public/api/..." e uma condição
+    # ancorada em "^/api" nunca casaria.
+    RewriteRule ^(api|up)(/|$) index.php [L]
+
+    # Qualquer outro caminho que não corresponda a um arquivo real devolve o
+    # 200.html, ponto de entrada da aplicação de página única. Sem esta regra,
+    # recarregar a página numa rota interna cairia no roteador do Laravel e
+    # devolveria um 404 em JSON no lugar da interface.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ 200.html [L]
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
