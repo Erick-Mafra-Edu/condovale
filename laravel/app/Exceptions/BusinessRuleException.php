@@ -25,6 +25,12 @@ class BusinessRuleException extends RuntimeException
         return new self($message, 422);
     }
 
+    /** The credentials do not identify anyone: wrong e-mail or wrong password. */
+    public static function unauthorized(string $message): self
+    {
+        return new self($message, 401);
+    }
+
     /** The authenticated user may not act on this specific record. */
     public static function forbidden(string $message): self
     {

@@ -74,12 +74,149 @@ O projeto foi importado de lá e continua preparado para voltar: o
 tudo para `public/index.php` — necessário porque a conta serve a raiz, e não a
 pasta `public/`.
 
-Passos do deploy:
+### O que vai para o `htdocs`
 
-1. Envie o projeto para o `htdocs`, incluindo `vendor/`.
-2. Envie o `.env.production` (ele não está no repositório).
-3. Garanta que `storage/` e `bootstrap/cache/` sejam graváveis.
-4. Crie o schema no banco do host chamando a rota de implantação (abaixo).
+| Envia | Por quê |
+| --- | --- |
+| `.htaccess` | roteia para `public/` e identifica o ambiente |
+| `.env` | o conteúdo do `.env.production`, com este nome (ver abaixo) |
+| `app/`, `config/`, `routes/`, `lang/` | a aplicação |
+| `bootstrap/` | incluindo `cache/`, que precisa ser gravável |
+| `database/` | migrations, seeders e JSONs — a rota de carga depende deles |
+| `public/` | `index.php`, `.htaccess`, `favicon.ico`, `robots.txt` |
+| `resources/views/` | as views de erro do Laravel |
+| `storage/` | só a estrutura de pastas; os `.gitignore` dela é que criam os diretórios |
+| `vendor/` | não há Composer no host; instale com `--no-dev` |
+| `artisan`, `composer.json`, `composer.lock` | dispensáveis em runtime, mas inofensivos |
+| o build do Nuxt, dentro de `public/` | a interface, servida na mesma origem da API |
+
+| Não envia | Por quê |
+| --- | --- |
+| `tests/`, `phpunit.xml`, `.phpunit.result.cache` | não rodam em produção |
+| o `.env` local e o `.env.example` | o `.env` local aponta para o SQLite; se subir, derruba o site |
+| `node_modules/`, `package.json`, `vite.config.js`, `postcss.config.js`, `tailwind.config.js`, `resources/css/`, `resources/js/` | sobra do scaffolding; a interface é o projeto Nuxt |
+| `.git/`, `.github/`, `README.md`, `.editorconfig`, `.gitattributes` | só interessam ao repositório |
+| `frontend/` | tem deploy próprio, fora do `htdocs` da API |
+
+**No servidor o arquivo de ambiente se chama `.env`**, não `.env.production`.
+Com esse nome a aplicação sobe nos dois cenários: se o `mod_env` estiver ativo,
+o `SetEnv APP_ENV production` faz o Laravel procurar `.env.production`, não
+achar e cair no `.env`; se não estiver, o `.env` é lido direto. O
+`APP_ENV=production` está dentro do próprio arquivo.
+
+### Interface e API na mesma origem
+
+O front é gerado como site estático (`nuxt generate`, porque o host não roda
+Node) e publicado **dentro do `public/` do Laravel**. Interface e API passam a
+dividir o mesmo endereço, e isso não é detalhe de arrumação: com origens
+diferentes o cookie de sessão precisaria de `SameSite=None; Secure` e a API
+precisaria liberar CORS com credenciais. Na mesma origem, nada disso é
+necessário.
+
+```
+condoval.wuaze.com/           -> public/index.html   (Nuxt)
+condoval.wuaze.com/_nuxt/…    -> public/_nuxt/…      (assets)
+condoval.wuaze.com/api/…      -> public/index.php    (Laravel)
+condoval.wuaze.com/up         -> health check
+```
+
+Quem separa as duas metades é o [public/.htaccess](public/.htaccess): ele
+define `index.html` como página inicial do diretório, manda `api/` e `up` para o
+front controller e devolve o `200.html` para qualquer outro caminho que não
+corresponda a um arquivo real. Sem essa última regra, recarregar a página numa
+rota interna cairia no roteador do Laravel e devolveria um 404 em JSON no lugar
+da interface.
+
+**A separação usa o caminho relativo ao diretório, não `%{REQUEST_URI}`.** O
+`.htaccess` da raiz já reescreveu a URL para `public/…` antes deste arquivo
+rodar, então ali dentro `REQUEST_URI` vale `/public/api/...` e uma condição
+ancorada em `^/api` nunca casa — o efeito é a API inteira cair no `200.html`,
+que foi exatamente o que aconteceu na primeira publicação.
+
+O build não precisa de nenhuma alteração no código do Nuxt: o `apiBase` já é
+`/api` relativo e a troca de dados simulados para a API real é variável de
+ambiente do build.
+
+```bash
+cd frontend
+NUXT_PUBLIC_DATA_SOURCE=api npx nuxt generate   # gera .output/public
+```
+
+### Publicar
+
+O caminho normal é o publicador local, que fala FTP direto com o host:
+
+```bash
+cd laravel && composer install --no-dev --optimize-autoloader
+python tools/deploy-infinityfree.py --dry-run    # mostra o plano
+python tools/deploy-infinityfree.py              # publica API + front
+cd laravel && composer install                   # devolve o ambiente de testes
+```
+
+Para corrigir um arquivo só, sem releitura do `vendor/` inteiro:
+
+```bash
+python tools/deploy-infinityfree.py --only public/.htaccess
+python tools/deploy-status.py                    # quanto já subiu
+python tools/deploy-watch.py                     # acompanha em tempo real
+```
+
+A primeira carga leva horas — são milhares de arquivos, um por operação de FTP,
+e a sessão cai com frequência. O publicador trata a queda como caso esperado:
+reconecta e repete o arquivo, até seis vezes. Na carga inicial deste projeto a
+sessão precisou ser refeita **47 vezes**. A partir da segunda publicação sobe só
+o que mudou, e uma alteração de código leva segundos.
+
+As credenciais ficam em `.env.deploy`, na raiz do repositório, fora do git —
+copie o `.env.deploy.example` e preencha com os dados de *FTP Details* do
+painel. O envio é incremental: o script guarda o md5 de cada arquivo publicado,
+sobe só o que mudou e retoma de onde parou se a conexão cair. Ele também se
+recusa a publicar enquanto o `vendor/` local tiver dependências de
+desenvolvimento, para não gastar milhares de inodes da conta com phpunit e
+faker.
+
+O que sobe é decidido por uma **lista de inclusão** dentro do script, e não por
+exclusões: um diretório novo só é publicado se alguém o nomear ali. O inverso
+— excluir o que não deve subir — erraria silenciosamente no dia em que
+aparecesse uma pasta nova.
+
+### Deploy pelo GitHub Actions (alternativo)
+
+[.github/workflows/deploy-infinityfree.yml](../.github/workflows/deploy-infinityfree.yml)
+faz o mesmo pelo GitHub: roda a suíte, reinstala as dependências com `--no-dev`,
+grava o `.env` a partir do segredo e sincroniza o `htdocs`.
+
+**Ele não dispara por push, de propósito.** Um commit de quem não conhece a
+configuração do host publicaria direto em produção. É acionado à mão, em
+*Actions → Run workflow*.
+
+Configure antes, em *Settings → Secrets and variables → Actions*:
+
+| Segredo | Conteúdo |
+| --- | --- |
+| `FTP_SERVER` | o host FTP do painel do InfinityFree |
+| `FTP_USERNAME` | o usuário FTP (`if0_…`) |
+| `FTP_PASSWORD` | a senha FTP |
+| `ENV_PRODUCTION` | o conteúdo inteiro do `.env.production` local |
+| `DEPLOY_TOKEN` | o mesmo `DEPLOY_TOKEN` do `.env.production` |
+
+E uma *variable* `APP_URL` com `https://condoval.wuaze.com`, usada só pelo
+passo opcional que recria o banco.
+
+Quatro pontos que decorrem do desenho:
+
+- **A sincronização é incremental**, como a do publicador local — é o que mantém
+  o uso do FTP dentro do que o InfinityFree autoriza ("just don't cause
+  unreasonable load on the FTP server").
+- **A primeira execução é pesada**: mesmo com `--no-dev`, o `vendor/` passa de
+  quatro mil arquivos. Se ela falhar por tempo ou por limite de conexão, suba o
+  `vendor/` uma vez pelo FileZilla e deixe o workflow cuidar das diferenças.
+- **O banco não é tocado ao publicar.** Recriar o schema é um passo à parte:
+  marque `recreate_database` ao rodar o workflow, ou chame a rota de
+  implantação direto. Amarrar isso à publicação apagaria a produção a cada
+  entrega.
+- **O `.env` nunca entra no repositório.** Ele é escrito no runner a partir do
+  segredo e vai direto para o FTP; o workflow aborta se faltar `APP_KEY`.
 
 Três limitações do plano gratuito que valem saber antes:
 
@@ -93,13 +230,9 @@ Três limitações do plano gratuito que valem saber antes:
   criação de senha falha. Trate como bloqueio de requisito — não troque o
   driver em silêncio.
 
-Se o host não tiver o `mod_env` habilitado, o `SetEnv` não terá efeito e o
-Laravel voltará a ler o `.env`. Nesse caso, renomeie `.env.production` para
-`.env` no servidor; o resto continua igual.
-
 > A configuração de produção foi conferida localmente com
-> `php artisan --env=production`, mas o deploy em si não foi testado a partir
-> desta máquina.
+> `php artisan --env=production` e o workflow foi validado como YAML, mas nem o
+> deploy nem o FTP foram executados a partir desta máquina.
 
 ### Criar o schema sem SSH
 
@@ -236,7 +369,7 @@ Toda resposta sai pelo `MessageService`:
 { "status": true }
 
 // Regra de negócio violada / sem permissão / não encontrado
-{ "status": false, "error": "Já existe uma reserva para esta área, data e horário." }
+{ "status": false, "message": "Já existe uma reserva...", "error": "Já existe uma reserva..." }
 
 // Exceção capturada pelo controller
 { "status": false, "message": "...", "code": 409, "error": "..." }
@@ -244,6 +377,13 @@ Toda resposta sai pelo `MessageService`:
 // Validação de Form Request — HTTP 422, formato padrão do Laravel
 { "message": "Informe o título do comunicado. (and 1 more error)", "errors": { "title": [ ] } }
 ```
+
+O `error()` devolve `message` **e** `error` com o mesmo texto. O CLAUDE.md
+registra a divergência entre os dois formatos do sistema irmão e manda unificá-la
+"antes do primeiro controller, nunca no meio do caminho" — foi o que se fez aqui,
+no módulo de autenticação. A chave `error` permanece para não quebrar quem já a
+lia; o cliente tem `message` em toda resposta de falha, venha ela de um `error()`,
+de um `throwable()` ou da validação.
 
 Dois comportamentos herdados do padrão: **`success()` devolve 201 em todos os
 casos** — o cliente trata `status`, não o código HTTP — e **quando não há dados
@@ -266,6 +406,39 @@ query string — `attributes`, `search`, `filters`, `filtersOr`, `filtersIn`,
 Os nomes de coluna vindos do cliente são validados contra o schema real da
 tabela, menos os `$hidden` do model. Para exportar tudo o que passou pelos
 filtros (RN12), envie um `limit` maior que o `total` devolvido.
+
+## Autenticação — UC02 / RF02
+
+Três rotas, todas públicas por natureza: quem chega ainda não tem sessão.
+
+| Rota | Efeito |
+| --- | --- |
+| `POST /api/auth/login` | abre a sessão e devolve `{data: {user}}` |
+| `GET /api/auth/session` | quem está autenticado, ou resposta sem `data` |
+| `POST /api/auth/logout` | encerra a sessão; idempotente |
+
+A sessão viaja no cookie `HttpOnly` emitido pelo Laravel — **nenhum token vai
+para o cliente**. A regra de negócio fica na
+[AuthenticateUserAction](app/Http/Actions/AuthenticateUserAction.php); o
+controller apenas valida, delega e responde pelo `MessageService`.
+
+Quatro decisões que valem registrar:
+
+- **E-mail desconhecido e senha errada devolvem a mesma recusa**, com o mesmo
+  401. Mensagens distintas transformariam a tela de login num verificador de
+  quais e-mails estão cadastrados no condomínio.
+- **A RN04 é verificada depois da senha**, não antes. Recusar de cara quem está
+  inativo revelaria que a conta existe; exigindo a credencial primeiro, só
+  descobre a situação quem já provou conhecê-la.
+- **A sessão é regenerada no login.** Sem isso, um identificador plantado no
+  navegador da vítima antes da autenticação continuaria valendo depois dela.
+- **A senha é regravada quando os parâmetros do Argon2id mudam**
+  (`Hash::needsRehash`), para que contas antigas não fiquem presas a um custo
+  menor que o atual.
+
+A RN04 tem duas metades: a Action recusa o login de quem está inativo, e o
+middleware `user.active` encerra a sessão de quem for inativado **durante** o
+uso — verificar apenas no login deixaria a sessão aberta valendo até expirar.
 
 ## Autorização
 

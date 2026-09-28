@@ -8,10 +8,21 @@ class MessageService
 {
     /**
      * Method that returns the formatted error
+     *
+     * A chave `message` acompanha a `error` porque é dela que o cliente tira o
+     * texto exibido — o `throwable()` já devolvia as duas, e sem essa a recusa
+     * de uma regra de negócio chegava à interface como erro genérico. O
+     * CLAUDE.md manda unificar os dois formatos antes do primeiro controller,
+     * que é onde este projeto está; a `error` continua para não quebrar quem
+     * já a lia.
      */
     public static function error(string $message, int $status = 400): JsonResponse
     {
-        return response()->json(['status' => false, 'error' => $message], $status);
+        return response()->json([
+            'status' => false,
+            'message' => $message,
+            'error' => $message,
+        ], $status);
     }
 
     /**
