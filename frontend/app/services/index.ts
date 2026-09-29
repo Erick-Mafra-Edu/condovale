@@ -19,6 +19,9 @@ import { createAuthService } from './auth-service'
 import { createApiAuditRepository } from '~/repositories/api/api-audit-repository'
 import { mockAuditRepository } from '~/repositories/mock/mock-audit-repository'
 import { createAuditService } from './audit-service'
+import { createApiUnitOccupancyRepository } from '~/repositories/api/api-unit-occupancy-repository'
+import { mockUnitOccupancyRepository } from '~/repositories/mock/mock-unit-occupancy-repository'
+import { createUnitOccupancyService } from './unit-occupancy-service'
 
 export function useServices() {
   const { public: config } = useRuntimeConfig()
@@ -32,5 +35,6 @@ export function useServices() {
     noticeService: createNoticeService(useMock ? mockNoticeRepository : createApiNoticeRepository()),
     userService: createUserService(useMock ? mockUserRepository : createApiUserRepository()),
     unitService: createUnitService(useMock ? mockUnitRepository : createApiUnitRepository()),
+    unitOccupancyService: createUnitOccupancyService(useMock ? mockUnitOccupancyRepository : createApiUnitOccupancyRepository()),
   }
 }
