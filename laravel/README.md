@@ -161,6 +161,20 @@ python tools/deploy-status.py                    # quanto já subiu
 python tools/deploy-watch.py                     # acompanha em tempo real
 ```
 
+Depois de enviar, o script **apaga `bootstrap/cache/packages.php` e
+`services.php` no servidor**. Eles listam os service providers descobertos a
+partir de `vendor/composer/installed.json`; quando o conjunto de dependências
+muda, ficam apontando para classes que o autoloader novo não conhece e a
+aplicação inteira responde 500 com `Class ... not found`. Como são derivados, e
+não fonte, a única forma de invalidá-los é removê-los — o Laravel os reconstrói
+na requisição seguinte. O `vendor/composer/` também é reenviado sempre, mesmo
+quando o hash bate: são doze arquivos, e são eles que, errados, derrubam tudo.
+
+Se o manifesto se desencontrar do servidor — o que acontece quando uma
+publicação é interrompida —, `--assume-synced` regrava o manifesto a partir da
+árvore local sem transferir nada, em vez de reenviar milhares de arquivos
+idênticos.
+
 A primeira carga leva horas — são milhares de arquivos, um por operação de FTP,
 e a sessão cai com frequência. O publicador trata a queda como caso esperado:
 reconecta e repete o arquivo, até seis vezes. Na carga inicial deste projeto a
@@ -439,6 +453,72 @@ Quatro decisões que valem registrar:
 A RN04 tem duas metades: a Action recusa o login de quem está inativo, e o
 middleware `user.active` encerra a sessão de quem for inativado **durante** o
 uso — verificar apenas no login deixaria a sessão aberta valendo até expirar.
+
+## Senhas: Argon2id (RNF02)
+
+O host **suporta** Argon2id — medido no próprio servidor pela rota
+`GET /api/deploy/hashing`, que existe porque a hospedagem compartilhada não
+publica a configuração do PHP e não há SSH para inspecioná-la:
+
+| | InfinityFree | Local |
+| --- | --- | --- |
+| PHP | 8.4.25 | 8.2.29 |
+| `memory_limit` | 512M | 128M |
+| algoritmos | `2y`, `argon2i`, `argon2id` | idem |
+
+Custo de um hash no servidor, por conjunto de parâmetros:
+
+| Parâmetros | Custo |
+| --- | --- |
+| **m=64MiB t=4 p=1 (em uso)** | **376 ms** |
+| m=46MiB t=1 p=1 (OWASP) | 102 ms |
+| m=32MiB t=3 p=1 | 144 ms |
+| m=19MiB t=2 p=1 (OWASP mínimo) | 58 ms |
+
+Os parâmetros em uso são mais fortes que a recomendação da OWASP e cabem
+folgados no limite de memória do host, então foram mantidos. O custo é pago uma
+vez por login, e o limitador de 5 tentativas por minuto por conta impede que
+ele vire vetor de consumo de CPU.
+
+Três garantias, cada uma com o seu teste:
+
+- **A senha nunca existe em claro.** O cast `hashed` do model cuida de toda
+  escrita — seeder, factory e `CreateUserAction` passam por ele. O teste
+  confere a coluna direto no banco, e não só o objeto, porque o cast poderia
+  estar mascarando um valor já persistido.
+- **O custo acompanha a configuração.** `Hash::needsRehash` no login regrava a
+  senha quando os parâmetros endurecem, para contas antigas não ficarem num
+  custo menor que o atual.
+- **"Exclusivamente" é literal.** Um hash de outro algoritmo não autentica.
+  Sem tratamento explícito isso devolvia **500 com "Erro ao salvar as
+  informações na base de dados"** — o verificador está com `verify` ligado e
+  lança exceção —, mensagem que manda quem for investigar olhar para o banco,
+  que não tem nada com isso. Hoje a conta recebe a mesma recusa de qualquer
+  credencial inválida, e o caminho de volta é a administração redefinir a
+  senha, que a regrava no algoritmo certo.
+
+### Duas correções que só apareceram em produção
+
+O SQLite local escondeu as duas; ambas quebraram a carga inicial no host:
+
+- **`Schema::defaultStringLength(191)`.** O MySQL do host limita uma chave a
+  1000 bytes, e um `varchar(255)` em utf8mb4 ocupa 1020 — a criação de
+  `password_reset_tokens` morria com *"Specified key was too long"*. O limite
+  vale para todos os ambientes, e não só para produção: com tamanhos
+  diferentes, um valor que cabe no SQLite estoura no servidor e o erro só
+  aparece no deploy.
+- **A rota de implantação não pode depender do banco.** Ela roda
+  `migrate:fresh`, que derruba `sessions` e `cache` — mas o middleware de
+  sessão lê `sessions` antes do controller e grava depois, e o limitador lê o
+  cache antes. A rota que conserta o schema dependia do schema. Hoje ela
+  dispensa o middleware de sessão (`withoutMiddleware`) e a produção usa
+  `CACHE_STORE=file`.
+
+Em produção o `AppServiceProvider` **recusa subir** se `HASH_DRIVER` não for
+`argon2id` ou se o PHP do host não oferecer o algoritmo. Um driver trocado por
+engano não quebra nada visivelmente: a aplicação continua respondendo e passa a
+gravar hash mais fraco, sem ninguém perceber, até alguém auditar o banco. É o
+tipo de requisito que precisa falhar alto, no deploy, e não em silêncio.
 
 ## Vínculo entre morador e unidade
 

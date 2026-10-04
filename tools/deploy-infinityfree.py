@@ -287,6 +287,26 @@ class Publisher:
                 print(f"  reconectando (tentativa {attempt} de {MAX_ATTEMPTS - 1})...")
                 self.reconnect()
 
+    def drop_derived_caches(self) -> None:
+        """Apaga no servidor os arquivos que o Laravel deriva das dependências.
+
+        bootstrap/cache/packages.php e services.php listam os service providers
+        descobertos a partir de vendor/composer/installed.json. Quando o
+        conjunto de dependências muda, eles ficam apontando para classes que o
+        autoloader novo não conhece mais, e a aplicação inteira responde 500
+        com "Class ... not found". Como não são enviados por este script — são
+        derivados, não fonte —, a única forma de invalidá-los é removê-los, e o
+        Laravel os reconstrói na requisição seguinte.
+        """
+        if self.dry_run:
+            return
+
+        for name in ("packages.php", "services.php"):
+            try:
+                self.ftp.delete(self.remote_path(f"bootstrap/cache/{name}"))
+            except ftplib.all_errors:
+                pass
+
     def delete(self, rel: str) -> None:
         if self.dry_run:
             return
@@ -327,6 +347,11 @@ def main() -> int:
     parser.add_argument("--prune", action="store_true", help="apaga no servidor os arquivos que sumiram daqui")
     parser.add_argument("--allow-dev", action="store_true", help="publica mesmo com as dependências de desenvolvimento")
     parser.add_argument("--api-only", action="store_true", help="não envia o build do frontend")
+    parser.add_argument(
+        "--assume-synced",
+        action="store_true",
+        help="grava o manifesto como se o servidor já tivesse os arquivos locais, sem transferir nada",
+    )
     parser.add_argument(
         "--only",
         action="append",
@@ -376,15 +401,42 @@ def main() -> int:
     publisher = Publisher(config, root, args.dry_run)
     publisher.connect()
 
-    if args.force:
-        previous: dict[str, str] = {}
-    else:
-        previous = publisher.fetch_manifest()
+    previous = publisher.fetch_manifest()
 
-        if not previous and STATE_FILE.exists():
-            previous = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    if not previous and STATE_FILE.exists():
+        previous = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+
+    if args.assume_synced:
+        # Recuperação: o manifesto pode se desencontrar da realidade quando uma
+        # publicação é interrompida. Em vez de reenviar milhares de arquivos
+        # idênticos, registra-se o estado atual como já publicado.
+        STATE_FILE.write_text(json.dumps(hashes, indent=0, sort_keys=True), encoding="utf-8")
+        publisher.put_manifest(hashes)
+        publisher.close()
+
+        print(f"Manifesto regravado com {len(hashes)} arquivos, sem transferência.")
+
+        return 0
+
+    if args.force:
+        # Com --only, o --force vale apenas para o recorte pedido: zerar o
+        # manifesto inteiro faria o script esquecer os milhares de arquivos que
+        # já estão no servidor e reenviar tudo na próxima publicação.
+        previous = {
+            rel: digest
+            for rel, digest in previous.items()
+            if not any(rel.startswith(prefix) for prefix in args.only)
+        } if args.only else {}
 
     pending = [rel for rel, digest in sorted(hashes.items()) if previous.get(rel) != digest]
+
+    # vendor/composer/ vai sempre, mesmo quando o hash bate com o manifesto.
+    # São doze arquivos, e são eles que descrevem quais pacotes existem: se o
+    # manifesto local se desencontrar do servidor — o que acontece quando uma
+    # publicação é interrompida —, o script passa a pular justamente o arquivo
+    # que derruba a aplicação inteira quando está errado.
+    always = [rel for rel in sorted(hashes) if rel.startswith("vendor/composer/")]
+    pending = sorted(set(pending) | set(always))
 
     # Com --only a lista local é um recorte, então o que está fora dele não é
     # obsoleto: é apenas o que não se pediu para publicar agora.
@@ -438,6 +490,7 @@ def main() -> int:
     finally:
         STATE_FILE.write_text(json.dumps(sent, indent=0, sort_keys=True), encoding="utf-8")
 
+    publisher.drop_derived_caches()
     publisher.put_manifest(sent)
     publisher.close()
 
