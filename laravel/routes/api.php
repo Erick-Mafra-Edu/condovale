@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\UnitOccupancyController;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,7 +61,20 @@ use Illuminate\Support\Facades\Route;
 | único para o endpoint inteiro, coerente com a regra do projeto de nunca
 | chavear limite por endereço.
 */
+// Sem a sessão: ela é gravada no banco, e esta é justamente a rota que apaga e
+// recria o banco. O middleware lê a tabela `sessions` antes do controller e a
+// grava depois, então a requisição morreria nas duas pontas, deixando o schema
+// pela metade. Autenticação por sessão aqui não faria sentido de todo jeito —
+// quem chama é uma máquina, com token.
 Route::post('deploy/migrate', [DeployController::class, 'migrate'])
+    ->withoutMiddleware([StartSession::class])
+    ->middleware(['throttle:deploy', 'deploy.token']);
+
+// A hospedagem compartilhada não publica a configuração do PHP e não há SSH
+// para inspecioná-la: esta rota é a única forma de saber, de dentro do próprio
+// servidor, se o Argon2id exigido pela RNF02 está disponível lá.
+Route::get('deploy/hashing', [DeployController::class, 'hashing'])
+    ->withoutMiddleware([StartSession::class])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
 /*

@@ -67,11 +67,28 @@ class AuthenticateUserAction
      */
     private static function checkCredentials(?User $user, string $password): void
     {
-        if ($user && Hash::check($password, $user->password)) {
+        if ($user && self::isArgon2id($user->password) && Hash::check($password, $user->password)) {
             return;
         }
 
         throw BusinessRuleException::unauthorized('E-mail ou senha inválidos.');
+    }
+
+    /**
+     * RNF02 — a senha guardada tem de ser Argon2id.
+     *
+     * Sem esta checagem, um hash de outro algoritmo faz o verificador lançar
+     * exceção (o driver está com `verify` ligado) e o login devolve 500 com
+     * "Erro ao salvar as informações na base de dados" — mensagem que manda
+     * quem for investigar olhar para o banco, que não tem nada com isso.
+     *
+     * Tratado aqui, a conta simplesmente não autentica, com a mesma recusa de
+     * qualquer credencial inválida. O caminho de volta é a administração
+     * redefinir a senha, que a regrava no algoritmo certo.
+     */
+    private static function isArgon2id(?string $hash): bool
+    {
+        return is_string($hash) && str_starts_with($hash, '$argon2id$');
     }
 
     /**
