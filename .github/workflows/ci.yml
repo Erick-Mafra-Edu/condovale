@@ -1,0 +1,85 @@
+name: Validação
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (testes e build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Rodar testes
+        working-directory: frontend
+        run: npm test
+
+      - name: Validar tipos
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Validar build
+        working-directory: frontend
+        run: npm run build
+
+  backend:
+    name: Backend (testes e assets)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Instalar dependências PHP
+        working-directory: laravel
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Rodar testes Laravel
+        working-directory: laravel
+        run: php artisan test --compact
+
+      - name: Preparar Node.js para os assets Laravel
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências dos assets
+        working-directory: laravel
+        run: npm install --no-audit --no-fund
+
+      - name: Validar build dos assets
+        working-directory: laravel
+        run: npm run build
