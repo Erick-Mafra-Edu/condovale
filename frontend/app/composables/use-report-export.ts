@@ -1,3 +1,13 @@
+export function sanitizeReportFilename(filename: string) {
+  const safe = filename
+    .replace(/[\\/]/g, '-')
+    .replace(/\.\.+/g, '.')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/^\.+/, '')
+
+  return safe || 'relatorio-condovale'
+}
+
 export function useReportExport() {
   const exportingPdf = ref(false)
   const exportingExcel = ref(false)
@@ -10,7 +20,7 @@ export function useReportExport() {
       const sheet = utils.json_to_sheet(rows)
       const workbook = utils.book_new()
       utils.book_append_sheet(workbook, sheet, 'Relatório')
-      writeFile(workbook, `${filename}.xlsx`)
+      writeFile(workbook, `${sanitizeReportFilename(filename)}.xlsx`)
     } finally { exportingExcel.value = false }
   }
 
@@ -41,7 +51,7 @@ export function useReportExport() {
       await new Promise(resolve => requestAnimationFrame(resolve))
       await html2pdf().set({
         margin: 10,
-        filename: `${filename}.pdf`,
+        filename: `${sanitizeReportFilename(filename)}.pdf`,
         image: { type: 'jpeg', quality: 0.96 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
