@@ -823,6 +823,38 @@ correspondente.
   removidos, e o `.htaccess` da raiz deixou de redirecionar para
   `condoval.wuaze.com`.
 
+## Risco aceito: CVE-2026-48019
+
+O projeto **permanece no Laravel 11** por decisão de escopo. A versão instalada
+é a 11.57.0, topo da linha, e quatro advisories do framework não têm correção
+nela — todos exigem a 12 ou posterior. O `composer update` dentro do 11 já
+resolveu os de `guzzle`, `commonmark` e `flysystem`.
+
+O mais grave é o **CRLF injection na validação de e-mail** (CVE-2026-48019,
+CVSS 8.9). Vale entender o mecanismo antes de dimensionar o risco:
+
+- a falha **não** é aceitar quebra de linha literal — conferido na versão
+  instalada, `email`, `email:rfc`, `email:strict` e `email:filter` recusam
+  todas as cargas com `\r\n`;
+- ela está em sequências que **passam** pela validação e que o Symfony Mailer
+  reinterpreta como CRLF ao montar a mensagem, injetando cabeçalhos;
+- portanto o alvo é o **envio**, não a entrada. O proveito do atacante é
+  forjar uma mensagem que parece vir da aplicação.
+
+**Hoje o CondoVale não envia e-mail nenhum.** `MAIL_MAILER=log` nos dois
+ambientes, e não existe recuperação de senha, verificação de conta nem
+notificação de comunicado. Sem transporte de saída, o caminho de exploração não
+existe — é isso, e não a validação, que mantém o risco em zero.
+
+A premissa cai no dia em que alguém configurar um transporte de verdade, e esse
+dia chega junto com a recuperação de senha. Por isso o
+`MailTransportRiskTest` é um fio de alarme: enquanto o framework estiver abaixo
+da 12.60, ele falha se `mail.default` deixar de ser `log`, `array` ou `null`, e
+a mensagem de falha explica o porquê. Quando o framework for atualizado, o
+teste se marca como pulado e pode ser removido.
+
+**Antes de implementar envio de e-mail, atualize o framework.**
+
 ## Pendências conhecidas
 
 - O cancelamento de ocorrência está previsto para o administrador enquanto o
