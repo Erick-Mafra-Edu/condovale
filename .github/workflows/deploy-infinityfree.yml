@@ -40,10 +40,10 @@ jobs:
       - name: Gerar o frontend estático
         working-directory: frontend
         run: |
-          npm ci --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
           npm test
           npm run typecheck
-          NUXT_PUBLIC_API_BASE=/api NUXT_PUBLIC_DATA_SOURCE=api npx nuxt generate
+          NUXT_PUBLIC_API_BASE=/api NUXT_PUBLIC_DATA_SOURCE=api ./node_modules/.bin/nuxt generate
           cp -R .output/public/. ../laravel/public/
 
       - name: Preparar o PHP
