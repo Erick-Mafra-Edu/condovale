@@ -35,6 +35,10 @@ jobs:
         working-directory: frontend
         run: npm ci --no-audit --no-fund
 
+      - name: Gerar configuração Nuxt
+        working-directory: frontend
+        run: npx nuxt prepare
+
       - name: Rodar testes
         working-directory: frontend
         run: npm test
