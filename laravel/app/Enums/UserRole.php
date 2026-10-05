@@ -39,6 +39,7 @@ enum UserRole: string
                 UseCase::Login,
                 UseCase::ManageUnits,
                 UseCase::ManageResidents,
+                UseCase::ManageUsers,
                 UseCase::LinkResidentsToUnits,
                 UseCase::AnalyzeOccurrences,
                 UseCase::AssignOccurrence,

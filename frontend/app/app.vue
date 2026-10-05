@@ -27,7 +27,7 @@ const isScrolled = ref(false)
 
 const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, logout } = useAuth()
 const { public: runtimeConfig } = useRuntimeConfig()
-const { users, loadUsers, updateOwnProfile } = useUsers()
+const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, updateUser, deactivateUser } = useUsers()
 const { units, loadUnits } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
@@ -37,7 +37,7 @@ const { notices, loadNotices } = useNotices()
 const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
-  { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Ocorrências', icon: 'alert' },
+  { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Usuários', icon: 'users' }, { label: 'Ocorrências', icon: 'alert' },
   { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
 ] as const
 
@@ -129,6 +129,18 @@ async function saveOwnProfile(input: UpdateOwnProfileInput) {
   } catch (cause) {
     profileError.value = cause instanceof Error ? cause.message : 'Não foi possível atualizar o cadastro.'
   } finally { profileSaving.value = false }
+}
+
+async function createManagedUser(input: Parameters<typeof createUser>[0]) {
+  if (hasAccess('manage-users')) await createUser(input)
+}
+
+async function updateManagedUser(id: string, input: Parameters<typeof updateUser>[1]) {
+  if (hasAccess('manage-users')) await updateUser(id, input)
+}
+
+async function deactivateManagedUser(id: string) {
+  if (hasAccess('manage-users')) await deactivateUser(id)
 }
 
 async function submitOccurrence() {
@@ -228,6 +240,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
         </div>
 
         <ProfilePage v-else-if="active === 'Meu cadastro' && resident" :user="resident" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
+        <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-users')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
         <OccupancyPage v-else-if="active === 'Moradores e unidades' && hasAccess('link-residents-to-units')" :occupancies="occupancies" :selected-occupancy="selectedOccupancy" :users="users" :units="units" :loading="occupanciesLoading" :error="occupanciesError" @refresh="loadOccupancies" @create="createOccupancy" @delete="finishOccupancy" @open-detail="openOccupancyDetail" @close-detail="closeOccupancyDetail" />
@@ -400,4 +413,6 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 .reservation-review-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.reservation-review-actions button{min-height:42px;justify-content:center}.reservation-review-actions .svg-icon{width:16px;height:16px}.danger-action{display:inline-flex;align-items:center;gap:7px;border-color:#efb5b9!important;background:#fff5f5!important;color:#b4232c!important}.danger-action:hover{border-color:#dc2626!important;background:#fee8e9!important}.danger-action .svg-icon{filter:invert(22%) sepia(79%) saturate(3299%) hue-rotate(347deg) brightness(89%) contrast(88%)}.approve-action{background:#008c9e}.approve-action:hover{background:#006a78}.danger-action:focus-visible,.approve-action:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.danger-action{border-color:#8c3d45!important;background:#3e242a!important;color:#ffb6bc!important}.danger-action:hover{background:#512a31!important}.reservation-review-actions{border-color:rgba(180,215,225,.14)}}
 .occurrence-history{display:grid;gap:10px}.occurrence-history span{display:flex;justify-content:space-between;gap:16px}.occurrence-history small{color:var(--neutral);text-align:right}.occurrence-note{display:grid;gap:8px;margin-top:18px;font-size:12px;font-weight:700}.occurrence-note textarea{min-height:82px}.occurrence-actions{margin-top:16px}.occurrence-actions .primary-button{margin-left:auto;min-height:42px}
 .report-kind-tabs{max-width:1180px;margin:0 auto 24px;display:flex;gap:8px;padding:5px;width:max-content;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.55)}.report-kind-tabs button{min-height:38px;padding:0 18px;border-radius:9px;color:var(--neutral);font-weight:700}.report-kind-tabs button.selected{background:#008c9e;color:#fff}.report-kind-tabs button:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.report-kind-tabs{background:rgba(12,39,50,.7)}.report-kind-tabs button.selected{background:#008c9e;color:#fff}}
+.users-toolbar{display:flex;align-items:center;gap:12px;padding:8px 0 16px;border-bottom:1px solid var(--line)}.users-search{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--bg);color:var(--navy);font-size:11px}.users-filters{border:0;padding:0}.user-row{gap:12px}.user-row>span:nth-child(2){flex:1;min-width:0}.user-avatar{flex:none;width:36px;height:36px;font-size:10px}.user-row em{font-size:9px;font-style:normal;border-radius:12px;padding:5px 8px;white-space:nowrap}.user-row .outline-button{padding:7px 10px;white-space:nowrap}.form-error{color:#b4232c!important;font-size:11px!important;margin:12px 0 0!important}
+@media(max-width:900px){.users-toolbar{display:block}.users-filters{margin-top:10px}.user-row{align-items:flex-start;flex-wrap:wrap}.user-row>span:nth-child(2){min-width:calc(100% - 52px)}.user-row em{margin-left:48px}.user-row .outline-button{margin-left:0}.users-admin-panel{padding:8px 12px}}
 </style>

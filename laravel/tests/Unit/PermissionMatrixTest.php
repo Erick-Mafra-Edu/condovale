@@ -54,6 +54,7 @@ class PermissionMatrixTest extends TestCase
             'login',
             'manage-units',
             'manage-residents',
+            'manage-users',
             'link-residents-to-units',
             'analyze-occurrences',
             'assign-occurrence',

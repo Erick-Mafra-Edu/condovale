@@ -322,7 +322,7 @@ describe('permissões do diagrama de casos de uso', () => {
   const employeeCases: UseCase[] = ['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']
   const syndicCases: UseCase[] = ['login', 'publish-notices', 'generate-reports']
   const adminCases: UseCase[] = [
-    'login', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
+    'login', 'manage-units', 'manage-residents', 'manage-users', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
     'generate-reports', 'view-audit-reports',
   ]
@@ -336,19 +336,24 @@ describe('permissões do diagrama de casos de uso', () => {
   })
 
   it('não concede operações administrativas a moradores ou funcionários', () => {
-    const restricted: UseCase[] = ['manage-units', 'manage-residents', 'link-residents-to-units', 'publish-notices', 'approve-or-reject-reservation', 'generate-reports']
+    const restricted: UseCase[] = ['manage-units', 'manage-residents', 'manage-users', 'link-residents-to-units', 'publish-notices', 'approve-or-reject-reservation', 'generate-reports']
     for (const role of ['resident', 'employee'] as UserRole[]) {
       for (const useCase of restricted) expect(can(role, useCase)).toBe(false)
     }
+  })
+
+  it('reserva o gerenciamento de usuários ao administrador', () => {
+    expect(can('admin', 'manage-users')).toBe(true)
+    for (const role of ['resident', 'employee', 'syndic'] as UserRole[]) expect(can(role, 'manage-users')).toBe(false)
   })
 
   it.each([
     ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Ocorrências']],
     ['syndic', ['Início', 'Comunicados', 'Relatórios']],
-    ['admin', ['Início', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios']],
+    ['admin', ['Início', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
-    const modules = ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
+    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
     expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
   })
 })

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\UnitOccupancyController;
 use Illuminate\Session\Middleware\StartSession;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -118,6 +119,14 @@ Route::middleware(['auth', 'user.active', 'use.case:link-residents-to-units'])->
     Route::get('unit-occupancies/{id}', [UnitOccupancyController::class, 'show']);
     Route::post('unit-occupancies', [UnitOccupancyController::class, 'store']);
     Route::delete('unit-occupancies/{id}', [UnitOccupancyController::class, 'destroy']);
+});
+
+Route::middleware(['auth', 'user.active', 'use.case:manage-users'])->group(function () {
+    Route::get('users', [UserController::class, 'index']);
+    Route::get('users/{id}', [UserController::class, 'show']);
+    Route::post('users', [UserController::class, 'store']);
+    Route::match(['put', 'patch'], 'users/{id}', [UserController::class, 'update']);
+    Route::post('users/{id}/deactivate', [UserController::class, 'deactivate']);
 });
 
 /*
