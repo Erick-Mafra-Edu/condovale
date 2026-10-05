@@ -1,0 +1,22 @@
+[
+    {
+        "title": "Vazamento de água no corredor do 1º andar",
+        "description": "Há uma infiltração visível saindo do teto perto do elevador social.",
+        "category": "manutenção",
+        "resident_id": 5,
+        "unit_id": 1,
+        "assigned_employee_id": 4,
+        "status": "assigned",
+        "completed_at": null
+    },
+    {
+        "title": "Lâmpada queimada na garagem B2",
+        "description": "A vaga 102 está escura devido à lâmpada queimada no poste 4.",
+        "category": "iluminação",
+        "resident_id": 6,
+        "unit_id": 2,
+        "assigned_employee_id": null,
+        "status": "open",
+        "completed_at": null
+    }
+]

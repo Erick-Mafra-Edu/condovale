@@ -1,0 +1,26 @@
+[
+    {
+        "unit_id": 1,
+        "user_id": 5,
+        "occupant_type": "owner",
+        "started_at": "2026-04-04",
+        "ended_at": null,
+        "is_active": true
+    },
+    {
+        "unit_id": 2,
+        "user_id": 6,
+        "occupant_type": "tenant",
+        "started_at": "2025-10-04",
+        "ended_at": null,
+        "is_active": true
+    },
+    {
+        "unit_id": 7,
+        "user_id": 7,
+        "occupant_type": "owner",
+        "started_at": "2026-07-04",
+        "ended_at": null,
+        "is_active": true
+    }
+]

@@ -2,37 +2,27 @@
 
 namespace Database\Seeders;
 
-use App\Enums\NoticeStatus;
 use App\Models\Notice;
-use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
 
 class NoticeSeeder extends Seeder
 {
     public function run(): void
     {
-        $sindico = User::where('email', 'sindico@condovale.com')->first();
+        $json = File::get(database_path('seeders/json/notices.json'));
+        $data = json_decode($json);
 
-        if ($sindico) {
-            Notice::firstOrCreate(
-                ['title' => 'Manutenção Preventiva dos Elevadores'],
-                [
-                    'content' => 'Informamos que no dia 30/09 os elevadores do Bloco A passarão por manutenção preventiva das 08h às 12h.',
-                    'author_id' => $sindico->id,
-                    'status' => NoticeStatus::Published,
-                    'published_at' => now(),
-                ]
-            );
+        foreach ($data as $item) {
+            $array = [
+                'title' => $item->title,
+                'content' => $item->content,
+                'author_id' => $item->author_id,
+                'status' => $item->status,
+                'published_at' => $item->published_at,
+            ];
 
-            Notice::firstOrCreate(
-                ['title' => 'Assembleia Geral Ordinária de Condôminos'],
-                [
-                    'content' => 'Convocamos todos os condôminos para a Assembleia Geral no próximo dia 15 às 19h30 no Salão de Festas Principal.',
-                    'author_id' => $sindico->id,
-                    'status' => NoticeStatus::Published,
-                    'published_at' => now()->subDays(2),
-                ]
-            );
+            Notice::create($array);
         }
     }
 }

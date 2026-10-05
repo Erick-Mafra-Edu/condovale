@@ -1,0 +1,90 @@
+[
+    {
+        "name": "login",
+        "guard_name": "web"
+    },
+    {
+        "name": "update-own-profile",
+        "guard_name": "web"
+    },
+    {
+        "name": "view-notices",
+        "guard_name": "web"
+    },
+    {
+        "name": "create-occurrence",
+        "guard_name": "web"
+    },
+    {
+        "name": "track-own-occurrences",
+        "guard_name": "web"
+    },
+    {
+        "name": "view-common-areas",
+        "guard_name": "web"
+    },
+    {
+        "name": "request-reservation",
+        "guard_name": "web"
+    },
+    {
+        "name": "view-own-reservations",
+        "guard_name": "web"
+    },
+    {
+        "name": "cancel-own-reservation",
+        "guard_name": "web"
+    },
+    {
+        "name": "manage-units",
+        "guard_name": "web"
+    },
+    {
+        "name": "manage-residents",
+        "guard_name": "web"
+    },
+    {
+        "name": "link-residents-to-units",
+        "guard_name": "web"
+    },
+    {
+        "name": "analyze-occurrences",
+        "guard_name": "web"
+    },
+    {
+        "name": "assign-occurrence",
+        "guard_name": "web"
+    },
+    {
+        "name": "publish-notices",
+        "guard_name": "web"
+    },
+    {
+        "name": "manage-reservations",
+        "guard_name": "web"
+    },
+    {
+        "name": "approve-or-reject-reservation",
+        "guard_name": "web"
+    },
+    {
+        "name": "view-assigned-occurrences",
+        "guard_name": "web"
+    },
+    {
+        "name": "update-occurrence-progress",
+        "guard_name": "web"
+    },
+    {
+        "name": "finish-occurrence",
+        "guard_name": "web"
+    },
+    {
+        "name": "generate-reports",
+        "guard_name": "web"
+    },
+    {
+        "name": "view-audit-reports",
+        "guard_name": "web"
+    }
+]

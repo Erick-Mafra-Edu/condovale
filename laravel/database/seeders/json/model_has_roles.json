@@ -1,0 +1,30 @@
+[
+    {
+        "user_email": "admin@condovale.com",
+        "role": "admin"
+    },
+    {
+        "user_email": "sindico@condovale.com",
+        "role": "syndic"
+    },
+    {
+        "user_email": "portaria@condovale.com",
+        "role": "employee"
+    },
+    {
+        "user_email": "manutencao@condovale.com",
+        "role": "employee"
+    },
+    {
+        "user_email": "morador1@condovale.com",
+        "role": "resident"
+    },
+    {
+        "user_email": "morador2@condovale.com",
+        "role": "resident"
+    },
+    {
+        "user_email": "morador3@condovale.com",
+        "role": "resident"
+    }
+]

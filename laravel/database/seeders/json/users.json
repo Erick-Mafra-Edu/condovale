@@ -1,0 +1,65 @@
+[
+    {
+        "name": "Administrador Geral",
+        "email": "admin@condovale.com",
+        "password": "senha123",
+        "role": "admin",
+        "status": "active",
+        "unit_id": null,
+        "avatar_url": null
+    },
+    {
+        "name": "Carlos Síndico",
+        "email": "sindico@condovale.com",
+        "password": "senha123",
+        "role": "syndic",
+        "status": "active",
+        "unit_id": null,
+        "avatar_url": null
+    },
+    {
+        "name": "João Portaria",
+        "email": "portaria@condovale.com",
+        "password": "senha123",
+        "role": "employee",
+        "status": "active",
+        "unit_id": null,
+        "avatar_url": null
+    },
+    {
+        "name": "Pedro Manutenção",
+        "email": "manutencao@condovale.com",
+        "password": "senha123",
+        "role": "employee",
+        "status": "active",
+        "unit_id": null,
+        "avatar_url": null
+    },
+    {
+        "name": "Ana Silva",
+        "email": "morador1@condovale.com",
+        "password": "senha123",
+        "role": "resident",
+        "status": "active",
+        "unit_id": 1,
+        "avatar_url": null
+    },
+    {
+        "name": "Bruno Oliveira",
+        "email": "morador2@condovale.com",
+        "password": "senha123",
+        "role": "resident",
+        "status": "active",
+        "unit_id": 2,
+        "avatar_url": null
+    },
+    {
+        "name": "Carla Souza",
+        "email": "morador3@condovale.com",
+        "password": "senha123",
+        "role": "resident",
+        "status": "active",
+        "unit_id": 7,
+        "avatar_url": null
+    }
+]

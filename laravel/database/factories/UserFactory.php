@@ -40,8 +40,8 @@ class UserFactory extends Factory
      * nenhuma autorização, e toda rota protegida responderia 403 — o teste
      * estaria medindo a falta do vínculo, não a regra.
      *
-     * Os papéis são criados na hora caso ainda não existam, para o teste não
-     * depender de o RolePermissionSeeder ter rodado.
+     * Os papéis vêm da carga de referência que o TestCase aplica; aqui só se
+     * faz o vínculo.
      */
     public function configure(): static
     {

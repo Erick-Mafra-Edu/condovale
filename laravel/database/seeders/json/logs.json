@@ -1,0 +1,12 @@
+[
+    {
+        "type_log_id": 1,
+        "user_id": 1,
+        "description": "Carga inicial e homologação da base de dados realizada com sucesso.",
+        "ip": "127.0.0.1",
+        "data_log": {
+            "system": "CondoVale",
+            "environment": "development"
+        }
+    }
+]

@@ -1,0 +1,110 @@
+[
+    {
+        "role": "resident",
+        "permission": "login"
+    },
+    {
+        "role": "resident",
+        "permission": "update-own-profile"
+    },
+    {
+        "role": "resident",
+        "permission": "view-notices"
+    },
+    {
+        "role": "resident",
+        "permission": "create-occurrence"
+    },
+    {
+        "role": "resident",
+        "permission": "track-own-occurrences"
+    },
+    {
+        "role": "resident",
+        "permission": "view-common-areas"
+    },
+    {
+        "role": "resident",
+        "permission": "request-reservation"
+    },
+    {
+        "role": "resident",
+        "permission": "view-own-reservations"
+    },
+    {
+        "role": "resident",
+        "permission": "cancel-own-reservation"
+    },
+    {
+        "role": "employee",
+        "permission": "login"
+    },
+    {
+        "role": "employee",
+        "permission": "view-assigned-occurrences"
+    },
+    {
+        "role": "employee",
+        "permission": "update-occurrence-progress"
+    },
+    {
+        "role": "employee",
+        "permission": "finish-occurrence"
+    },
+    {
+        "role": "syndic",
+        "permission": "login"
+    },
+    {
+        "role": "syndic",
+        "permission": "publish-notices"
+    },
+    {
+        "role": "syndic",
+        "permission": "generate-reports"
+    },
+    {
+        "role": "admin",
+        "permission": "login"
+    },
+    {
+        "role": "admin",
+        "permission": "manage-units"
+    },
+    {
+        "role": "admin",
+        "permission": "manage-residents"
+    },
+    {
+        "role": "admin",
+        "permission": "link-residents-to-units"
+    },
+    {
+        "role": "admin",
+        "permission": "analyze-occurrences"
+    },
+    {
+        "role": "admin",
+        "permission": "assign-occurrence"
+    },
+    {
+        "role": "admin",
+        "permission": "publish-notices"
+    },
+    {
+        "role": "admin",
+        "permission": "manage-reservations"
+    },
+    {
+        "role": "admin",
+        "permission": "approve-or-reject-reservation"
+    },
+    {
+        "role": "admin",
+        "permission": "generate-reports"
+    },
+    {
+        "role": "admin",
+        "permission": "view-audit-reports"
+    }
+]

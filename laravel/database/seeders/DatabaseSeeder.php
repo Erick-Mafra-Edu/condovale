@@ -12,23 +12,33 @@ class DatabaseSeeder extends Seeder
     /**
      * Run the database seeds, in the order the foreign keys require.
      *
-     * Each module brings its own seeder plus the JSON of its table, in
-     * database/seeders/json, and registers the class in the list below. The
-     * reference tables come first, then the tables that depend on them.
+     * Cada seeder lê um JSON de database/seeders/json, cujas chaves são os
+     * nomes das colunas, e cria com create() — carga que falha alto é melhor
+     * que carga que engole divergência.
+     *
+     * A ordem abaixo é a das dependências, não a alfabética. Os ids saem da
+     * posição da linha no arquivo, e outros JSON apontam para eles por número:
+     * acrescentar registro sempre no fim, nunca no meio.
      */
     public function run(): void
     {
         $this->call([
-            // Papéis e permissões primeiro: os usuários são vinculados a eles
-            // logo em seguida, e o vínculo exige que o papel já exista.
+            // Referência: papéis e permissões existem antes de alguém usá-los.
+            PermissionSeeder::class,
+            RoleSeeder::class,
             RolePermissionSeeder::class,
+
             UnitSeeder::class,
             UserSeeder::class,
             UserRoleAssignmentSeeder::class,
             UnitOccupancySeeder::class,
+
             CommonAreaSeeder::class,
             ReservationSeeder::class,
+
             OccurrenceSeeder::class,
+            OccurrenceHistorySeeder::class,
+
             NoticeSeeder::class,
             LogSeeder::class,
         ]);

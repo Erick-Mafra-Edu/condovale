@@ -4,24 +4,29 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Dá a cada usuário do projeto o papel correspondente nas tabelas do Spatie.
+ * Dá a cada usuário do projeto o papel que a coluna users.role já declara.
  *
- * A coluna `users.role` continua sendo onde se lê o perfil de alguém — é ela
- * que vai no payload da API e que o frontend consome. O vínculo do Spatie é o
- * que a autorização consulta. Quem mantém as duas em acordo na escrita é a
- * CreateUserAction; este seeder faz o mesmo para a carga inicial e serve para
- * reconciliar a base caso a coluna tenha sido alterada por fora.
+ * O JSON guarda o e-mail, e não o id: é a chave de negócio estável do usuário.
  */
 class UserRoleAssignmentSeeder extends Seeder
 {
     public function run(): void
     {
-        User::query()->each(function (User $user) {
-            // syncRoles, e não assignRole: se o perfil da pessoa mudou, o papel
-            // antigo precisa sair junto, senão ela acumula autorizações.
-            $user->syncRoles([$user->role->value]);
-        });
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $json = File::get(database_path('seeders/json/model_has_roles.json'));
+        $data = json_decode($json);
+
+        foreach ($data as $item) {
+            $user = User::where('email', $item->user_email)->first();
+
+            $user->assignRole($item->role);
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

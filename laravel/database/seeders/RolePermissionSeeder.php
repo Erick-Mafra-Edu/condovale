@@ -2,40 +2,43 @@
 
 namespace Database\Seeders;
 
-use App\Enums\UseCase;
-use App\Enums\UserRole;
-use App\Http\Actions\SyncUserRoleAction;
+use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Materializa a matriz do diagrama de casos de uso nas tabelas do Spatie.
+ * Matriz do diagrama de casos de uso: que papel concede que permissão.
  *
- * A matriz em si continua em App\Enums\UserRole::useCases(), que espelha
- * frontend/app/domain/permissions.ts e é verificada pelo PermissionMatrixTest.
- * O que muda é quem responde em tempo de execução: a autorização passa a ser
- * lida do banco, e com isso a administração pode conceder um caso de uso a uma
- * pessoa específica sem depender de um deploy.
- *
- * Idempotente: pode rodar de novo em produção para aplicar uma mudança da
- * matriz. O `syncPermissions` de dentro da Action é o que faz um caso de uso
- * retirado da matriz sair também de quem já o tinha.
+ * O JSON guarda os nomes, e não os ids, porque os ids são gerados pelo banco —
+ * é o padrão de resolver a chave estrangeira pela chave de negócio.
  */
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
+        // O Spatie resolve nomes pela coleção que mantém em memória, carregada
+        // antes desta carga. Sem limpar, ele não enxerga o que o
+        // PermissionSeeder acabou de inserir.
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // Todas as permissões existem, mesmo as que nenhum papel usa ainda:
-        // uma permissão ausente faria a concessão individual falhar.
-        foreach (UseCase::cases() as $useCase) {
-            Permission::findOrCreate($useCase->value, 'web');
+        $json = File::get(database_path('seeders/json/role_has_permissions.json'));
+        $data = json_decode($json);
+
+        foreach ($data as $item) {
+            $roleId = Role::where('name', $item->role)->where('guard_name', 'web')->value('id');
+            $permissionId = Permission::where('name', $item->permission)->where('guard_name', 'web')->value('id');
+
+            $array = [
+                'role_id' => $roleId,
+                'permission_id' => $permissionId,
+            ];
+
+            DB::table('role_has_permissions')->insert($array);
         }
 
-        foreach (UserRole::cases() as $role) {
-            SyncUserRoleAction::ensureRole($role);
-        }
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

@@ -3,25 +3,26 @@
 namespace Database\Seeders;
 
 use App\Models\Log;
-use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
 
 class LogSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('email', 'admin@condovale.com')->first();
+        $json = File::get(database_path('seeders/json/logs.json'));
+        $data = json_decode($json);
 
-        if ($admin) {
-            Log::firstOrCreate(
-                ['description' => 'Carga inicial e homologação da base de dados realizada com sucesso.'],
-                [
-                    'type_log_id' => 1,
-                    'user_id' => $admin->id,
-                    'ip' => '127.0.0.1',
-                    'data_log' => ['system' => 'CondoVale', 'environment' => 'development'],
-                ]
-            );
+        foreach ($data as $item) {
+            $array = [
+                'type_log_id' => $item->type_log_id,
+                'user_id' => $item->user_id,
+                'description' => $item->description,
+                'ip' => $item->ip,
+                'data_log' => $item->data_log,
+            ];
+
+            Log::create($array);
         }
     }
 }

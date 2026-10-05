@@ -1,0 +1,18 @@
+[
+    {
+        "name": "resident",
+        "guard_name": "web"
+    },
+    {
+        "name": "employee",
+        "guard_name": "web"
+    },
+    {
+        "name": "syndic",
+        "guard_name": "web"
+    },
+    {
+        "name": "admin",
+        "guard_name": "web"
+    }
+]

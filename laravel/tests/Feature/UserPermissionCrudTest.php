@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\TypeLogEnum;
 use App\Enums\UserRole;
 use App\Models\User;
-use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,13 +14,6 @@ use Tests\TestCase;
 class UserPermissionCrudTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->seed(RolePermissionSeeder::class);
-    }
 
     private function administrador(): User
     {

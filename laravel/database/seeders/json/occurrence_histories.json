@@ -1,0 +1,26 @@
+[
+    {
+        "occurrence_id": 1,
+        "user_id": 5,
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    },
+    {
+        "occurrence_id": 1,
+        "user_id": 4,
+        "type": "status_changed",
+        "message": "Chamado encaminhado para a equipe de manutenção predial.",
+        "previous_status": "open",
+        "new_status": "assigned"
+    },
+    {
+        "occurrence_id": 2,
+        "user_id": 6,
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    }
+]

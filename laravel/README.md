@@ -343,6 +343,80 @@ passar por rota autenticada que verifique quem pode baixar aquele arquivo.
 As Actions já estão escritas e testáveis, mas dependem das tabelas que as
 migrations das tasks vão criar.
 
+## Seeders: um JSON por tabela
+
+Cada tabela com carga inicial tem duas peças — `database/seeders/{Model}Seeder.php`
+e `database/seeders/json/{tabela}.json`. O seeder lê o arquivo, percorre os
+registros e, para cada um, monta um array **campo a campo, escrito à mão**, e
+chama `Model::create()`. Sem factory, sem faker, sem camada genérica.
+
+```php
+$json = File::get(database_path('seeders/json/units.json'));
+$data = json_decode($json);
+
+foreach ($data as $item) {
+    $array = [
+        'block' => $item->block,
+        'number' => $item->number,
+        'code' => $item->code,
+        'status' => $item->status,
+    ];
+
+    Unit::create($array);
+}
+```
+
+`json_decode($json)` sem o segundo argumento: os registros vêm como objetos, e
+o acesso é `$item->campo`.
+
+As regras que não se quebram:
+
+- **`create()`, nunca `updateOrCreate()`.** A carga tem de falhar alto. Se
+  rodou duas vezes e duplicou, isso é informação: o banco não estava no estado
+  que se achava.
+- **Nenhum fallback no mapeamento.** `$item->campo`, jamais `?? null`. Dado
+  faltando vira erro, não vira nulo em silêncio.
+- **As chaves do JSON são os nomes exatos das colunas.** Migration, JSON e
+  seeder andam juntos no mesmo commit. `id`, `created_at` e `updated_at` ficam
+  de fora, salvo quando o código referencia a linha por id fixo — aí o `id` vai
+  nos três, inclusive no `$fillable`, senão o `create()` o ignora calado.
+- **O caminho do JSON se lê no seeder, não se deduz do nome da tabela.**
+- **A ordem no `DatabaseSeeder` é a das chaves estrangeiras**, não a
+  alfabética.
+
+Duas consequências que pegam:
+
+- `DatabaseSeeder` usa `WithoutModelEvents`, então **nenhum evento de model
+  dispara na carga**. O que um `booted()` ou um observer preencheria precisa
+  estar escrito no JSON. (Os *casts* continuam valendo: por isso `users.json`
+  traz a senha em claro e o cast `hashed` a transforma em Argon2id.)
+- **Os ids saem da ordem das linhas no arquivo**, e outros JSON apontam para
+  eles por número — `reservations.json` tem `"resident_id": 5` porque o Ana
+  Silva é o quinto registro de `users.json`. Acrescentar sempre no fim, nunca
+  inserir no meio nem reordenar.
+
+### A cadeia da matriz de permissões
+
+A autorização é lida do banco, o banco vem do JSON, o JSON espelha o enum e o
+enum espelha o frontend. Cada elo tem a sua trava:
+
+| Elo | Guardado por |
+| --- | --- |
+| frontend ↔ `UserRole::useCases()` | `PermissionMatrixTest` |
+| enum ↔ `role_has_permissions.json` | `PermissionJsonMatrixTest` |
+| JSON ↔ banco | `RolePermissionSeeder` |
+
+Sem a trava do meio seriam três cópias soltas, e a divergência apareceria como
+um 403 que ninguém explica.
+
+### Testes
+
+`tests/TestCase` aplica o `TestDatabaseSeeder` — só as tabelas de referência,
+papéis e permissões. Sem essa carga, todo teste de rota protegida responderia
+403 e estaria medindo a falta do vínculo em vez da regra. Dado de domínio cada
+teste cria pela factory: depender de registro semeado quebraria o teste quando
+alguém acrescentasse uma linha a um JSON.
+
 ## O que cada task de módulo precisa entregar
 
 1. **Migration** da tabela, com as chaves estrangeiras e os índices.

@@ -6,10 +6,9 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Actions\SyncUserRoleAction;
 use App\Models\User;
-use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -36,7 +35,6 @@ class RolePermissionTest extends TestCase
 
     public function test_o_seeder_materializa_a_matriz_do_diagrama_no_banco(): void
     {
-        $this->seed(RolePermissionSeeder::class);
 
         foreach (UserRole::cases() as $role) {
             $esperado = array_map(fn ($useCase) => $useCase->value, $role->useCases());
@@ -88,7 +86,6 @@ class RolePermissionTest extends TestCase
         // É isto que o banco traz e o enum não trazia: a administração libera
         // um caso de uso para uma pessoa específica sem promovê-la a
         // administrador nem precisar de um deploy.
-        $this->seed(RolePermissionSeeder::class);
 
         $sindico = User::factory()->syndic()->create();
 
@@ -105,7 +102,6 @@ class RolePermissionTest extends TestCase
 
     public function test_a_concessao_individual_pode_ser_revogada(): void
     {
-        $this->seed(RolePermissionSeeder::class);
 
         $sindico = User::factory()->syndic()->create();
         $sindico->givePermissionTo('manage-residents');
@@ -131,16 +127,16 @@ class RolePermissionTest extends TestCase
         $this->assertTrue($atualizado->can('request-reservation'));
     }
 
-    public function test_o_seeder_e_idempotente(): void
+    public function test_a_matriz_do_banco_veio_do_json_e_nao_do_codigo(): void
     {
-        $this->seed(RolePermissionSeeder::class);
-        $permissoes = Permission::count();
-        $papeis = Role::count();
+        // O seeder cria com create(), que não é idempotente de propósito: a
+        // carga tem de falhar alto se rodar sobre uma base que já a tem.
+        $json = json_decode(file_get_contents(database_path('seeders/json/role_has_permissions.json')));
 
-        $this->seed(RolePermissionSeeder::class);
-
-        $this->assertSame($permissoes, Permission::count());
-        $this->assertSame($papeis, Role::count());
+        $this->assertSame(
+            count($json),
+            DB::table('role_has_permissions')->count()
+        );
     }
 
     public function test_permissao_ausente_nega_em_vez_de_estourar(): void
