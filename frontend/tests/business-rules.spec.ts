@@ -21,6 +21,7 @@ import { mockAuditLogs } from '../app/repositories/mock/mock-audit-repository'
 import { mockReservationRepository } from '../app/repositories/mock/mock-reservation-repository'
 import { can, canViewModule, rolePermissions, type UseCase } from '../app/domain/permissions'
 import type { UpdateOwnProfileInput, UserRole } from '../app/domain/user'
+import { sanitizeReportFilename } from '../app/composables/use-report-export'
 
 const response = <T>(data: T): ApiResponse<T> => ({ data, message: null })
 
@@ -141,6 +142,10 @@ describe('RN01 e RN08 — reservas', () => {
 })
 
 describe('validações de aplicação', () => {
+  it('remove traversal do nome de arquivo exportado', () => {
+    expect(sanitizeReportFilename('../relatorio/ocorrencias')).toBe('-relatorio-ocorrencias')
+  })
+
   it('exibe todos os comunicados publicados, do mais recente ao mais antigo', () => {
     const notices: Notice[] = [
       { id: 'old', title: 'Antigo', content: '', authorId: 'admin', publishedAt: '2026-09-10T10:00:00Z', status: 'published' },
