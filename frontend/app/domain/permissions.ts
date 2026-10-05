@@ -13,6 +13,7 @@ export type UseCase =
   | 'cancel-own-reservation'
   | 'manage-units'
   | 'manage-residents'
+  | 'manage-users'
   | 'link-residents-to-units'
   | 'analyze-occurrences'
   | 'assign-occurrence'
@@ -33,7 +34,7 @@ export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> =
   employee: new Set(['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']),
   syndic: new Set(['login', 'publish-notices', 'generate-reports']),
   admin: new Set([
-    'login', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
+    'login', 'manage-units', 'manage-residents', 'manage-users', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
     'generate-reports', 'view-audit-reports',
   ]),
@@ -43,10 +44,11 @@ export function can(role: UserRole, useCase: UseCase): boolean {
   return rolePermissions[role].has(useCase)
 }
 
-export type AppModule = 'Início' | 'Meu cadastro' | 'Ocorrências' | 'Reservas' | 'Comunicados' | 'Relatórios' | 'Moradores e unidades'
+export type AppModule = 'Início' | 'Meu cadastro' | 'Usuários' | 'Ocorrências' | 'Reservas' | 'Comunicados' | 'Relatórios' | 'Moradores e unidades'
 
 const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly UseCase[]>> = {
   'Meu cadastro': ['update-own-profile'],
+  Usuários: ['manage-users'],
   Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
   Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
   Comunicados: ['view-notices', 'publish-notices'],
