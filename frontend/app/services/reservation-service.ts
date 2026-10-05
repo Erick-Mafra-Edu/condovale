@@ -19,6 +19,6 @@ export function createReservationService(repository: ReservationRepository) {
       return repository.create(input)
     },
     cancel: (id: string) => repository.cancel(id),
-    updateStatus: (id: string, status: ReservationStatus, userId: string, reason?: string) => repository.updateStatus(id, status, userId, reason),
+    updateStatus: (id: string, status: ReservationStatus, reason?: string) => repository.updateStatus(id, status, reason),
   }
 }

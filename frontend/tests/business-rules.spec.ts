@@ -127,9 +127,11 @@ describe('RN01 e RN08 — reservas', () => {
     mockReservations.push(reservation)
 
     try {
-      await expect(mockReservationRepository.updateStatus(reservation.id, 'approved', 'user-employee'))
+      await createAuthService(mockAuthRepository).authenticate({ email: 'funcionario@example.com', password: 'condovale' })
+      await expect(mockReservationRepository.updateStatus(reservation.id, 'approved'))
         .rejects.toMatchObject({ code: 'FORBIDDEN' })
-      await mockReservationRepository.updateStatus(reservation.id, 'approved', 'user-admin')
+      await createAuthService(mockAuthRepository).authenticate({ email: 'admin@example.com', password: 'condovale' })
+      await mockReservationRepository.updateStatus(reservation.id, 'approved')
       expect(mockAuditLogs[0]).toMatchObject({ action: 'reservation.approved', userId: 'user-admin', entityId: reservation.id })
     } finally {
       mockReservations.splice(mockReservations.indexOf(reservation), 1)
@@ -170,10 +172,10 @@ describe('validações de aplicação', () => {
     await expect(service.reserve({ ...dailyInput, startTime: '10:00' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
   })
 
-  it('RN05 exige que a ocorrência informe o morador responsável', async () => {
+  it('RN05 valida os campos informados da ocorrência', async () => {
     const repository = { create: vi.fn() } as unknown as OccurrenceRepository
     const service = createOccurrenceService(repository)
-    const input = { title: 'Falha', description: 'Detalhes', category: 'Manutenção', residentId: '' } as CreateOccurrenceInput
+    const input = { title: '', description: 'Detalhes', category: 'Manutenção' } as CreateOccurrenceInput
 
     await expect(service.create(input)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
     expect(repository.create).not.toHaveBeenCalled()
@@ -193,23 +195,7 @@ describe('validações de aplicação', () => {
 })
 
 describe('RN06 — histórico de ocorrência', () => {
-  it('exige usuário nas operações de atribuição, status e conclusão', async () => {
-    const repository = {
-      assign: vi.fn(),
-      updateStatus: vi.fn(),
-      finish: vi.fn(),
-    } as unknown as OccurrenceRepository
-    const service = createOccurrenceService(repository)
-
-    await expectAppError(() => service.assign('occurrence-01', 'employee-01', ''), 'VALIDATION_ERROR')
-    await expectAppError(() => service.updateStatus('occurrence-01', 'in_progress', ''), 'VALIDATION_ERROR')
-    await expectAppError(() => service.finish('occurrence-01', ''), 'VALIDATION_ERROR')
-    expect(repository.assign).not.toHaveBeenCalled()
-    expect(repository.updateStatus).not.toHaveBeenCalled()
-    expect(repository.finish).not.toHaveBeenCalled()
-  })
-
-  it('encaminha autoria explícita para registrar alterações', async () => {
+  it('encaminha as operações sem aceitar autoria no corpo', async () => {
     const occurrence: Occurrence = {
       id: 'occurrence-01', title: 'Falha', description: 'Detalhes', category: 'Manutenção',
       residentId: 'user-01', status: 'open', createdAt: '', updatedAt: '',
@@ -223,13 +209,13 @@ describe('RN06 — histórico de ocorrência', () => {
     } as unknown as OccurrenceRepository
     const service = createOccurrenceService(repository)
 
-    await service.assign(occurrence.id, 'employee-01', 'employee-user')
-    await service.updateStatus(occurrence.id, 'in_progress', 'employee-user')
-    await service.finish(occurrence.id, 'employee-user', 'Concluído')
+    await service.assign(occurrence.id, 'employee-01')
+    await service.updateStatus(occurrence.id, 'in_progress')
+    await service.finish(occurrence.id, 'Concluído')
 
-    expect(repository.assign).toHaveBeenCalledWith(occurrence.id, 'employee-01', 'employee-user')
-    expect(repository.updateStatus).toHaveBeenCalledWith(occurrence.id, 'in_progress', 'employee-user')
-    expect(repository.finish).toHaveBeenCalledWith(occurrence.id, 'employee-user', 'Concluído')
+    expect(repository.assign).toHaveBeenCalledWith(occurrence.id, 'employee-01')
+    expect(repository.updateStatus).toHaveBeenCalledWith(occurrence.id, 'in_progress')
+    expect(repository.finish).toHaveBeenCalledWith(occurrence.id, 'Concluído')
   })
 
   it('permite atualizar e finalizar somente a ocorrência atribuída ao funcionário', async () => {
@@ -241,10 +227,12 @@ describe('RN06 — histórico de ocorrência', () => {
     mockOccurrences.push(occurrence)
 
     try {
-      await expect(mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress', 'user-employee-security'))
+      await createAuthService(mockAuthRepository).authenticate({ email: 'funcionario.seguranca@example.com', password: 'condovale' })
+      await expect(mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress'))
         .rejects.toMatchObject({ code: 'FORBIDDEN' })
-      await mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress', 'user-employee')
-      await mockOccurrenceRepository.finish(occurrence.id, 'user-employee', 'Portão regulado')
+      await createAuthService(mockAuthRepository).authenticate({ email: 'funcionario@example.com', password: 'condovale' })
+      await mockOccurrenceRepository.updateStatus(occurrence.id, 'in_progress')
+      await mockOccurrenceRepository.finish(occurrence.id, 'Portão regulado')
 
       expect(occurrence.status).toBe('completed')
       expect((await mockOccurrenceRepository.history(occurrence.id)).data).toMatchObject([

@@ -42,16 +42,16 @@ export function useOccurrences() {
     return store((await execute(() => occurrenceService.create(input))).data)
   }
 
-  async function assignOccurrence(id: string, employeeId: string, userId: string) {
-    return store((await execute(() => occurrenceService.assign(id, employeeId, userId))).data)
+  async function assignOccurrence(id: string, employeeId: string) {
+    return store((await execute(() => occurrenceService.assign(id, employeeId))).data)
   }
 
-  async function updateOccurrenceStatus(id: string, status: OccurrenceStatus, userId: string) {
-    return store((await execute(() => occurrenceService.updateStatus(id, status, userId))).data)
+  async function updateOccurrenceStatus(id: string, status: OccurrenceStatus) {
+    return store((await execute(() => occurrenceService.updateStatus(id, status))).data)
   }
 
-  async function finishOccurrence(id: string, userId: string, message?: string) {
-    return store((await execute(() => occurrenceService.finish(id, userId, message))).data)
+  async function finishOccurrence(id: string, message?: string) {
+    return store((await execute(() => occurrenceService.finish(id, message))).data)
   }
 
   async function loadHistory(id: string) {

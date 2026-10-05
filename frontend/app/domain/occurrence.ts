@@ -26,4 +26,4 @@ export interface OccurrenceHistory {
   createdAt: string
 }
 
-export type CreateOccurrenceInput = Pick<Occurrence, 'title' | 'description' | 'category' | 'residentId' | 'unitId'>
+export type CreateOccurrenceInput = Pick<Occurrence, 'title' | 'description' | 'category'>
