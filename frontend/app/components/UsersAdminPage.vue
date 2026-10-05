@@ -94,7 +94,7 @@ async function requestDeactivate(user: User) {
       <label>Papel<select v-model="form.role"><option v-for="(label, role) in roleLabels" :key="role" :value="role">{{ label }}</option></select></label>
       <label v-if="editing">Status<select v-model="form.status"><option value="active">Ativo</option><option value="inactive">Inativo</option></select></label>
       <p v-if="formError" class="form-error">{{ formError }}</p>
-      <div class="modal-actions"><button type="button" class="outline-button" @click="formOpen = false">Cancelar</button><button class="primary-button" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar usuário' }}</button></div>
+      <div class="modal-actions"><button type="button" class="outline-button" @click="formOpen = false">Cancelar</button><button type="submit" class="primary-button" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar usuário' }}</button></div>
     </form>
   </div>
 </template>
