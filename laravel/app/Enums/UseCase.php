@@ -22,7 +22,6 @@ enum UseCase: string
     case CancelOwnReservation = 'cancel-own-reservation';
     case ManageUnits = 'manage-units';
     case ManageResidents = 'manage-residents';
-    case ManageUsers = 'manage-users';
     case LinkResidentsToUnits = 'link-residents-to-units';
     case AnalyzeOccurrences = 'analyze-occurrences';
     case AssignOccurrence = 'assign-occurrence';
