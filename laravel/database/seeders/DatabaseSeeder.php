@@ -19,8 +19,12 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            // Papéis e permissões primeiro: os usuários são vinculados a eles
+            // logo em seguida, e o vínculo exige que o papel já exista.
+            RolePermissionSeeder::class,
             UnitSeeder::class,
             UserSeeder::class,
+            UserRoleAssignmentSeeder::class,
             UnitOccupancySeeder::class,
             CommonAreaSeeder::class,
             ReservationSeeder::class,

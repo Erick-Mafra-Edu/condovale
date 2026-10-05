@@ -1,0 +1,24 @@
+info:
+  name: role
+  type: http
+  seq: 6
+
+http:
+  method: PATCH
+  url: "{{API_URL}}/users/6/role"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "role": "employee"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

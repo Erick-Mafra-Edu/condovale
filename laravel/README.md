@@ -587,6 +587,112 @@ inicial é `migrate:fresh`, então não havia o que preservar:
 4. **Nada indexava a busca por vínculo ativo duplicado.** A unicidade em si
    fica na Action, porque índice parcial não é portável entre SQLite e MySQL.
 
+## A chave da aplicação
+
+`APP_KEY` assina o cookie de sessão e criptografa tudo que passa pelo `Crypt`.
+Quem a tem **forja a sessão de qualquer usuário sem saber a senha**.
+
+`config/app.php` **não tem valor padrão para ela**, de propósito. O import
+deste projeto trazia ali uma chave real como fallback do `env()`, versionada no
+repositório: qualquer ambiente que subisse sem a variável passaria a assinar
+sessões com uma chave pública, e nada indicaria o problema porque o site
+continuaria funcionando. Hoje, faltando a variável, a aplicação falha ao subir.
+
+A chave que estava exposta foi **rotacionada** nos dois ambientes — uma chave
+publicada está comprometida, e remover o fallback sem trocá-la não resolveria
+nada. O `ApplicationKeyTest` é a guarda de regressão: ele falha se alguém
+reintroduzir um padrão no `config/app.php` ou deixar uma chave no
+`.env.example`.
+
+Ambiente novo precisa da sua própria: `php artisan key:generate`.
+
+## Perfis e permissões — UC01 / RF01
+
+A autorização é do **spatie/laravel-permission**: papéis e permissões em
+tabelas, consultados a cada requisição. A matriz que as alimenta continua em
+`App\Enums\UserRole::useCases()`, espelhando
+`frontend/app/domain/permissions.ts`.
+
+### Endpoints
+
+Todos no grupo `use.case:manage-residents`, que só o administrador possui —
+`manage-residents` é o caso de uso do UC01 na matriz.
+
+| Rota | Efeito |
+| --- | --- |
+| `GET /api/permissions` | catálogo dos casos de uso, paginado |
+| `GET /api/roles` | os perfis com os casos de uso de cada um |
+| `GET /api/users/{id}/permissions` | o que a pessoa pode, e por quê |
+| `POST /api/users/{id}/permissions` | concede um caso de uso à pessoa |
+| `DELETE /api/users/{id}/permissions/{permissão}` | revoga a concessão individual |
+| `PATCH /api/users/{id}/role` | troca o perfil, que é a concessão em bloco |
+
+A consulta separa `from_role` de `direct`: sem essa distinção, a administração
+não tem como saber o que some se o perfil da pessoa mudar.
+
+Quatro recusas, cada uma com motivo:
+
+- **Conceder o que o perfil já dá** (409). Criaria uma linha que não muda nada
+  e que sobreviveria a um rebaixamento de perfil, deixando a pessoa autorizada
+  por um caminho que ninguém lembra de ter criado.
+- **Conceder duas vezes** (409).
+- **Revogar o que veio do perfil** (409). Retirar isso exigiria trocar o
+  perfil; aceitar daria a impressão de ter funcionado sem efeito nenhum.
+- **Retirar de si mesmo o `manage-residents`** (403). Sem a trava, o último
+  administrador se tranca para fora e não sobra ninguém capaz de devolver a
+  permissão pela interface.
+
+Essa divisão é o ponto do desenho:
+
+| Camada | Papel |
+| --- | --- |
+| `UserRole::useCases()` | a matriz **declarada**, versionada e revisável em diff |
+| tabelas do Spatie | a autorização **em vigor**, consultada em tempo de execução |
+| `SyncUserRoleAction` | o único lugar que materializa uma na outra |
+
+O que se ganha com o banco no meio: a administração pode conceder um caso de
+uso a **uma pessoa específica** sem promovê-la de perfil e sem deploy —
+`$user->givePermissionTo('manage-residents')`. O enum sozinho não permitia
+isso, porque a permissão estava amarrada ao papel em código.
+
+O que se arrisca: duas representações do mesmo fato divergirem. Por isso
+`users.role` e o vínculo do Spatie só são escritos pela `SyncUserRoleAction`,
+e é ela que a `CreateUserAction`, a factory e o seeder chamam.
+
+A autorização continua sendo resolvida pelo **grupo de rota**, pelo middleware
+`use.case:` — nenhum controller verifica permissão. O middleware não mudou de
+nome nem de resposta; o que mudou é de onde ele lê.
+
+Três comportamentos que valem registrar:
+
+- **RN04 continua valendo acima da permissão.** `hasUseCase()` exige usuário
+  ativo antes de consultar a autorização: um administrador inativado perde o
+  acesso mesmo mantendo todas as permissões no banco.
+- **Permissão ausente nega, não estoura.** O `can()` devolve falso para um nome
+  que não existe, enquanto o `hasPermissionTo()` do Spatie lançaria
+  `PermissionDoesNotExist` e viraria 500. Uma permissão ainda não semeada se
+  comporta como ausente e a rota responde 403 — o mesmo que o CLAUDE.md
+  descreve para a tabela `pages` do sistema irmão.
+- **Trocar o perfil retira as autorizações do anterior.** `syncRoles`, e não
+  `assignRole`: sem isso a pessoa acumularia as permissões dos dois papéis.
+
+### O cache do Spatie, que custou duas falhas
+
+O `findOrCreate` do Spatie procura na coleção que o `PermissionRegistrar`
+mantém em memória, **não no banco**. Se essa coleção foi carregada quando a
+tabela ainda estava vazia — o que acontece logo depois de um `migrate:fresh` —
+ele conclui que a permissão não existe e tenta inserir uma que já está lá,
+estourando a restrição de unicidade. Daí os `forgetCachedPermissions()` antes
+de resolver e depois de conceder, na `SyncUserRoleAction`.
+
+### Tamanhos de coluna na migration do Spatie
+
+A migration publicada usa `string('name')` sem tamanho, o que com o
+`defaultStringLength(191)` daria um índice único `(name, guard_name)` de
+2 x 191 x 4 = 1528 bytes — acima do limite de 1000 do MySQL do host. Foram
+fixados em 125 e 25, que dão 600 bytes. A própria migration do Spatie alerta
+para isso nos comentários.
+
 ## Autorização
 
 O grupo da rota é o modelo de autorização: o middleware `use.case` recebe os

@@ -1,0 +1,24 @@
+info:
+  name: store
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{API_URL}}/users/2/permissions"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "permission": "manage-units"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

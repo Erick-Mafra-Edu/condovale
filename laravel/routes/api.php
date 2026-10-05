@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UnitOccupancyController;
+use App\Http\Controllers\UserPermissionController;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
@@ -99,6 +101,28 @@ Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttl
 Route::middleware('user.active')->group(function () {
     Route::get('auth/session', [AuthController::class, 'session']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Perfis e permissões — UC01 / RF01
+|--------------------------------------------------------------------------
+|
+| O administrador concede e revoga casos de uso por pessoa. A concessão
+| individual se soma ao que o perfil já dá, o que permite abrir uma exceção
+| para alguém sem promovê-la de perfil.
+|
+| manage-residents é o caso de uso do UC01 na matriz, e só o administrador o
+| possui — é o grupo de rota que resolve isso, não os controllers.
+*/
+Route::middleware(['auth', 'user.active', 'use.case:manage-residents'])->group(function () {
+    Route::get('permissions', [PermissionController::class, 'index']);
+    Route::get('roles', [PermissionController::class, 'roles']);
+
+    Route::get('users/{id}/permissions', [UserPermissionController::class, 'index']);
+    Route::post('users/{id}/permissions', [UserPermissionController::class, 'store']);
+    Route::delete('users/{id}/permissions/{permission}', [UserPermissionController::class, 'destroy']);
+    Route::patch('users/{id}/role', [UserPermissionController::class, 'updateRole']);
 });
 
 /*
