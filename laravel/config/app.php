@@ -97,7 +97,22 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
-    'key' => env('APP_KEY', 'base64:OG1kd3pyeWI4cHo5bXlyZHhub2VtZ21xZW1ub3B5Z2Q='),
+    /*
+     * Sem valor padrão, de propósito.
+     *
+     * Esta chave assina o cookie de sessão e criptografa tudo que passa pelo
+     * Crypt: quem a tem consegue forjar uma sessão de qualquer usuário, sem
+     * saber a senha. O import deste projeto trazia aqui uma chave real como
+     * fallback, versionada no repositório — qualquer ambiente que subisse sem
+     * a variável passaria a assinar sessões com uma chave pública, e nada
+     * indicaria o problema porque o site continuaria funcionando.
+     *
+     * Faltando a variável, a aplicação agora falha ao subir. É o que o
+     * CLAUDE.md manda fazer com valor obrigatório: "não use fallback, lance
+     * exceção — um fallback silencioso transforma erro de configuração em bug
+     * de produção difícil de achar".
+     */
+    'key' => env('APP_KEY'),
 
     'previous_keys' => [
         ...array_filter(

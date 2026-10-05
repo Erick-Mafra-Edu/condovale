@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@types/html2pdf.js": "^0.10.0",
+    "@types/node": "^26.6.4",
     "nuxt": "^4.0.0",
     "typescript": "^5.0.0",
     "vitest": "^4.1.11",

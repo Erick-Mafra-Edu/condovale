@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Http\Actions\SyncUserRoleAction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -30,6 +31,21 @@ class UserFactory extends Factory
             'status' => UserStatus::Active,
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * Dá ao usuário criado o papel correspondente nas tabelas do Spatie.
+     *
+     * Sem isto, um usuário de teste teria o perfil na coluna `users.role` mas
+     * nenhuma autorização, e toda rota protegida responderia 403 — o teste
+     * estaria medindo a falta do vínculo, não a regra.
+     *
+     * Os papéis são criados na hora caso ainda não existam, para o teste não
+     * depender de o RolePermissionSeeder ter rodado.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(fn (User $user) => SyncUserRoleAction::execute($user));
     }
 
     public function resident(): static

@@ -52,6 +52,14 @@ enum UserRole: string
         };
     }
 
+    /**
+     * Consulta a matriz **declarada**, e não a autorização em vigor.
+     *
+     * Quem decide em tempo de execução é User::hasUseCase(), que lê as tabelas
+     * do Spatie — é lá que moram as concessões individuais, que esta matriz
+     * por definição não conhece. Este método serve para o teste de paridade
+     * com o frontend e para alimentar o seeder, sem precisar de banco.
+     */
     public function can(UseCase $useCase): bool
     {
         return in_array($useCase, $this->useCases(), true);
