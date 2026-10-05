@@ -587,6 +587,25 @@ inicial é `migrate:fresh`, então não havia o que preservar:
 4. **Nada indexava a busca por vínculo ativo duplicado.** A unicidade em si
    fica na Action, porque índice parcial não é portável entre SQLite e MySQL.
 
+## A chave da aplicação
+
+`APP_KEY` assina o cookie de sessão e criptografa tudo que passa pelo `Crypt`.
+Quem a tem **forja a sessão de qualquer usuário sem saber a senha**.
+
+`config/app.php` **não tem valor padrão para ela**, de propósito. O import
+deste projeto trazia ali uma chave real como fallback do `env()`, versionada no
+repositório: qualquer ambiente que subisse sem a variável passaria a assinar
+sessões com uma chave pública, e nada indicaria o problema porque o site
+continuaria funcionando. Hoje, faltando a variável, a aplicação falha ao subir.
+
+A chave que estava exposta foi **rotacionada** nos dois ambientes — uma chave
+publicada está comprometida, e remover o fallback sem trocá-la não resolveria
+nada. O `ApplicationKeyTest` é a guarda de regressão: ele falha se alguém
+reintroduzir um padrão no `config/app.php` ou deixar uma chave no
+`.env.example`.
+
+Ambiente novo precisa da sua própria: `php artisan key:generate`.
+
 ## Perfis e permissões — UC01 / RF01
 
 A autorização é do **spatie/laravel-permission**: papéis e permissões em
