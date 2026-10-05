@@ -1,7 +1,7 @@
 info:
-  name: Implantação
+  name: Permissões do usuário
   type: folder
-  seq: 5
+  seq: 2
 
 request:
   auth: inherit

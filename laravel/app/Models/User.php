@@ -11,11 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * @var list<string>
@@ -112,10 +113,16 @@ class User extends Authenticatable
     }
 
     /**
-     * RN04 — a permissão depende do papel e de o usuário estar ativo.
+     * RN04 — a permissão depende da autorização e de o usuário estar ativo.
+     *
+     * Quem responde é o Spatie, lendo as tabelas de papéis e permissões: assim
+     * a administração pode conceder um caso de uso a uma pessoa específica sem
+     * depender de um deploy. O `can()` devolve falso para permissão que não
+     * existe, em vez de lançar — uma permissão ainda não semeada se comporta
+     * como ausente, e a rota responde 403.
      */
     public function hasUseCase(UseCase $useCase): bool
     {
-        return $this->isActive() && $this->role->can($useCase);
+        return $this->isActive() && $this->can($useCase->value);
     }
 }

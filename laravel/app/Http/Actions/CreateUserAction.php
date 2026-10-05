@@ -20,7 +20,7 @@ class CreateUserAction
      */
     public static function execute(array $attributes): User
     {
-        return User::create([
+        $user = User::create([
             'name' => $attributes['name'],
             'email' => Str::lower($attributes['email']),
             'role' => $attributes['role'],
@@ -28,5 +28,7 @@ class CreateUserAction
             'unit_id' => $attributes['unit_id'] ?? null,
             'password' => $attributes['password'] ?? Str::random(40),
         ]);
+
+        return SyncUserRoleAction::execute($user);
     }
 }
