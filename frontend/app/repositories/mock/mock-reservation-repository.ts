@@ -66,9 +66,11 @@ export const mockReservationRepository: ReservationRepository = {
     reservation.status = 'cancelled'
     return response(reservation)
   },
-  async updateStatus(id, status: ReservationStatus, userId: string, rejectionReason?: string) {
+  async updateStatus(id, status: ReservationStatus, rejectionReason?: string) {
     await simulateRequest()
     const reservation = ensureReservation(id)
+    const userId = getMockAuthenticatedUserId()
+    if (!userId) throw new AppError('FORBIDDEN', 'Sessão não encontrada')
     const user = mockUsers.find(item => item.id === userId && item.status === 'active')
     if (user?.role !== 'admin') throw new AppError('FORBIDDEN', 'Somente a administração pode analisar reservas')
     if (status === 'pending' || status === 'approved') ensureNoConflict(reservation, id)

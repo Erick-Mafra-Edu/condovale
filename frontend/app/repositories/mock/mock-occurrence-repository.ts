@@ -6,6 +6,7 @@ import { mockOccurrences } from './state'
 import { mockUsers } from './mock-user-repository'
 import { simulateRequest } from './mock-config'
 import { recordAudit } from './mock-audit-repository'
+import { getMockAuthenticatedUserId } from './mock-session'
 
 const entries: OccurrenceHistory[] = []
 
@@ -23,6 +24,12 @@ function ensureActiveUser(id: string) {
   const user = mockUsers.find(item => item.id === id && item.status === 'active')
   if (!user) throw new AppError('FORBIDDEN', 'Usuário não autorizado')
   return user
+}
+
+function authenticatedUser() {
+  const id = getMockAuthenticatedUserId()
+  if (!id) throw new AppError('UNAUTHENTICATED', 'Usuário não autenticado')
+  return ensureActiveUser(id)
 }
 
 function ensureAssignedEmployee(occurrence: Occurrence, userId: string) {
@@ -54,14 +61,16 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
   },
   async create(input) {
     await simulateRequest()
+    const resident = authenticatedUser()
     const now = new Date().toISOString()
-    const occurrence: Occurrence = { ...input, id: crypto.randomUUID(), status: 'open', createdAt: now, updatedAt: now }
+    const occurrence: Occurrence = { ...input, residentId: resident.id, unitId: resident.unitId, id: crypto.randomUUID(), status: 'open', createdAt: now, updatedAt: now }
     mockOccurrences.push(occurrence)
-    record(occurrence, 'created', input.residentId)
+    record(occurrence, 'created', resident.id)
     return response(occurrence)
   },
-  async assign(id, employeeId, userId) {
+  async assign(id, employeeId) {
     await simulateRequest()
+    const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
     if (ensureActiveUser(userId).role !== 'admin') throw new AppError('FORBIDDEN', 'Somente a administração pode atribuir ocorrências')
     const employee = ensureActiveUser(employeeId)
@@ -71,8 +80,9 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     recordAudit({ userId, action: 'occurrence.assigned', entity: 'occurrence', entityId: id, metadata: { employeeId } })
     return result
   },
-  async updateStatus(id, status, userId) {
+  async updateStatus(id, status) {
     await simulateRequest()
+    const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
     const actor = ensureActiveUser(userId)
     if (actor.role === 'employee') {
@@ -84,8 +94,9 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     recordAudit({ userId, action: 'occurrence.status_updated', entity: 'occurrence', entityId: id, metadata: { from: previousStatus, to: status } })
     return result
   },
-  async finish(id, userId, message) {
+  async finish(id, message) {
     await simulateRequest()
+    const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
     ensureAssignedEmployee(occurrence, userId)
     if (occurrence.status !== 'in_progress') throw new AppError('INVALID_STATUS_TRANSITION', 'Somente atendimentos em andamento podem ser finalizados')

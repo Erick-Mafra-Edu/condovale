@@ -9,7 +9,7 @@ export function createApiRequest() {
   const { public: config } = useRuntimeConfig()
   return async <T>(path: string, options?: Parameters<typeof $fetch>[1]): Promise<ApiResponse<T>> => {
     try {
-      return await $fetch<ApiResponse<T>>(path, { baseURL: config.apiBase, ...options })
+      return await $fetch<ApiResponse<T>>(path, { baseURL: config.apiBase, credentials: 'include', ...options })
     } catch (cause) {
       if (cause instanceof AppError) throw cause
       const error = isRecord(cause) ? cause : {}

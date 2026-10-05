@@ -147,7 +147,7 @@ async function submitOccurrence() {
   if (!resident.value || !occurrenceTitle.value.trim() || !occurrenceDescription.value.trim()) return
   submittingOccurrence.value = true
   try {
-    await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), category: occurrenceCategory.value, residentId: resident.value.id, unitId: resident.value.unitId })
+    await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), category: occurrenceCategory.value })
     occurrenceTitle.value = ''
     occurrenceDescription.value = ''
     showOccurrence.value = false
@@ -158,7 +158,7 @@ async function reviewReservation(status: 'approved' | 'rejected') {
   if (!selectedReservation.value || !hasAccess('approve-or-reject-reservation')) return
   reviewingReservation.value = true
   try {
-    await updateReservationStatus(selectedReservation.value.id, status, authUser.value!.id)
+    await updateReservationStatus(selectedReservation.value.id, status)
     detailTarget.value = null
   } finally { reviewingReservation.value = false }
 }
@@ -167,7 +167,7 @@ async function startOccurrence() {
   if (!selectedOccurrence.value || !authUser.value || !hasAccess('update-occurrence-progress')) return
   updatingOccurrence.value = true
   try {
-    await updateOccurrenceStatus(selectedOccurrence.value.id, 'in_progress', authUser.value.id)
+    await updateOccurrenceStatus(selectedOccurrence.value.id, 'in_progress')
     await loadHistory(selectedOccurrence.value.id)
   } finally { updatingOccurrence.value = false }
 }
@@ -176,7 +176,7 @@ async function completeOccurrence() {
   if (!selectedOccurrence.value || !authUser.value || !hasAccess('finish-occurrence')) return
   updatingOccurrence.value = true
   try {
-    await finishOccurrence(selectedOccurrence.value.id, authUser.value.id, occurrenceNote.value.trim() || undefined)
+    await finishOccurrence(selectedOccurrence.value.id, occurrenceNote.value.trim() || undefined)
     occurrenceNote.value = ''
     await loadHistory(selectedOccurrence.value.id)
   } finally { updatingOccurrence.value = false }
