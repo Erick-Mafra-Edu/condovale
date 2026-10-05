@@ -121,6 +121,10 @@ Route::middleware(['auth', 'user.active', 'use.case:link-residents-to-units'])->
     Route::delete('unit-occupancies/{id}', [UnitOccupancyController::class, 'destroy']);
 });
 
+Route::middleware(['auth', 'user.active', 'use.case:update-own-profile'])->group(function () {
+    Route::match(['put', 'patch'], 'users/me', [UserController::class, 'updateOwnProfile']);
+});
+
 Route::middleware(['auth', 'user.active', 'use.case:manage-users'])->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{id}', [UserController::class, 'show']);

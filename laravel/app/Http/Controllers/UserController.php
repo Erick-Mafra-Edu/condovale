@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserStatus;
+use App\Http\Actions\UpdateOwnProfileAction;
 use App\Http\Actions\CreateUserAction;
+use App\Http\Requests\UserProfileUpdateRequest;
 use App\Http\Requests\UserStoreRequest;
 use App\Http\Requests\UserUpdateRequest;
+use App\Http\Utils\AuthUtil;
 use App\Http\Utils\SanitizeUtil;
 use App\Models\User;
 use App\Services\MessageService;
@@ -13,6 +16,18 @@ use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
+    public function updateOwnProfile(UserProfileUpdateRequest $request)
+    {
+        try {
+            return DB::transaction(fn () => MessageService::success(
+                'Cadastro atualizado.',
+                UpdateOwnProfileAction::execute(AuthUtil::user(), $request->validated())
+            ));
+        } catch (\Throwable $th) {
+            return MessageService::throwable($th);
+        }
+    }
+
     public function index()
     {
         $users = User::query()->orderBy('name')->get();
