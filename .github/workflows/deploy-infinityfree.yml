@@ -41,6 +41,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
+          npx nuxt prepare
           npm test
           npm run typecheck
           NUXT_PUBLIC_API_BASE=/api NUXT_PUBLIC_DATA_SOURCE=api ./node_modules/.bin/nuxt generate
