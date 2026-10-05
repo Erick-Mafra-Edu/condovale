@@ -6,11 +6,13 @@ name: Deploy da API para o InfinityFree
 # sync é incremental (o action guarda o estado em .ftp-deploy-sync-state.json
 # no servidor e envia só o que mudou) e a concorrência é serializada.
 
-# Sem gatilho por push, de propósito: um commit de quem não conhece a
-# configuração do host publicaria direto em produção. A publicação do dia a dia
-# é feita por tools/deploy-infinityfree.py; este workflow fica como caminho
-# alternativo, sempre acionado à mão em Actions -> Run workflow.
+# Cada commit na main publica automaticamente em produção. A execução manual
+# permanece disponível para reprocessar um deploy ou recriar o banco com
+# confirmação explícita em Actions -> Run workflow.
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       recreate_database:
