@@ -67,9 +67,21 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      # Sem um .env o dotenv reclama em toda requisição e a aplicação fica sem
+      # APP_KEY — obrigatória desde a remoção do valor padrão em
+      # config/app.php. Os testes tiram a chave do phpunit.xml, mas o que roda
+      # fora deles, como o package:discover do composer, não.
+      - name: Preparar o ambiente
+        working-directory: laravel
+        run: cp .env.example .env
+
       - name: Instalar dependências PHP
         working-directory: laravel
         run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Gerar a chave da aplicação
+        working-directory: laravel
+        run: php artisan key:generate
 
       - name: Rodar testes Laravel
         working-directory: laravel
