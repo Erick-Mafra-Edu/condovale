@@ -416,4 +416,17 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 .users-toolbar{display:flex;align-items:center;gap:12px;padding:8px 0 16px;border-bottom:1px solid var(--line)}.users-search{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--bg);color:var(--navy);font-size:11px}.users-filters{border:0;padding:0}.user-row{gap:12px}.user-row>span:nth-child(2){flex:1;min-width:0}.user-avatar{flex:none;width:36px;height:36px;font-size:10px}.user-row em{font-size:9px;font-style:normal;border-radius:12px;padding:5px 8px;white-space:nowrap}.user-row .outline-button{padding:7px 10px;white-space:nowrap}.form-error{color:#b4232c!important;font-size:11px!important;margin:12px 0 0!important}
 @media(max-width:900px){.users-toolbar{display:block}.users-filters{margin-top:10px}.user-row{align-items:flex-start;flex-wrap:wrap}.user-row>span:nth-child(2){min-width:calc(100% - 52px)}.user-row em{margin-left:48px}.user-row .outline-button{margin-left:0}.users-admin-panel{padding:8px 12px}}
 .notifications-popover{max-height:min(480px,calc(100vh - 100px));display:flex;flex-direction:column;overflow:hidden}.popover-head{flex:none}.notifications-list{min-height:0;overflow-y:auto;overscroll-behavior:contain}@media(max-width:900px){.notifications-popover{max-height:calc(100vh - 88px)}}
+/* Accessibility: dashboard action/status text meets WCAG AA in both themes. */
+.primary-button{background:#007a89}
+.panel-head button,.stat-card small{color:#006a78}
+.stat-head i.red,.stat-card small.red,.red{color:#b4232c}
+.stat-head i.blue,.stat-card small.blue,.blue{color:#1d5fa7}
+.stat-head i.orange,.stat-card small.orange{color:#9a5b00}
+@media(prefers-color-scheme:dark){
+  .primary-button{background:#007a89}
+  .panel-head button,.stat-card small{color:#56d8df}
+  .stat-head i.red,.stat-card small.red,.red{color:#ffabb2}
+  .stat-head i.blue,.stat-card small.blue,.blue{color:#93caff}
+  .stat-head i.orange,.stat-card small.orange{color:#ffd879}
+}
 </style>
