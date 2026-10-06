@@ -67,11 +67,35 @@ async function cancel(reservation: Reservation) { cancellingId.value = reservati
 
 const parseMinutes = (value: string) => { const [hour = 0, minute = 0] = value.split(':').map(Number); return hour * 60 + minute }
 const slots = computed(() => { const area = selectedArea.value; if (!area?.openingTime || !area.closingTime) return []; const result: string[] = []; for (let start = parseMinutes(area.openingTime); start < parseMinutes(area.closingTime); start += 30) { const end = Math.min(start + 30, parseMinutes(area.closingTime)); result.push(`${String(Math.floor(start / 60)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')} – ${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`) } return result })
-const reservationForDate = (date: string) => occupancy.value.filter(item => item.date === date)
-const isSlotOccupied = (slot: string, date = selectedDate.value) => { const [fromText = '00:00', toText = '00:00'] = slot.split(' – '); const from = parseMinutes(fromText); const to = parseMinutes(toText); return reservationForDate(date).some(item => parseMinutes(item.startTime ?? '00:00') < to && parseMinutes(item.endTime ?? '23:59') > from) }
-const dateStatus = (date: string) => { if (date < todayKey || !selectedArea.value || selectedArea.value.status === 'unavailable' || !slots.value.length) return 'unavailable'; const occupied = slots.value.filter(slot => isSlotOccupied(slot, date)).length; return occupied === 0 ? 'available' : occupied >= slots.value.length ? 'occupied' : 'partial' }
+const reservationsByDate = computed(() => {
+  const result = new Map<string, ReservationOccupancy[]>()
+  for (const item of occupancy.value) {
+    const reservations = result.get(item.date)
+    if (reservations) reservations.push(item)
+    else result.set(item.date, [item])
+  }
+  return result
+})
+const occupiedSlotsByDate = computed(() => {
+  const result = new Map<string, Set<string>>()
+  for (const [date, reservations] of reservationsByDate.value) {
+    const occupied = new Set<string>()
+    for (const slot of slots.value) {
+      const [fromText = '00:00', toText = '00:00'] = slot.split(' – ')
+      const from = parseMinutes(fromText)
+      const to = parseMinutes(toText)
+      if (reservations.some(item => parseMinutes(item.startTime ?? '00:00') < to && parseMinutes(item.endTime ?? '23:59') > from)) occupied.add(slot)
+    }
+    result.set(date, occupied)
+  }
+  return result
+})
+const reservationForDate = (date: string) => reservationsByDate.value.get(date) ?? []
+const isSlotOccupied = (slot: string, date = selectedDate.value) => occupiedSlotsByDate.value.get(date)?.has(slot) ?? false
+const dateStatus = (date: string) => { if (date < todayKey || !selectedArea.value || selectedArea.value.status === 'unavailable' || !slots.value.length) return 'unavailable'; const occupied = occupiedSlotsByDate.value.get(date)?.size ?? 0; return occupied === 0 ? 'available' : occupied >= slots.value.length ? 'occupied' : 'partial' }
 const calendarDays = computed(() => { const year = visibleMonth.value.getFullYear(); const month = visibleMonth.value.getMonth(); const offset = (new Date(year, month, 1).getDay() + 6) % 7; return Array.from({ length: 42 }, (_, index) => { const date = new Date(year, month, 1 - offset + index); return { date, key: dateKey(date), current: date.getMonth() === month } }) })
-const dayStatus = (day: { key: string; current: boolean }) => day.current ? dateStatus(day.key) : 'unavailable'
+const calendarStatusByDate = computed(() => new Map(calendarDays.value.map(day => [day.key, day.current ? dateStatus(day.key) : 'unavailable'])))
+const dayStatus = (day: { key: string; current: boolean }) => calendarStatusByDate.value.get(day.key) ?? 'unavailable'
 const canSelectDay = (day: { key: string; current: boolean }) => day.current && dayStatus(day) !== 'unavailable'
 const selectedStatus = computed(() => dateStatus(selectedDate.value))
 const occupiedSlots = computed(() => slots.value.filter(slot => isSlotOccupied(slot)))
