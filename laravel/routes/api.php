@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UnitOccupancyController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionController;
@@ -170,6 +171,26 @@ Route::middleware(['auth', 'user.active', 'password.change', 'use.case:manage-re
     Route::get('users/{id}/permissions', [UserPermissionController::class, 'index']);
     Route::post('users/{id}/permissions', [UserPermissionController::class, 'store']);
     Route::delete('users/{id}/permissions/{permission}', [UserPermissionController::class, 'destroy']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Unidades — RN03
+|--------------------------------------------------------------------------
+|
+| Alterações estruturais de unidades. O grupo de rota é quem resolve quem
+| chega aqui, pelo caso de uso manage-units.
+|
+| O PATCH edita qualquer dado e a reativação é ele com `status: active`. A
+| inativação tem rota própria porque é a operação que a administração procura
+| pelo nome — e as duas compartilham a mesma regra, na Action.
+*/
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:manage-units'])->group(function () {
+    Route::get('units', [UnitController::class, 'index']);
+    Route::get('units/{id}', [UnitController::class, 'show']);
+    Route::post('units', [UnitController::class, 'store']);
+    Route::patch('units/{id}', [UnitController::class, 'update']);
+    Route::post('units/{id}/deactivate', [UnitController::class, 'deactivate']);
 });
 
 /*

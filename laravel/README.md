@@ -421,6 +421,27 @@ Duas consequências que pegam:
   Silva é o quinto registro de `users.json`. Acrescentar sempre no fim, nunca
   inserir no meio nem reordenar.
 
+### A trava de paridade com o frontend
+
+O `PermissionMatrixTest` compara o enum com uma cópia escrita dentro do próprio
+teste — ou seja, compara o enum consigo mesmo. Ele não enxergou duas
+divergências reais que entraram pelo frontend.
+
+O `FrontendPermissionParityTest` **lê o arquivo do frontend** e compara de
+verdade. Divergência não quebra nada visivelmente: a interface oferece uma ação
+que a API recusa, ou esconde uma que ela aceitaria, e a pessoa vê um 403 sem
+explicação ou um botão que nunca aparece.
+
+Ele carrega uma lista de **divergências conhecidas**, visível no código, para
+poder passar sem deixar de vigiar: qualquer divergência nova quebra a suíte, e
+riscar uma linha da lista é o que fecha a pendência. Hoje há duas, ambas
+dependendo de alteração no `permissions.ts`:
+
+- `manage-users` existe só no frontend. Enquanto não existir aqui, uma rota
+  protegida por ele responderia 403, porque a permissão não está no banco.
+  Falta decidir se é outro nome para `manage-residents` ou um caso de uso novo.
+- `update-own-profile` vale para os quatro perfis aqui, e só para o morador lá.
+
 ### A cadeia da matriz de permissões
 
 A autorização é lida do banco, o banco vem do JSON, o JSON espelha o enum e o
@@ -619,6 +640,37 @@ Em produção o `AppServiceProvider` **recusa subir** se `HASH_DRIVER` não for
 engano não quebra nada visivelmente: a aplicação continua respondendo e passa a
 gravar hash mais fraco, sem ninguém perceber, até alguém auditar o banco. É o
 tipo de requisito que precisa falhar alto, no deploy, e não em silêncio.
+
+## Unidades — RN03
+
+| Rota | Autorização |
+| --- | --- |
+| `GET /api/units` | `manage-units` |
+| `GET /api/units/{id}` | `manage-units` |
+| `POST /api/units` | `manage-units` |
+| `PATCH /api/units/{id}` | `manage-units` |
+| `POST /api/units/{id}/deactivate` | `manage-units` |
+
+A reativação é o `PATCH` com `status: active`. O código é normalizado em
+maiúsculas — sem isso `a-101` e `A-101` virariam duas unidades, e o vínculo do
+morador passaria a depender de como alguém digitou.
+
+**Não se inativa unidade com morador vinculado.** A
+`LinkResidentToUnitAction` recusa vincular a unidade inativa; inativar uma que
+ainda tem ocupação criaria exatamente o estado que o sistema não deixa criar —
+alguém ligado a uma unidade fora de operação, sem como refazer o vínculo. A
+recusa diz quantos moradores são, para a administração medir o trabalho. A
+regra vale no `deactivate` e no `PATCH` igualmente, porque mora na Action.
+
+Inativar **nunca apaga**: reservas, ocorrências e o histórico de ocupação
+continuam apontando para a unidade.
+
+> **Divergência com a RN03.** A nota do diagrama de sequência diz
+> "alterações estruturais de unidades restritas ao **Síndico/Administrador**",
+> mas a matriz de casos de uso dá `manage-units` só ao administrador. As rotas
+> seguem a matriz, que é o que o frontend também usa. Incluir o síndico é uma
+> linha — `UseCase::ManageUnits` no bloco `Syndic` —, mas muda a matriz nos
+> três lugares e exige a mesma alteração no `permissions.ts`.
 
 ## Vínculo entre morador e unidade
 

@@ -1,0 +1,26 @@
+info:
+  name: store
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{API_URL}}/units"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "code": "C-301",
+        "number": "301",
+        "block": "Bloco C"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
