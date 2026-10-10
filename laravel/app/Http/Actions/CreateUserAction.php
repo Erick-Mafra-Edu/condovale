@@ -4,6 +4,7 @@ namespace App\Http\Actions;
 
 use App\Enums\TypeLogEnum;
 use App\Enums\UserStatus;
+use App\Http\Utils\TemporaryPasswordUtil;
 use App\Mail\TemporaryPasswordMail;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -14,24 +15,21 @@ use Illuminate\Support\Str;
  *
  * A conta nasce com uma **senha temporária** e marcada para troca: a pessoa
  * entra com ela uma vez e não alcança nada além da tela de nova senha. Nunca
- * existe senha padrão, e a senha temporária nunca é escolhida por quem cadastra
- * — assim ninguém além do destinatário chega a conhecê-la como definitiva.
+ * existe senha padrão, e a senha nunca é escolhida por quem cadastra.
+ *
+ * A temporária volta na resposta, para quem cadastrou repassá-la à pessoa. É o
+ * canal em uso enquanto não há envio de e-mail configurado — e é por ela ser
+ * ditada que o formato é palavra mais número, e não uma sequência aleatória.
  */
 class CreateUserAction
 {
-    /**
-     * Comprimento da senha temporária. Ela é descartável e trocada no primeiro
-     * acesso, mas precisa resistir a tentativa enquanto o e-mail não chega.
-     */
-    private const TAMANHO_SENHA_TEMPORARIA = 16;
-
     /**
      * @param  array<string, mixed>  $attributes
      * @return array{user: User, temporary_password: string}
      */
     public static function execute(array $attributes): array
     {
-        $temporaria = Str::password(self::TAMANHO_SENHA_TEMPORARIA, symbols: false);
+        $temporaria = TemporaryPasswordUtil::gerar();
 
         $user = User::create([
             'name' => $attributes['name'],

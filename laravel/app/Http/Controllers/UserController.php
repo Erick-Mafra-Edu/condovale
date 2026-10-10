@@ -45,10 +45,10 @@ class UserController extends Controller
     /**
      * A conta nasce com senha temporária marcada para troca.
      *
-     * A senha volta no corpo da resposta enquanto o envio de e-mail não é
-     * entregável neste ambiente — ver a seção do CVE-2026-48019 no README.
-     * Quando houver transporte real, esta chave sai: quem cadastra não precisa
-     * conhecer a senha de ninguém.
+     * A senha volta no corpo da resposta: é por ela que quem cadastrou repassa
+     * o primeiro acesso à pessoa, enquanto não há envio de e-mail configurado.
+     * Não é senha definitiva de ninguém — o `password.change` obriga a troca no
+     * primeiro uso, e a temporária deixa de valer ali.
      */
     public function store(UserStoreRequest $request)
     {

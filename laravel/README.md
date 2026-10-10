@@ -710,10 +710,34 @@ administrador e síndico sem corrigir o próprio nome.
 
 ### Primeiro acesso com senha temporária
 
-A conta cadastrada pela administração nasce com uma senha de 16 caracteres
-gerada na hora, enviada por e-mail, e marcada com `must_change_password`.
-**Quem cadastra nunca escolhe a senha de ninguém**, e nunca existe senha
-padrão.
+A conta cadastrada pela administração nasce com uma senha temporária gerada na
+hora e marcada com `must_change_password`. **Quem cadastra nunca escolhe a
+senha de ninguém**, e nunca existe senha padrão.
+
+**A senha volta no corpo da resposta do cadastro**, para quem cadastrou
+repassá-la à pessoa. É o canal em uso enquanto não há envio de e-mail
+configurado — e é por ela ser **ditada**, e não lida de um e-mail, que o
+formato é palavra conhecida mais três dígitos em oito caracteres: `casco830` se
+diz numa frase e se digita sem erro, enquanto uma sequência aleatória se perde
+na transcrição e volta como "não consigo entrar".
+
+A troca é **menos entropia por mais usabilidade, e é deliberada**. São 133
+palavras de cinco letras sem acento, mais um número de três dígitos: 119.700
+combinações, cerca de 17 bits. O que sustenta a escolha não é a senha, é o que
+a cerca:
+
+- ela só serve uma vez, porque o primeiro acesso obriga a trocá-la;
+- o limitador do login permite 5 tentativas por minuto **por conta**;
+- cada tentativa custa ~376 ms de Argon2id no servidor.
+
+Nessas condições, varrer o espaço inteiro levaria cerca de **17 dias** —
+muito mais que as horas de vida pretendidas para a senha. O
+`TemporaryPasswordTest` cobra um piso para esse espaço, porque encolher a lista
+de palavras enfraqueceria toda senha do sistema sem mudar uma linha de lógica.
+
+**O risco residual** é a conta cadastrada e nunca acessada: a senha fraca fica
+válida indefinidamente. Quando houver envio de e-mail — ou uma rota para a
+administração regerar a temporária —, vale expirar a senha não usada.
 
 Enquanto a marca estiver ligada, a sessão abre mas não alcança mais nada: o
 middleware `password.change` recusa com `403` e o código
