@@ -194,6 +194,32 @@ exclusões: um diretório novo só é publicado se alguém o nomear ali. O inver
 — excluir o que não deve subir — erraria silenciosamente no dia em que
 aparecesse uma pasta nova.
 
+### Conferir produção depois de um merge na main
+
+Há **dois publicadores escrevendo no mesmo servidor** — este script e o
+workflow do GitHub Actions, que dispara a cada push na `main`. Cada um guarda o
+próprio manifesto do que enviou, nenhum sabe o que o outro fez, e outras
+pessoas também podem publicar. Confiar no processo não basta:
+
+```bash
+python tools/verify-production.py
+```
+
+Ele baixa do servidor os arquivos que **derrubam a aplicação inteira quando
+ficam defasados** — `bootstrap/app.php`, `routes/api.php`, `config/` e
+`vendor/composer/` — e compara o md5 com a árvore local; depois chama a
+interface e os endpoints principais, resolvendo o desafio anti-robô do host.
+Sai com código 1 se algo divergir, então serve como passo de pipeline.
+
+Isso já pegou um incidente real: um deploy automático publicou código pela
+metade e produção respondia `Target class [password.change] does not exist`,
+porque o `bootstrap/app.php` não havia chegado.
+
+Quando o `vendor/` local está com as dependências de desenvolvimento, os
+arquivos de `vendor/composer` legitimamente diferem dos do servidor, que recebe
+`--no-dev`. O script detecta isso e os marca como não comparáveis em vez de
+acusar divergência — ferramenta que dá alarme falso para de ser lida.
+
 ### Deploy pelo GitHub Actions (alternativo)
 
 [.github/workflows/deploy-infinityfree.yml](../.github/workflows/deploy-infinityfree.yml)
