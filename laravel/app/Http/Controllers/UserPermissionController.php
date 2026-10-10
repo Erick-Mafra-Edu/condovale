@@ -2,12 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TypeLogEnum;
-use App\Http\Actions\CreateLogAction;
 use App\Http\Actions\GrantPermissionAction;
-use App\Http\Actions\SyncUserRoleAction;
 use App\Http\Requests\UserPermissionStoreRequest;
-use App\Http\Requests\UserRoleUpdateRequest;
 use App\Http\Utils\SanitizeUtil;
 use App\Models\User;
 use App\Services\MessageService;
@@ -92,37 +88,6 @@ class UserPermissionController extends Controller
                 'user_id' => $user->id,
                 'direct' => $user->getDirectPermissions()->pluck('name')->sort()->values(),
             ]);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-
-            return MessageService::throwable($th);
-        }
-    }
-
-    /**
-     * Troca o perfil, que é a concessão em bloco.
-     */
-    public function updateRole(UserRoleUpdateRequest $request, int $id)
-    {
-        $user = $this->findUser($id);
-
-        if (! $user instanceof User) {
-            return $user;
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $anterior = $user->role->value;
-            $user->update(['role' => $request->validated()['role']]);
-            SyncUserRoleAction::execute($user);
-
-            $description = "Perfil do usuário {$user->id} {$user->name} alterado de {$anterior} para {$user->role->value}.";
-            CreateLogAction::execute(TypeLogEnum::USER->value, $description);
-
-            DB::commit();
-
-            return MessageService::success($description, $user->fresh());
         } catch (\Throwable $th) {
             DB::rollBack();
 

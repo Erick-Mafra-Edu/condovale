@@ -37,7 +37,7 @@ class UserPermissionCrudTest extends TestCase
         $perfis = collect($resposta->json('data'))->keyBy('name');
 
         $this->assertCount(4, $perfis);
-        $this->assertCount(11, $perfis['admin']['permissions']);
+        $this->assertCount(12, $perfis['admin']['permissions']);
         $this->assertContains('request-reservation', $perfis['resident']['permissions']);
     }
 
@@ -51,8 +51,8 @@ class UserPermissionCrudTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('data.role', 'syndic')
             ->assertJsonPath('data.direct', ['manage-residents'])
-            ->assertJsonPath('data.from_role', ['generate-reports', 'login', 'publish-notices'])
-            ->assertJsonCount(4, 'data.effective');
+            ->assertJsonPath('data.from_role', ['generate-reports', 'login', 'publish-notices', 'update-own-profile'])
+            ->assertJsonCount(5, 'data.effective');
     }
 
     public function test_concede_um_caso_de_uso_a_uma_pessoa(): void
@@ -153,22 +153,6 @@ class UserPermissionCrudTest extends TestCase
             ->deleteJson("/api/users/{$admin->id}/permissions/manage-residents")
             ->assertStatus(403)
             ->assertJsonPath('message', 'Você não pode retirar de si mesmo a autorização de gerenciar usuários.');
-    }
-
-    public function test_troca_o_perfil_e_substitui_as_autorizacoes(): void
-    {
-        $morador = User::factory()->resident()->create();
-
-        $this->actingAs($this->administrador())
-            ->patchJson("/api/users/{$morador->id}/role", ['role' => UserRole::Employee->value])
-            ->assertStatus(201)
-            ->assertJsonPath('data.role', 'employee');
-
-        $atualizado = $morador->fresh();
-
-        $this->assertSame(['employee'], $atualizado->getRoleNames()->all());
-        $this->assertTrue($atualizado->can('finish-occurrence'));
-        $this->assertFalse($atualizado->can('request-reservation'));
     }
 
     public function test_usuario_inexistente_responde_404(): void

@@ -2,33 +2,54 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\TypeLogEnum;
 use App\Enums\UserStatus;
+use App\Mail\TemporaryPasswordMail;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 /**
- * RF01 — the administration registers users.
+ * RF01 / UC01 — a administração cadastra usuários.
  *
- * Without a password chosen by the administrator the account is created with a
- * random secret: it exists but cannot authenticate until a password is set.
- * There is never a known default password (RNF02).
+ * A conta nasce com uma **senha temporária** e marcada para troca: a pessoa
+ * entra com ela uma vez e não alcança nada além da tela de nova senha. Nunca
+ * existe senha padrão, e a senha temporária nunca é escolhida por quem cadastra
+ * — assim ninguém além do destinatário chega a conhecê-la como definitiva.
  */
 class CreateUserAction
 {
     /**
-     * @param  array<string, mixed>  $attributes
+     * Comprimento da senha temporária. Ela é descartável e trocada no primeiro
+     * acesso, mas precisa resistir a tentativa enquanto o e-mail não chega.
      */
-    public static function execute(array $attributes): User
+    private const TAMANHO_SENHA_TEMPORARIA = 16;
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{user: User, temporary_password: string}
+     */
+    public static function execute(array $attributes): array
     {
+        $temporaria = Str::password(self::TAMANHO_SENHA_TEMPORARIA, symbols: false);
+
         $user = User::create([
             'name' => $attributes['name'],
-            'email' => Str::lower($attributes['email']),
+            'email' => Str::lower(trim($attributes['email'])),
             'role' => $attributes['role'],
             'status' => $attributes['status'] ?? UserStatus::Active->value,
             'unit_id' => $attributes['unit_id'] ?? null,
-            'password' => $attributes['password'] ?? Str::random(40),
+            'password' => $temporaria,
+            'must_change_password' => true,
         ]);
 
-        return SyncUserRoleAction::execute($user);
+        SyncUserRoleAction::execute($user);
+
+        Mail::to($user->email)->send(new TemporaryPasswordMail($user, $temporaria));
+
+        $description = "Usuário {$user->id} {$user->name} cadastrado com perfil {$user->role->value}.";
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, $user);
+
+        return ['user' => $user, 'temporary_password' => $temporaria];
     }
 }

@@ -3,7 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UnitOccupancyController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionController;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
@@ -105,6 +107,48 @@ Route::middleware('user.active')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Cadastro próprio — UC01 / RF01
+|--------------------------------------------------------------------------
+|
+| Aqui cada um mexe apenas em si: o id vem da sessão, nunca da requisição, de
+| modo que não existe como editar o cadastro alheio por esta porta. O caso de
+| uso update-own-profile pertence a todos os perfis.
+|
+| A troca de senha fica **fora** do password.change de propósito: ela é a saída
+| do bloqueio do primeiro acesso. Pôr o middleware nela trancaria a pessoa do
+| lado de fora da única rota capaz de destrancá-la.
+*/
+Route::middleware(['auth', 'user.active', 'use.case:update-own-profile'])->group(function () {
+    Route::patch('users/me/password', [ProfileController::class, 'changePassword']);
+
+    Route::middleware('password.change')->group(function () {
+        Route::get('users/me', [ProfileController::class, 'show']);
+        Route::patch('users/me', [ProfileController::class, 'update']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Gestão de usuários — UC01 / RF01
+|--------------------------------------------------------------------------
+|
+| manage-residents é o caso de uso do UC01 e pertence só ao administrador: o
+| síndico responde por comunicados e relatórios, não pelo cadastro de pessoas.
+|
+| O PATCH edita qualquer dado, inclusive perfil e situação — a reativação é ele
+| com `status: active`. Não há rota dedicada para trocar perfil: duas portas
+| para a mesma mudança significam duas regras para manter em acordo.
+*/
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:manage-residents'])->group(function () {
+    Route::get('users', [UserController::class, 'index']);
+    Route::get('users/{id}', [UserController::class, 'show']);
+    Route::post('users', [UserController::class, 'store']);
+    Route::patch('users/{id}', [UserController::class, 'update']);
+    Route::post('users/{id}/deactivate', [UserController::class, 'deactivate']);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Perfis e permissões — UC01 / RF01
 |--------------------------------------------------------------------------
 |
@@ -115,14 +159,13 @@ Route::middleware('user.active')->group(function () {
 | manage-residents é o caso de uso do UC01 na matriz, e só o administrador o
 | possui — é o grupo de rota que resolve isso, não os controllers.
 */
-Route::middleware(['auth', 'user.active', 'use.case:manage-residents'])->group(function () {
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:manage-residents'])->group(function () {
     Route::get('permissions', [PermissionController::class, 'index']);
     Route::get('roles', [PermissionController::class, 'roles']);
 
     Route::get('users/{id}/permissions', [UserPermissionController::class, 'index']);
     Route::post('users/{id}/permissions', [UserPermissionController::class, 'store']);
     Route::delete('users/{id}/permissions/{permission}', [UserPermissionController::class, 'destroy']);
-    Route::patch('users/{id}/role', [UserPermissionController::class, 'updateRole']);
 });
 
 /*
@@ -137,7 +180,7 @@ Route::middleware(['auth', 'user.active', 'use.case:manage-residents'])->group(f
 | o grupo de rota que resolve a autorização — nenhum controller verifica
 | permissão.
 */
-Route::middleware(['auth', 'user.active', 'use.case:link-residents-to-units'])->group(function () {
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:link-residents-to-units'])->group(function () {
     Route::get('unit-occupancies', [UnitOccupancyController::class, 'index']);
     Route::get('unit-occupancies/{id}', [UnitOccupancyController::class, 'show']);
     Route::post('unit-occupancies', [UnitOccupancyController::class, 'store']);
@@ -155,6 +198,6 @@ Route::middleware(['auth', 'user.active', 'use.case:link-residents-to-units'])->
 |
 | As rotas de cada módulo entram aqui com a task correspondente.
 */
-Route::middleware(['auth', 'user.active', 'unit.linked'])->group(function () {
+Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->group(function () {
     //
 });

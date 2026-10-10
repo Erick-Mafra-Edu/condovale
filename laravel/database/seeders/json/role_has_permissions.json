@@ -106,5 +106,17 @@
     {
         "role": "admin",
         "permission": "view-audit-reports"
+    },
+    {
+        "role": "employee",
+        "permission": "update-own-profile"
+    },
+    {
+        "role": "syndic",
+        "permission": "update-own-profile"
+    },
+    {
+        "role": "admin",
+        "permission": "update-own-profile"
     }
 ]

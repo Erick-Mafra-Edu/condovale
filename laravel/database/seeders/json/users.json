@@ -6,7 +6,8 @@
         "role": "admin",
         "status": "active",
         "unit_id": null,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     },
     {
         "name": "Carlos Síndico",
@@ -15,7 +16,8 @@
         "role": "syndic",
         "status": "active",
         "unit_id": null,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     },
     {
         "name": "João Portaria",
@@ -24,7 +26,8 @@
         "role": "employee",
         "status": "active",
         "unit_id": null,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     },
     {
         "name": "Pedro Manutenção",
@@ -33,7 +36,8 @@
         "role": "employee",
         "status": "active",
         "unit_id": null,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     },
     {
         "name": "Ana Silva",
@@ -42,7 +46,8 @@
         "role": "resident",
         "status": "active",
         "unit_id": 1,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     },
     {
         "name": "Bruno Oliveira",
@@ -51,7 +56,8 @@
         "role": "resident",
         "status": "active",
         "unit_id": 2,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     },
     {
         "name": "Carla Souza",
@@ -60,6 +66,7 @@
         "role": "resident",
         "status": "active",
         "unit_id": 7,
-        "avatar_url": null
+        "avatar_url": null,
+        "must_change_password": false
     }
 ]

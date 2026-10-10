@@ -38,20 +38,22 @@ class PasswordHashingTest extends TestCase
         $this->assertStringStartsWith('$argon2id$', $gravado);
     }
 
-    public function test_o_cadastro_pela_action_tambem_grava_argon2id(): void
+    public function test_o_cadastro_pela_administracao_grava_a_temporaria_em_argon2id(): void
     {
-        $user = CreateUserAction::execute([
+        $resultado = CreateUserAction::execute([
             'name' => 'Ana Silva',
             'email' => 'ana@condovale.test',
             'role' => UserRole::Resident->value,
-            'password' => self::SENHA,
         ]);
 
-        $this->assertStringStartsWith('$argon2id$', $user->password);
+        $this->assertStringStartsWith('$argon2id$', $resultado['user']->password);
+        $this->assertTrue(Hash::check($resultado['temporary_password'], $resultado['user']->password));
     }
 
-    public function test_conta_criada_sem_senha_recebe_segredo_aleatorio_e_nao_padrao(): void
+    public function test_cada_conta_nasce_com_uma_temporaria_diferente(): void
     {
+        // A senha nunca é escolhida por quem cadastra e nunca se repete: uma
+        // senha padrão transformaria o cadastro em porta aberta.
         $primeiro = CreateUserAction::execute([
             'name' => 'Sem Senha Um',
             'email' => 'um@condovale.test',
@@ -64,8 +66,9 @@ class PasswordHashingTest extends TestCase
             'role' => UserRole::Resident->value,
         ]);
 
-        $this->assertStringStartsWith('$argon2id$', $primeiro->password);
-        $this->assertNotSame($primeiro->password, $segundo->password);
+        $this->assertNotSame($primeiro['temporary_password'], $segundo['temporary_password']);
+        $this->assertNotSame($primeiro['user']->password, $segundo['user']->password);
+        $this->assertTrue($primeiro['user']->must_change_password);
     }
 
     public function test_o_hash_usa_os_parametros_configurados(): void

@@ -16,13 +16,23 @@ class MessageService
      * que é onde este projeto está; a `error` continua para não quebrar quem
      * já a lia.
      */
-    public static function error(string $message, int $status = 400): JsonResponse
+    public static function error(string $message, int $status = 400, ?string $code = null): JsonResponse
     {
-        return response()->json([
+        $infos = [
             'status' => false,
             'message' => $message,
             'error' => $message,
-        ], $status);
+        ];
+
+        // O `code` é opcional e serve para a recusa que o cliente precisa
+        // tratar de forma própria, e não só exibir — por exemplo levar à tela
+        // de nova senha em vez de mostrar "sem permissão". O frontend já lê
+        // essa chave quando ela é texto.
+        if ($code !== null) {
+            $infos['code'] = $code;
+        }
+
+        return response()->json($infos, $status);
     }
 
     /**

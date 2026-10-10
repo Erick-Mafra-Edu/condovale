@@ -29,6 +29,7 @@ class User extends Authenticatable
         'status',
         'unit_id',
         'avatar_url',
+        'must_change_password',
     ];
 
     /**
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => UserStatus::class,
+            'must_change_password' => 'boolean',
         ];
     }
 
