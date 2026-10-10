@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Actions\CheckHashingSupportAction;
+use App\Http\Actions\CheckOutboundMailAction;
 use App\Http\Actions\RunFreshMigrationAction;
 use App\Http\Requests\DeployMigrateRequest;
 use App\Services\MessageService;
@@ -30,6 +31,18 @@ class DeployController extends Controller
     public function hashing()
     {
         return MessageService::success('Diagnóstico de hashing.', CheckHashingSupportAction::execute());
+    }
+
+    /**
+     * Reports whether the host can send mail at all, and through which port.
+     *
+     * A hospedagem restringe a função mail() e bloqueia boa parte das portas de
+     * saída. Saber quais estão abertas decide se o envio da senha temporária
+     * tem como existir — e isso só se descobre de dentro do servidor.
+     */
+    public function mail()
+    {
+        return MessageService::success('Diagnóstico de envio de e-mail.', CheckOutboundMailAction::execute());
     }
 
     public function migrate(DeployMigrateRequest $request)

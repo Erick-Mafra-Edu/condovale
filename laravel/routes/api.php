@@ -81,6 +81,10 @@ Route::get('deploy/hashing', [DeployController::class, 'hashing'])
     ->withoutMiddleware([StartSession::class])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
+Route::get('deploy/mail', [DeployController::class, 'mail'])
+    ->withoutMiddleware([StartSession::class])
+    ->middleware(['throttle:deploy', 'deploy.token']);
+
 /*
 |--------------------------------------------------------------------------
 | Autenticação — UC02 / RF02
