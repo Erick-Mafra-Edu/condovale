@@ -26,17 +26,20 @@ enum UserRole: string
             ],
             self::Employee => [
                 UseCase::Login,
+                UseCase::UpdateOwnProfile,
                 UseCase::ViewAssignedOccurrences,
                 UseCase::UpdateOccurrenceProgress,
                 UseCase::FinishOccurrence,
             ],
             self::Syndic => [
                 UseCase::Login,
+                UseCase::UpdateOwnProfile,
                 UseCase::PublishNotices,
                 UseCase::GenerateReports,
             ],
             self::Admin => [
                 UseCase::Login,
+                UseCase::UpdateOwnProfile,
                 UseCase::ManageUnits,
                 UseCase::ManageResidents,
                 UseCase::LinkResidentsToUnits,

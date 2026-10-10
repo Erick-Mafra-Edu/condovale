@@ -4,6 +4,7 @@ use App\Http\Middleware\CheckUseCase;
 use App\Http\Middleware\EnsureDeployToken;
 use App\Http\Middleware\EnsureUserBelongsToUnit;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\ForcePasswordChange;
 use App\Services\MessageService;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.active' => EnsureUserIsActive::class,
             'use.case' => CheckUseCase::class,
             'unit.linked' => EnsureUserBelongsToUnit::class,
+            'password.change' => ForcePasswordChange::class,
             'deploy.token' => EnsureDeployToken::class,
         ]);
     })

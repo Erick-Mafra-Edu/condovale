@@ -19,7 +19,6 @@ class UserStoreRequest extends FormRequest
             'role' => 'required|string|in:resident,employee,syndic,admin',
             'status' => 'sometimes|string|in:active,inactive',
             'unit_id' => 'nullable|integer|exists:units,id',
-            'password' => 'nullable|string|min:8',
         ];
     }
 
@@ -32,7 +31,6 @@ class UserStoreRequest extends FormRequest
             'role.required' => 'Informe o perfil do usuário.',
             'role.in' => 'Perfil inválido. Use morador, funcionário, síndico ou administrador.',
             'unit_id.exists' => 'A unidade informada não existe.',
-            'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
         ];
     }
 }

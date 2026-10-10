@@ -680,6 +680,95 @@ reintroduzir um padrão no `config/app.php` ou deixar uma chave no
 
 Ambiente novo precisa da sua própria: `php artisan key:generate`.
 
+## Gestão de usuários — UC01 / RF01
+
+| Rota | Autorização |
+| --- | --- |
+| `GET /api/users` | `manage-residents` |
+| `GET /api/users/{id}` | `manage-residents` |
+| `POST /api/users` | `manage-residents` |
+| `PATCH /api/users/{id}` | `manage-residents` |
+| `POST /api/users/{id}/deactivate` | `manage-residents` |
+| `GET /api/users/me` | `update-own-profile` |
+| `PATCH /api/users/me` | `update-own-profile` |
+| `PATCH /api/users/me/password` | `update-own-profile` |
+
+`manage-residents` pertence **só ao administrador**. O síndico responde por
+comunicados e relatórios, não pelo cadastro de pessoas — e o sistema é de um
+condomínio só, então não há escopo por condomínio a aplicar.
+
+**Uma porta por mudança.** O `PATCH /api/users/{id}` edita qualquer dado,
+inclusive perfil e situação: a reativação é ele com `status: active`. A rota
+dedicada `PATCH /users/{id}/role`, que existia do card de permissões, foi
+removida — duas portas para a mesma mudança são duas regras para manter em
+acordo, e a que ficasse esquecida viraria a brecha.
+
+**`/users/me` é outra coisa.** O id vem da sessão, nunca da requisição, então
+não existe como alcançar o cadastro alheio por essa porta. Os quatro perfis
+têm `update-own-profile` — antes só o morador tinha, o que deixava
+administrador e síndico sem corrigir o próprio nome.
+
+### Primeiro acesso com senha temporária
+
+A conta cadastrada pela administração nasce com uma senha temporária gerada na
+hora e marcada com `must_change_password`. **Quem cadastra nunca escolhe a
+senha de ninguém**, e nunca existe senha padrão.
+
+**A senha volta no corpo da resposta do cadastro**, para quem cadastrou
+repassá-la à pessoa. É o canal em uso enquanto não há envio de e-mail
+configurado — e é por ela ser **ditada**, e não lida de um e-mail, que o
+formato é palavra conhecida mais três dígitos em oito caracteres: `casco830` se
+diz numa frase e se digita sem erro, enquanto uma sequência aleatória se perde
+na transcrição e volta como "não consigo entrar".
+
+A troca é **menos entropia por mais usabilidade, e é deliberada**. São 133
+palavras de cinco letras sem acento, mais um número de três dígitos: 119.700
+combinações, cerca de 17 bits. O que sustenta a escolha não é a senha, é o que
+a cerca:
+
+- ela só serve uma vez, porque o primeiro acesso obriga a trocá-la;
+- o limitador do login permite 5 tentativas por minuto **por conta**;
+- cada tentativa custa ~376 ms de Argon2id no servidor.
+
+Nessas condições, varrer o espaço inteiro levaria cerca de **17 dias** —
+muito mais que as horas de vida pretendidas para a senha. O
+`TemporaryPasswordTest` cobra um piso para esse espaço, porque encolher a lista
+de palavras enfraqueceria toda senha do sistema sem mudar uma linha de lógica.
+
+**O risco residual** é a conta cadastrada e nunca acessada: a senha fraca fica
+válida indefinidamente. Quando houver envio de e-mail — ou uma rota para a
+administração regerar a temporária —, vale expirar a senha não usada.
+
+Enquanto a marca estiver ligada, a sessão abre mas não alcança mais nada: o
+middleware `password.change` recusa com `403` e o código
+`PASSWORD_CHANGE_REQUIRED`, para o cliente levar à tela certa em vez de exibir
+um "sem permissão" que não explica nada.
+
+Duas rotas ficam **fora** desse bloqueio, cada uma por um motivo:
+
+- `PATCH /users/me/password` é a saída dele. Pôr o middleware ali trancaria a
+  pessoa do lado de fora da única porta capaz de destrancá-la.
+- `GET /auth/session` é como o cliente descobre quem está autenticado.
+  Bloqueá-la deixaria a interface sem saber sequer que precisa pedir a troca.
+  O `must_change_password` vai no payload do usuário justamente para isso.
+
+A troca exige a senha atual — sem isso, uma sessão sequestrada viraria posse
+permanente da conta — e regenera a sessão, porque a credencial mudou.
+
+### As travas da inativação
+
+Inativar **nunca apaga**: `status = inactive`, e as reservas, ocorrências e
+linhas de auditoria continuam apontando para a pessoa. O efeito é imediato para
+quem já está dentro, pelo `user.active`.
+
+Duas recusas impedem o sistema de ficar sem administração, e valem tanto no
+`deactivate` quanto no `PATCH` com `status: inactive`:
+
+- **ninguém se inativa** — quem o faz não volta pela interface;
+- **não se inativa o último administrador ativo** — sem ele não sobra quem
+  cadastre, edite ou reative ninguém, e o sistema só voltaria por acesso direto
+  ao banco.
+
 ## Perfis e permissões — UC01 / RF01
 
 A autorização é do **spatie/laravel-permission**: papéis e permissões em

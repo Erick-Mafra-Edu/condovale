@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
                 'status' => $item->status,
                 'unit_id' => $item->unit_id,
                 'avatar_url' => $item->avatar_url,
+                'must_change_password' => $item->must_change_password,
             ];
 
             User::create($array);

@@ -33,6 +33,7 @@ class PermissionMatrixTest extends TestCase
     {
         $this->assertUseCases(UserRole::Employee, [
             'login',
+            'update-own-profile',
             'view-assigned-occurrences',
             'update-occurrence-progress',
             'finish-occurrence',
@@ -43,6 +44,7 @@ class PermissionMatrixTest extends TestCase
     {
         $this->assertUseCases(UserRole::Syndic, [
             'login',
+            'update-own-profile',
             'publish-notices',
             'generate-reports',
         ]);
@@ -52,6 +54,7 @@ class PermissionMatrixTest extends TestCase
     {
         $this->assertUseCases(UserRole::Admin, [
             'login',
+            'update-own-profile',
             'manage-units',
             'manage-residents',
             'link-residents-to-units',

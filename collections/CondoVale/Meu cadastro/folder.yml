@@ -1,0 +1,7 @@
+info:
+  name: Meu cadastro
+  type: folder
+  seq: 3
+
+request:
+  auth: inherit
