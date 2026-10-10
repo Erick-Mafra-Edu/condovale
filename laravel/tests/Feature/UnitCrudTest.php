@@ -234,11 +234,27 @@ class UnitCrudTest extends TestCase
             ->assertJsonPath('data.status', 'active');
     }
 
-    public function test_rn03_somente_quem_tem_manage_units_altera(): void
+    public function test_rn03_o_sindico_tambem_altera_unidades(): void
+    {
+        // "Alterações estruturais de unidades restritas ao
+        // Síndico/Administrador": é o único caso de uso administrativo que o
+        // síndico divide. O cadastro de pessoas continua só do administrador.
+        $unidade = $this->unidade();
+
+        $this->actingAs(User::factory()->syndic()->create())
+            ->getJson('/api/units')
+            ->assertStatus(201);
+
+        $this->actingAs(User::factory()->syndic()->create())
+            ->postJson("/api/units/{$unidade->id}/deactivate")
+            ->assertStatus(201);
+    }
+
+    public function test_morador_e_funcionario_nao_alteram_unidades(): void
     {
         $unidade = $this->unidade();
 
-        foreach ([UserRole::Resident, UserRole::Employee, UserRole::Syndic] as $papel) {
+        foreach ([UserRole::Resident, UserRole::Employee] as $papel) {
             $usuario = User::factory()->create(['role' => $papel]);
 
             $this->actingAs($usuario)->getJson('/api/units')->assertStatus(403);

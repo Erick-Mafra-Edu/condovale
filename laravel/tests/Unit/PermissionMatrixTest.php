@@ -45,6 +45,7 @@ class PermissionMatrixTest extends TestCase
         $this->assertUseCases(UserRole::Syndic, [
             'login',
             'update-own-profile',
+            'manage-units',
             'publish-notices',
             'generate-reports',
         ]);
@@ -79,15 +80,27 @@ class PermissionMatrixTest extends TestCase
         }
     }
 
-    public function test_nenhum_papel_alem_do_administrador_gerencia_cadastros(): void
+    public function test_o_cadastro_de_pessoas_e_so_do_administrador(): void
     {
-        foreach ([UseCase::ManageResidents, UseCase::ManageUnits, UseCase::AssignOccurrence] as $useCase) {
+        foreach ([UseCase::ManageResidents, UseCase::AssignOccurrence] as $useCase) {
             foreach ([UserRole::Resident, UserRole::Employee, UserRole::Syndic] as $role) {
                 $this->assertFalse($role->can($useCase), "Papel {$role->value} não deveria ter {$useCase->value}");
             }
 
             $this->assertTrue(UserRole::Admin->can($useCase));
         }
+    }
+
+    public function test_rn03_as_unidades_sao_do_sindico_e_do_administrador(): void
+    {
+        // A nota do diagrama de sequência: "alterações estruturais de unidades
+        // restritas ao Síndico/Administrador". É o único caso de uso
+        // administrativo que o síndico divide — o cadastro de pessoas não.
+        $this->assertTrue(UserRole::Syndic->can(UseCase::ManageUnits));
+        $this->assertTrue(UserRole::Admin->can(UseCase::ManageUnits));
+
+        $this->assertFalse(UserRole::Resident->can(UseCase::ManageUnits));
+        $this->assertFalse(UserRole::Employee->can(UseCase::ManageUnits));
     }
 
     /**
