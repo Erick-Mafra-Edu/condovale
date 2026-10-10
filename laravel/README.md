@@ -206,8 +206,9 @@ python tools/verify-production.py
 ```
 
 Ele baixa do servidor os arquivos que **derrubam a aplicação inteira quando
-ficam defasados** — `bootstrap/app.php`, `routes/api.php`, `config/` e
-`vendor/composer/` — e compara o md5 com a árvore local; depois chama a
+ficam defasados** — `bootstrap/app.php`, `routes/api.php`, `config/`,
+`vendor/autoload.php` e `vendor/composer/` — e compara o md5 com a árvore
+local; depois chama a
 interface e os endpoints principais, resolvendo o desafio anti-robô do host.
 Sai com código 1 se algo divergir, então serve como passo de pipeline.
 
@@ -216,9 +217,24 @@ metade e produção respondia `Target class [password.change] does not exist`,
 porque o `bootstrap/app.php` não havia chegado.
 
 Quando o `vendor/` local está com as dependências de desenvolvimento, os
-arquivos de `vendor/composer` legitimamente diferem dos do servidor, que recebe
-`--no-dev`. O script detecta isso e os marca como não comparáveis em vez de
-acusar divergência — ferramenta que dá alarme falso para de ser lida.
+arquivos do autoloader legitimamente diferem dos do servidor, que recebe
+`--no-dev`. O script os marca como não comparáveis em vez de acusar divergência
+— ferramenta que dá alarme falso para de ser lida. **Mas esses são justamente
+os que mais derrubam produção**, então, quando a verificação importa de
+verdade, rode-a com o `vendor/` local em `--no-dev`:
+
+```bash
+cd laravel && composer install --no-dev --optimize-autoloader
+python ../tools/verify-production.py
+cd laravel && composer install
+```
+
+Foi essa a lacuna que deixou passar uma queda real: o `vendor/autoload.php` do
+servidor chamava uma classe de inicialização que o `autoload_real.php` de lá já
+não definia. O nome dessa classe muda a cada regeneração do autoloader, e
+desencontrado o PHP morre **antes de qualquer saída** — nem o log nem a página
+de erro chegam a existir. Por isso o `vendor/autoload.php` entrou no reenvio
+obrigatório do publicador, ao lado de `vendor/composer/`.
 
 ### Deploy pelo GitHub Actions (alternativo)
 

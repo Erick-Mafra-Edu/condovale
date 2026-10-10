@@ -430,12 +430,21 @@ def main() -> int:
 
     pending = [rel for rel, digest in sorted(hashes.items()) if previous.get(rel) != digest]
 
-    # vendor/composer/ vai sempre, mesmo quando o hash bate com o manifesto.
-    # São doze arquivos, e são eles que descrevem quais pacotes existem: se o
-    # manifesto local se desencontrar do servidor — o que acontece quando uma
-    # publicação é interrompida —, o script passa a pular justamente o arquivo
-    # que derruba a aplicação inteira quando está errado.
-    always = [rel for rel in sorted(hashes) if rel.startswith("vendor/composer/")]
+    # Vão sempre, mesmo quando o hash bate com o manifesto: são os arquivos que
+    # descrevem o autoloader, e um manifesto desencontrado do servidor — o que
+    # acontece quando uma publicação é interrompida, ou quando outro publicador
+    # escreve no mesmo servidor — faria o script pular justamente o que derruba
+    # a aplicação inteira quando está errado.
+    #
+    # vendor/autoload.php entra junto: ele chama a classe de inicialização pelo
+    # nome, e esse nome muda a cada regeneração do autoloader. Desencontrado do
+    # vendor/composer/, o PHP morre antes de qualquer saída — nem o log nem a
+    # página de erro chegam a existir, o que torna a falha muito mais cara de
+    # diagnosticar do que de evitar.
+    always = [
+        rel for rel in sorted(hashes)
+        if rel.startswith("vendor/composer/") or rel == "vendor/autoload.php"
+    ]
     pending = sorted(set(pending) | set(always))
 
     # Com --only a lista local é um recorte, então o que está fora dele não é
