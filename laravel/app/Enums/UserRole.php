@@ -34,6 +34,10 @@ enum UserRole: string
             self::Syndic => [
                 UseCase::Login,
                 UseCase::UpdateOwnProfile,
+                // RN03 — as alterações estruturais de unidades são do síndico
+                // e do administrador. O cadastro de pessoas não: esse é só do
+                // administrador, por manage-residents.
+                UseCase::ManageUnits,
                 UseCase::PublishNotices,
                 UseCase::GenerateReports,
             ],

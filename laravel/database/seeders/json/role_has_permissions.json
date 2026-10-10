@@ -118,5 +118,9 @@
     {
         "role": "admin",
         "permission": "update-own-profile"
+    },
+    {
+        "role": "syndic",
+        "permission": "manage-units"
     }
 ]

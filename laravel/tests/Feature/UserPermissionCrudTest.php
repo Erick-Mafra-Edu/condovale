@@ -51,8 +51,8 @@ class UserPermissionCrudTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('data.role', 'syndic')
             ->assertJsonPath('data.direct', ['manage-residents'])
-            ->assertJsonPath('data.from_role', ['generate-reports', 'login', 'publish-notices', 'update-own-profile'])
-            ->assertJsonCount(5, 'data.effective');
+            ->assertJsonPath('data.from_role', ['generate-reports', 'login', 'manage-units', 'publish-notices', 'update-own-profile'])
+            ->assertJsonCount(6, 'data.effective');
     }
 
     public function test_concede_um_caso_de_uso_a_uma_pessoa(): void
@@ -60,11 +60,11 @@ class UserPermissionCrudTest extends TestCase
         $sindico = User::factory()->syndic()->create();
 
         $this->actingAs($this->administrador())
-            ->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'manage-units'])
+            ->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'view-audit-reports'])
             ->assertStatus(201)
-            ->assertJsonPath('data.direct', ['manage-units']);
+            ->assertJsonPath('data.direct', ['view-audit-reports']);
 
-        $this->assertTrue($sindico->fresh()->can('manage-units'));
+        $this->assertTrue($sindico->fresh()->can('view-audit-reports'));
         // O perfil não muda: a exceção é individual.
         $this->assertSame(['syndic'], $sindico->fresh()->getRoleNames()->all());
     }
@@ -74,11 +74,11 @@ class UserPermissionCrudTest extends TestCase
         $sindico = User::factory()->syndic()->create(['name' => 'Carlos Síndico']);
 
         $this->actingAs($this->administrador())
-            ->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'manage-units']);
+            ->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'view-audit-reports']);
 
         $this->assertDatabaseHas('logs', [
             'type_log_id' => TypeLogEnum::USER->value,
-            'description' => "Caso de uso manage-units concedido ao usuário {$sindico->id} Carlos Síndico.",
+            'description' => "Caso de uso view-audit-reports concedido ao usuário {$sindico->id} Carlos Síndico.",
         ]);
     }
 
@@ -99,12 +99,12 @@ class UserPermissionCrudTest extends TestCase
         $sindico = User::factory()->syndic()->create();
         $admin = $this->administrador();
 
-        $this->actingAs($admin)->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'manage-units'])
+        $this->actingAs($admin)->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'view-audit-reports'])
             ->assertStatus(201);
 
-        $this->actingAs($admin)->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'manage-units'])
+        $this->actingAs($admin)->postJson("/api/users/{$sindico->id}/permissions", ['permission' => 'view-audit-reports'])
             ->assertStatus(409)
-            ->assertJsonPath('message', 'O usuário já possui manage-units.');
+            ->assertJsonPath('message', 'O usuário já possui view-audit-reports.');
     }
 
     public function test_recusa_caso_de_uso_inexistente(): void
@@ -120,14 +120,14 @@ class UserPermissionCrudTest extends TestCase
     public function test_revoga_a_concessao_individual(): void
     {
         $sindico = User::factory()->syndic()->create();
-        $sindico->givePermissionTo('manage-units');
+        $sindico->givePermissionTo('view-audit-reports');
 
         $this->actingAs($this->administrador())
-            ->deleteJson("/api/users/{$sindico->id}/permissions/manage-units")
+            ->deleteJson("/api/users/{$sindico->id}/permissions/view-audit-reports")
             ->assertStatus(201)
             ->assertJsonPath('data.direct', []);
 
-        $this->assertFalse($sindico->fresh()->can('manage-units'));
+        $this->assertFalse($sindico->fresh()->can('view-audit-reports'));
     }
 
     public function test_recusa_revogar_o_que_veio_do_perfil(): void
@@ -169,7 +169,7 @@ class UserPermissionCrudTest extends TestCase
 
         foreach ([UserRole::Resident, UserRole::Employee, UserRole::Syndic] as $papel) {
             $this->actingAs(User::factory()->create(['role' => $papel]))
-                ->postJson("/api/users/{$alvo->id}/permissions", ['permission' => 'manage-units'])
+                ->postJson("/api/users/{$alvo->id}/permissions", ['permission' => 'view-audit-reports'])
                 ->assertStatus(403);
         }
     }

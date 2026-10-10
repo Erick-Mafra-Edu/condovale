@@ -661,7 +661,7 @@ tipo de requisito que precisa falhar alto, no deploy, e não em silêncio.
 
 | Rota | Autorização |
 | --- | --- |
-| `GET /api/units` | `manage-units` |
+| `GET /api/units` | `manage-units` (síndico e administrador) |
 | `GET /api/units/{id}` | `manage-units` |
 | `POST /api/units` | `manage-units` |
 | `PATCH /api/units/{id}` | `manage-units` |
@@ -681,12 +681,17 @@ regra vale no `deactivate` e no `PATCH` igualmente, porque mora na Action.
 Inativar **nunca apaga**: reservas, ocorrências e o histórico de ocupação
 continuam apontando para a unidade.
 
-> **Divergência com a RN03.** A nota do diagrama de sequência diz
-> "alterações estruturais de unidades restritas ao **Síndico/Administrador**",
-> mas a matriz de casos de uso dá `manage-units` só ao administrador. As rotas
-> seguem a matriz, que é o que o frontend também usa. Incluir o síndico é uma
-> linha — `UseCase::ManageUnits` no bloco `Syndic` —, mas muda a matriz nos
-> três lugares e exige a mesma alteração no `permissions.ts`.
+**O síndico também altera unidades.** A nota do diagrama de sequência é
+explícita — "alterações estruturais de unidades restritas ao
+**Síndico/Administrador**" —, e a matriz foi alinhada a ela: `manage-units`
+passou a valer para os dois perfis.
+
+É o **único** caso de uso administrativo que o síndico divide. O cadastro de
+pessoas continua só do administrador, por `manage-residents`.
+
+> **Pendente no frontend:** `permissions.ts` ainda dá `manage-units` apenas ao
+> administrador. Enquanto não for alterado, a interface esconde do síndico a
+> tela de unidades, embora a API já o autorize.
 
 ## Vínculo entre morador e unidade
 

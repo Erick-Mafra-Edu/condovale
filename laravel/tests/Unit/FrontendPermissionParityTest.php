@@ -28,23 +28,40 @@ class FrontendPermissionParityTest extends TestCase
      * Divergências que já existem e aguardam alteração no frontend.
      *
      * Elas estão aqui, e não escondidas, para o teste poder passar sem deixar
-     * de vigiar: qualquer divergência **nova** quebra a suíte. Riscar uma linha
-     * desta lista é o que fecha a pendência.
+     * de vigiar: qualquer divergência **nova** quebra a suíte. Riscar uma
+     * linha desta lista é o que fecha a pendência.
      *
-     * - `manage-users` foi acrescentado ao frontend pelo trabalho de gestão de
-     *   usuários e não existe no backend. Enquanto não existir, uma rota
-     *   protegida por ele responderia 403, porque a permissão não está no
-     *   banco. Falta decidir se ele é outro nome para `manage-residents` ou um
-     *   caso de uso distinto.
-     * - `update-own-profile` passou a valer para os quatro perfis no backend,
-     *   e o frontend ainda o dá apenas ao morador — a interface esconde a
-     *   edição do próprio cadastro de funcionário, síndico e administrador.
+     * A lista é **por papel**, de propósito. Perdoar um caso de uso em todos
+     * os papéis de uma vez deixaria de vigiá-lo justamente onde ele ainda
+     * importa — `manage-units` precisa ser perdoado no síndico e continuar
+     * conferido no administrador.
+     *
+     * @var array<string, list<string>>
+     */
+    private const DIVERGENCIAS_POR_PAPEL = [
+        // RN03 deu as alterações estruturais de unidades ao síndico; o
+        // frontend ainda as dá só ao administrador.
+        'syndic' => ['manage-units', 'update-own-profile'],
+        // update-own-profile passou a valer para os quatro perfis aqui, e o
+        // frontend ainda o dá apenas ao morador.
+        'employee' => ['update-own-profile'],
+        'admin' => ['update-own-profile', 'manage-users'],
+        'resident' => [],
+    ];
+
+    /**
+     * Casos de uso que existem de um lado só.
+     *
+     * `manage-users` foi acrescentado ao frontend pelo trabalho de gestão de
+     * usuários e não existe no backend. Enquanto não existir, uma rota
+     * protegida por ele responderia 403, porque a permissão não está no banco.
+     * Falta decidir se é outro nome para `manage-residents` ou um caso de uso
+     * distinto.
      *
      * @var list<string>
      */
-    private const DIVERGENCIAS_CONHECIDAS = [
+    private const CASOS_SO_DE_UM_LADO = [
         'manage-users',
-        'update-own-profile',
     ];
 
     private function fonte(): string
@@ -95,8 +112,8 @@ class FrontendPermissionParityTest extends TestCase
         sort($frontend);
         sort($backend);
 
-        $soNoFrontend = array_diff($frontend, $backend, self::DIVERGENCIAS_CONHECIDAS);
-        $soNoBackend = array_diff($backend, $frontend, self::DIVERGENCIAS_CONHECIDAS);
+        $soNoFrontend = array_diff($frontend, $backend, self::CASOS_SO_DE_UM_LADO);
+        $soNoBackend = array_diff($backend, $frontend, self::CASOS_SO_DE_UM_LADO);
 
         $this->assertSame([], array_values($soNoFrontend), 'Casos de uso que só existem no frontend: '.implode(', ', $soNoFrontend).'. Um deles numa rota responderia 403, porque a permissão não existe no banco.');
         $this->assertSame([], array_values($soNoBackend), 'Casos de uso que só existem no backend: '.implode(', ', $soNoBackend).'. A interface esconde o que a API aceitaria.');
@@ -105,10 +122,12 @@ class FrontendPermissionParityTest extends TestCase
     public function test_cada_papel_tem_a_mesma_matriz_dos_dois_lados(): void
     {
         foreach (UserRole::cases() as $papel) {
-            $frontend = array_values(array_diff($this->casosDoPapel($papel->value), self::DIVERGENCIAS_CONHECIDAS));
+            $perdoados = self::DIVERGENCIAS_POR_PAPEL[$papel->value] ?? [];
+
+            $frontend = array_values(array_diff($this->casosDoPapel($papel->value), $perdoados));
             $backend = array_values(array_diff(
                 array_map(fn (UseCase $useCase) => $useCase->value, $papel->useCases()),
-                self::DIVERGENCIAS_CONHECIDAS
+                $perdoados
             ));
 
             sort($frontend);
