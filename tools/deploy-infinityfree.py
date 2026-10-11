@@ -297,11 +297,18 @@ class Publisher:
         com "Class ... not found". Como não são enviados por este script — são
         derivados, não fonte —, a única forma de invalidá-los é removê-los, e o
         Laravel os reconstrói na requisição seguinte.
+
+        config.php e routes-v7.php são os caches de inicialização, gerados pela
+        rota /api/deploy/optimize. Eles derivam do .env e dos arquivos de
+        config e rotas que este script acabou de substituir: mantê-los faria a
+        aplicação rodar com a configuração anterior sem erro nenhum — o pior
+        tipo de falha, porque não aparece. Removidos, o site volta a inicializar
+        sem cache, mais lento e correto, até alguém chamar a rota de novo.
         """
         if self.dry_run:
             return
 
-        for name in ("packages.php", "services.php"):
+        for name in ("packages.php", "services.php", "config.php", "routes-v7.php"):
             try:
                 self.ftp.delete(self.remote_path(f"bootstrap/cache/{name}"))
             except ftplib.all_errors:

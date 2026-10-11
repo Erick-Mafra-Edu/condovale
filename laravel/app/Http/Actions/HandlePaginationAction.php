@@ -133,8 +133,24 @@ class HandlePaginationAction
         $direction = strtolower($request->get('direction') ?? 'asc');
         $direction = in_array($direction, ['asc', 'desc']) ? $direction : 'asc';
 
-        if (($sort = $request->get('sort')) && $isSafeColumn($sort)) {
+        $sort = $request->get('sort');
+        $primaryKey = $model->getKeyName();
+
+        if ($sort && $isSafeColumn($sort)) {
             $response->orderBy($sort, $direction);
+        }
+
+        // A chave primária entra sempre: sozinha quando ninguém pediu ordem, e
+        // como desempate quando pediram.
+        //
+        // Sem ela a consulta não tem ORDER BY, e aí a ordem das linhas é o que
+        // o banco achar mais conveniente — o que muda conforme o índice que
+        // ele escolher para o filtro. Paginar sobre isso devolve linha
+        // repetida numa página e linha nenhuma noutra, sem erro em lugar
+        // algum. Ordenar por coluna não única, como o nome, tem o mesmo
+        // problema entre os empatados.
+        if ($sort !== $primaryKey) {
+            $response->orderBy($primaryKey, $direction);
         }
 
         // Only relations declared on the model are accepted, and nesting is capped

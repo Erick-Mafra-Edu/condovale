@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -31,9 +32,21 @@ class UpdateOwnProfileAction
             throw BusinessRuleException::unprocessable('Este e-mail já está em uso.');
         }
 
+        $anterior = ['name' => $user->name, 'email' => $user->email];
+
         $user->update([
             'name' => $attributes['name'],
             'email' => $email,
+        ]);
+
+        // RNF04 — trocar o próprio e-mail troca a identidade de login, e
+        // ficava sem rastro: era a única mutação dos módulos entregues que não
+        // chegava à trilha de auditoria. O valor anterior vai junto, porque é
+        // o que permite reconstruir por qual conta alguém entrava antes.
+        $description = "Usuário {$user->id} {$user->name} editou o próprio cadastro.";
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, [
+            'de' => $anterior,
+            'para' => ['name' => $user->name, 'email' => $user->email],
         ]);
 
         return $user->refresh();

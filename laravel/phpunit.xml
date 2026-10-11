@@ -28,6 +28,10 @@
         <env name="ARGON_THREADS" value="1"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
+        <!-- As rotas de implantacao sao exercitadas pela suite: o token vem daqui
+             para o teste nao depender do .env de quem roda. -->
+        <env name="DEPLOY_ENABLED" value="true"/>
+        <env name="DEPLOY_TOKEN" value="a0b1c2d3e4f50a1b2c3d4e5f60718293"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

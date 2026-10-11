@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Actions\CheckHashingSupportAction;
 use App\Http\Actions\CheckOutboundMailAction;
+use App\Http\Actions\OptimizeApplicationAction;
 use App\Http\Actions\RunFreshMigrationAction;
 use App\Http\Requests\DeployMigrateRequest;
+use App\Http\Requests\DeployOptimizeRequest;
 use App\Services\MessageService;
 
 class DeployController extends Controller
@@ -28,6 +30,34 @@ class DeployController extends Controller
      * servidor: versão do PHP, limite de memória e algoritmos disponíveis são
      * exatamente o que alguém sondando o domínio gostaria de saber.
      */
+
+    /**
+     * Gera os caches de inicialização, o que no servidor com SSH seria
+     * `php artisan optimize`.
+     *
+     * Vale a pena por medição, não por hábito: a inicialização do framework
+     * responde por cerca de um quarto do tempo de resposta na hospedagem, e as
+     * consultas das listagens, por menos de cinco por cento.
+     *
+     * Precisa ser chamada depois de cada publicação: o publicador apaga estes
+     * caches ao enviar arquivos, porque cache de configuração velho faz a
+     * aplicação rodar com o `.env` anterior sem dar erro nenhum.
+     */
+    public function optimize(DeployOptimizeRequest $request)
+    {
+        $item = (object) $request->validated();
+
+        try {
+            $saida = ($item->clear ?? false)
+                ? OptimizeApplicationAction::clear()
+                : OptimizeApplicationAction::execute();
+
+            return MessageService::success('Caches de inicialização atualizados.', $saida);
+        } catch (\Throwable $th) {
+            return MessageService::throwable($th);
+        }
+    }
+
     public function hashing()
     {
         return MessageService::success('Diagnóstico de hashing.', CheckHashingSupportAction::execute());
