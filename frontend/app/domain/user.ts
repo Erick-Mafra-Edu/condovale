@@ -13,10 +13,14 @@ export interface User {
 
 export interface Unit {
   id: string
+  code: string
   number: string
   block?: string
   status: UserStatus
 }
+
+export type CreateUnitInput = Omit<Unit, 'id'>
+export type UpdateUnitInput = Partial<CreateUnitInput>
 
 export type CreateUserInput = Omit<User, 'id'>
 export type UpdateUserInput = Partial<CreateUserInput>

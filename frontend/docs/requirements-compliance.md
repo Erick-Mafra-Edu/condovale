@@ -89,7 +89,7 @@ Toda mudança deve registrar ocorrência, autor autenticado, data, estado anteri
 | --- | --- | --- |
 | **RN01** — impedir conflito de reserva | **Atendido no mock** | Reservas `pending` e `approved` bloqueiam sobreposição para mesma área/data. |
 | **RN02** — respeitar disponibilidade e regras da área | **Parcial** | Conflito e disponibilidade visual existem; validação central de área ativa, funcionamento e duração máxima permanece pendente. |
-| **RN03** — somente síndico/admin exclui avisos; somente autorizados alteram unidades | **Não atendido efetivamente** | Existe `remove` de comunicado sem ator/autorização. Unidades possuem somente leitura e não há fluxo administrativo estrutural. |
+| **RN03** — somente síndico/admin exclui avisos; somente autorizados alteram unidades | **Parcial** | Unidades agora possuem fluxo administrativo de criar, editar e inativar protegido por `manage-units`. A remoção de avisos no mock ainda existe sem ator/autorização. |
 | **RN04** — somente usuários ativos e autorizados acessam funções | **Parcial** | Login mock verifica usuário ativo e a interface usa matriz de permissões. Alguns repositórios mock ainda aceitam operações sem validar sessão/papel; a proteção definitiva depende de policies no backend. |
 | **RN05** — ocorrência associada ao morador e com status | **Atendido no frontend/mock** | `residentId` e `status` são obrigatórios no domínio e na criação. |
 | **RN06** — somente autorizados alteram/finalizam ocorrências | **Parcial** | O mock protege atribuição e ações do funcionário. Falta tela administrativa de atribuição, policy backend e remoção da confiança em `userId` fornecido pelo cliente. |
@@ -117,7 +117,7 @@ As regras abaixo foram criadas durante a implementação e não vieram na especi
 1. **RF06:** acrescentar relatório de reservas; o acesso operacional de síndico e administrador já foi alinhado.
 2. **RN06/RN15:** implementar a análise e atribuição administrativa na interface.
 3. **RN04/RN07:** mover autorização efetiva para repositories mock e, posteriormente, policies do backend.
-4. **RF01/RN03:** implementar telas administrativas de usuários/unidades e registrar auditoria.
+4. **RF01/RN03:** concluir a autorização efetiva e o registro de auditoria; a pendência de RN03 permanece na remoção de avisos no mock.
 5. **RNF02/RNF04:** implementar Argon2id, sessão, policies e logs de auditoria no backend Laravel.
 6. **RNF01:** definir carga padrão, volume de dados e percentil antes de criar o teste de desempenho.
 
