@@ -1,29 +1,47 @@
 [
     {
-        "common_area_id": 1,
-        "resident_id": 5,
-        "date": "2026-10-09",
-        "start_time": "12:00:00",
-        "end_time": "18:00:00",
+        "common_area_name": "Salão de Festas Principal",
+        "resident_email": "resident@gmail.com",
+        "days_from_today": 7,
+        "start_time": "14:00:00",
+        "end_time": "20:00:00",
         "status": "approved",
         "rejection_reason": null
     },
     {
-        "common_area_id": 2,
-        "resident_id": 6,
-        "date": "2026-10-06",
+        "common_area_name": "Churrasqueira Externa",
+        "resident_email": "resident2@gmail.com",
+        "days_from_today": 3,
         "start_time": "12:00:00",
         "end_time": "16:00:00",
         "status": "pending",
         "rejection_reason": null
     },
     {
-        "common_area_id": 3,
-        "resident_id": 5,
-        "date": "2026-10-05",
+        "common_area_name": "Quadra Poliesportiva",
+        "resident_email": "resident@gmail.com",
+        "days_from_today": 1,
         "start_time": "18:00:00",
         "end_time": "20:00:00",
         "status": "approved",
+        "rejection_reason": null
+    },
+    {
+        "common_area_name": "Salão de Festas Principal",
+        "resident_email": "resident2@gmail.com",
+        "days_from_today": 14,
+        "start_time": "10:00:00",
+        "end_time": "13:00:00",
+        "status": "rejected",
+        "rejection_reason": "Data já comprometida com a assembleia geral de condôminos."
+    },
+    {
+        "common_area_name": "Academia",
+        "resident_email": "resident2@gmail.com",
+        "days_from_today": -5,
+        "start_time": "07:00:00",
+        "end_time": "08:00:00",
+        "status": "cancelled",
         "rejection_reason": null
     }
 ]

@@ -3,20 +3,60 @@
         "title": "Vazamento de água no corredor do 1º andar",
         "description": "Há uma infiltração visível saindo do teto perto do elevador social.",
         "category": "manutenção",
-        "resident_id": 5,
-        "unit_id": 1,
-        "assigned_employee_id": 4,
+        "resident_email": "resident@gmail.com",
+        "unit_code": "A-101",
+        "assigned_employee_email": "employee@gmail.com",
         "status": "assigned",
-        "completed_at": null
+        "completed_days_ago": null
     },
     {
         "title": "Lâmpada queimada na garagem B2",
         "description": "A vaga 102 está escura devido à lâmpada queimada no poste 4.",
         "category": "iluminação",
-        "resident_id": 6,
-        "unit_id": 2,
-        "assigned_employee_id": null,
+        "resident_email": "resident2@gmail.com",
+        "unit_code": "A-102",
+        "assigned_employee_email": null,
         "status": "open",
-        "completed_at": null
+        "completed_days_ago": null
+    },
+    {
+        "title": "Portão da garagem com ruído ao abrir",
+        "description": "O portão basculante range e trava na metade do curso desde segunda-feira.",
+        "category": "manutenção",
+        "resident_email": "resident@gmail.com",
+        "unit_code": "A-101",
+        "assigned_employee_email": "employee2@gmail.com",
+        "status": "in_progress",
+        "completed_days_ago": null
+    },
+    {
+        "title": "Infiltração na parede da sala",
+        "description": "Mancha de umidade na parede que faz divisa com a área da piscina.",
+        "category": "manutenção",
+        "resident_email": "resident2@gmail.com",
+        "unit_code": "A-102",
+        "assigned_employee_email": "employee@gmail.com",
+        "status": "completed",
+        "completed_days_ago": 4
+    },
+    {
+        "title": "Barulho excessivo após as 22h",
+        "description": "Som alto vindo da unidade vizinha em três noites seguidas.",
+        "category": "convivência",
+        "resident_email": "resident@gmail.com",
+        "unit_code": "A-101",
+        "assigned_employee_email": null,
+        "status": "analysis",
+        "completed_days_ago": null
+    },
+    {
+        "title": "Interfone sem áudio na portaria",
+        "description": "A portaria chama, mas não há som do outro lado.",
+        "category": "manutenção",
+        "resident_email": "firstaccess@gmail.com",
+        "unit_code": "B-101",
+        "assigned_employee_email": null,
+        "status": "cancelled",
+        "completed_days_ago": null
     }
 ]

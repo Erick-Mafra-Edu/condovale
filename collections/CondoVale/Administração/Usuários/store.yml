@@ -14,7 +14,7 @@ http:
     data: |-
       {
         "name": "Daniela Moraes",
-        "email": "morador4@condovale.com",
+        "email": "morador.novo@gmail.com",
         "role": "resident",
         "unit_id": 4
       }

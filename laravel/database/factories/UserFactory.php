@@ -73,6 +73,14 @@ class UserFactory extends Factory
         return $this->state(['status' => UserStatus::Inactive]);
     }
 
+    /**
+     * Conta de primeiro acesso: entra, e não alcança nada além da troca de senha.
+     */
+    public function mustChangePassword(): static
+    {
+        return $this->state(['must_change_password' => true]);
+    }
+
     public function unverified(): static
     {
         return $this->state(['email_verified_at' => null]);

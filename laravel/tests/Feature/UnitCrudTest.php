@@ -26,7 +26,7 @@ class UnitCrudTest extends TestCase
 
     private function unidade(array $attributes = []): Unit
     {
-        return Unit::create(array_merge([
+        return Unit::factory()->create(array_merge([
             'code' => 'A-101',
             'number' => '101',
             'block' => 'Bloco A',
@@ -35,12 +35,10 @@ class UnitCrudTest extends TestCase
 
     private function vincular(Unit $unit): UnitOccupancy
     {
-        return UnitOccupancy::create([
+        return UnitOccupancy::factory()->owner()->create([
             'unit_id' => $unit->id,
             'user_id' => User::factory()->resident()->create()->id,
-            'occupant_type' => 'owner',
             'started_at' => now()->toDateString(),
-            'is_active' => true,
         ]);
     }
 

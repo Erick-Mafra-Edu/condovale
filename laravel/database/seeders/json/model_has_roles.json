@@ -1,30 +1,38 @@
 [
     {
-        "user_email": "admin@condovale.com",
+        "user_email": "admin@gmail.com",
         "role": "admin"
     },
     {
-        "user_email": "sindico@condovale.com",
+        "user_email": "syndic@gmail.com",
         "role": "syndic"
     },
     {
-        "user_email": "portaria@condovale.com",
+        "user_email": "employee@gmail.com",
         "role": "employee"
     },
     {
-        "user_email": "manutencao@condovale.com",
+        "user_email": "resident@gmail.com",
+        "role": "resident"
+    },
+    {
+        "user_email": "resident2@gmail.com",
+        "role": "resident"
+    },
+    {
+        "user_email": "resident3@gmail.com",
+        "role": "resident"
+    },
+    {
+        "user_email": "employee2@gmail.com",
         "role": "employee"
     },
     {
-        "user_email": "morador1@condovale.com",
+        "user_email": "inactive@gmail.com",
         "role": "resident"
     },
     {
-        "user_email": "morador2@condovale.com",
-        "role": "resident"
-    },
-    {
-        "user_email": "morador3@condovale.com",
+        "user_email": "firstaccess@gmail.com",
         "role": "resident"
     }
 ]

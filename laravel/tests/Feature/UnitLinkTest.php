@@ -22,7 +22,7 @@ class UnitLinkTest extends TestCase
 
     private function unidade(array $attributes = []): Unit
     {
-        return Unit::create(array_merge([
+        return Unit::factory()->create(array_merge([
             'block' => 'Bloco A',
             'number' => '101',
             'code' => 'A-101',

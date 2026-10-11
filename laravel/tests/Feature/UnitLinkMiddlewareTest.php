@@ -32,14 +32,10 @@ class UnitLinkMiddlewareTest extends TestCase
 
     private function vincular(User $user): void
     {
-        $unidade = Unit::create(['block' => 'Bloco A', 'number' => '101', 'code' => 'A-101']);
-
-        UnitOccupancy::create([
-            'unit_id' => $unidade->id,
+        UnitOccupancy::factory()->owner()->create([
+            'unit_id' => Unit::factory()->create()->id,
             'user_id' => $user->id,
-            'occupant_type' => 'owner',
             'started_at' => now()->toDateString(),
-            'is_active' => true,
         ]);
     }
 
