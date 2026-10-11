@@ -344,9 +344,9 @@ describe('permissões do diagrama de casos de uso', () => {
     ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Ocorrências']],
     ['syndic', ['Início', 'Comunicados', 'Relatórios', 'Unidades']],
-    ['admin', ['Início', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades']],
+    ['admin', ['Início', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades', 'Moradores e unidades', 'Integrações']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
-    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades'] as const
+    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades', 'Moradores e unidades', 'Integrações'] as const
     expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
   })
 })

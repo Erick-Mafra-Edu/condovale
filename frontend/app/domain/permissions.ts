@@ -44,7 +44,7 @@ export function can(role: UserRole, useCase: UseCase): boolean {
   return rolePermissions[role].has(useCase)
 }
 
-export type AppModule = 'Início' | 'Meu cadastro' | 'Usuários' | 'Ocorrências' | 'Reservas' | 'Comunicados' | 'Relatórios' | 'Unidades' | 'Moradores e unidades'
+export type AppModule = 'Início' | 'Meu cadastro' | 'Usuários' | 'Ocorrências' | 'Reservas' | 'Comunicados' | 'Relatórios' | 'Unidades' | 'Moradores e unidades' | 'Integrações'
 
 const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly UseCase[]>> = {
   'Meu cadastro': ['update-own-profile'],
@@ -55,6 +55,7 @@ const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly
   Relatórios: ['generate-reports', 'view-audit-reports'],
   Unidades: ['manage-units'],
   'Moradores e unidades': ['link-residents-to-units'],
+  Integrações: ['manage-users'],
 }
 
 export function canViewModule(role: UserRole, module: AppModule): boolean {
