@@ -131,6 +131,39 @@ def conferir_arquivos(cfg: dict) -> list[str]:
     return divergencias
 
 
+def resolver_desafio(html: str, jar, dominio: str) -> bool:
+    """Decifra o cookie __test do desafio anti-robô. Devolve se havia desafio.
+
+    O host emite o desafio **por caminho**: resolvê-lo na home não basta para
+    uma chamada a /api/..., que volta com um desafio novo. Por isso isto é uma
+    função à parte, chamada sobre a resposta que vier, e não um passo único na
+    abertura da sessão.
+    """
+    valores = re.findall(r'toNumbers\("([0-9a-f]+)"\)', html)
+
+    if len(valores) < 3:
+        return False
+
+    chave, iv, cifrado = valores[:3]
+
+    with tempfile.NamedTemporaryFile(delete=False) as arquivo:
+        arquivo.write(bytes.fromhex(cifrado))
+        entrada = arquivo.name
+
+    decifrado = subprocess.run(
+        ['openssl', 'enc', '-d', '-aes-128-cbc', '-K', chave, '-iv', iv, '-nopad', '-in', entrada],
+        capture_output=True,
+    ).stdout.hex()
+    os.unlink(entrada)
+
+    jar.set_cookie(http.cookiejar.Cookie(
+        0, '__test', decifrado, None, False,
+        dominio, True, False, '/', True, True, None, True, None, None, {},
+    ))
+
+    return True
+
+
 def abrir_navegador(base: str):
     """Resolve o desafio anti-robô do host e devolve um opener com o cookie.
 
@@ -149,26 +182,7 @@ def abrir_navegador(base: str):
     with opener.open(pedido, timeout=60) as resposta:
         html = resposta.read().decode('utf-8', 'replace')
 
-    valores = re.findall(r'toNumbers\("([0-9a-f]+)"\)', html)
-
-    if len(valores) >= 3:
-        chave, iv, cifrado = valores[:3]
-
-        with tempfile.NamedTemporaryFile(delete=False) as arquivo:
-            arquivo.write(bytes.fromhex(cifrado))
-            entrada = arquivo.name
-
-        decifrado = subprocess.run(
-            ['openssl', 'enc', '-d', '-aes-128-cbc', '-K', chave, '-iv', iv, '-nopad', '-in', entrada],
-            capture_output=True,
-        ).stdout.hex()
-        os.unlink(entrada)
-
-        jar.set_cookie(http.cookiejar.Cookie(
-            0, '__test', decifrado, None, False,
-            base.split('//')[1], True, False, '/', True, True, None, True, None, None, {},
-        ))
-
+    if resolver_desafio(html, jar, base.split('//')[1]):
         pedido = urllib.request.Request(base + '/', headers={'User-Agent': UA})
 
         with opener.open(pedido, timeout=60) as resposta:
