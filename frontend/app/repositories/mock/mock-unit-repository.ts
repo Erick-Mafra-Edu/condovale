@@ -5,7 +5,7 @@ import type { UnitRepository } from '~/repositories/contracts/unit-repository'
 import { simulateRequest } from './mock-config'
 
 const units: Unit[] = [
-  { id: 'unit-01', number: '101', block: 'A', status: 'active' },
+  { id: 'unit-01', code: 'A-101', number: '101', block: 'A', status: 'active' },
 ]
 
 function response<T>(data: T): ApiResponse<T> {
@@ -26,6 +26,24 @@ export const mockUnitRepository: UnitRepository = {
   async findById(id) {
     await simulateRequest()
     return response(ensureUnit(id))
+  },
+  async create(input) {
+    await simulateRequest()
+    const item: Unit = { ...structuredClone(input), id: crypto.randomUUID(), status: input.status ?? 'active', block: input.block ?? undefined }
+    units.push(item)
+    return response(item)
+  },
+  async update(id, input) {
+    await simulateRequest()
+    const item = ensureUnit(id)
+    Object.assign(item, structuredClone(input))
+    return response(item)
+  },
+  async deactivate(id) {
+    await simulateRequest()
+    const item = ensureUnit(id)
+    item.status = 'inactive'
+    return response(item)
   },
 }
 

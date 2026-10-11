@@ -33,15 +33,12 @@ class FrontendPermissionParityTest extends TestCase
      *
      * A lista é **por papel**, de propósito. Perdoar um caso de uso em todos
      * os papéis de uma vez deixaria de vigiá-lo justamente onde ele ainda
-     * importa — `manage-units` precisa ser perdoado no síndico e continuar
-     * conferido no administrador.
+     * importa.
      *
      * @var array<string, list<string>>
      */
     private const DIVERGENCIAS_POR_PAPEL = [
-        // RN03 deu as alterações estruturais de unidades ao síndico; o
-        // frontend ainda as dá só ao administrador.
-        'syndic' => ['manage-units', 'update-own-profile'],
+        'syndic' => ['update-own-profile'],
         // update-own-profile passou a valer para os quatro perfis aqui, e o
         // frontend ainda o dá apenas ao morador.
         'employee' => ['update-own-profile'],

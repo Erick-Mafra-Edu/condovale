@@ -25,10 +25,11 @@ const showNotifications = ref(false)
 const detailTarget = ref<{ type: 'occurrence' | 'reservation' | 'notice'; id: string } | null>(null)
 const isScrolled = ref(false)
 
-const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, logout } = useAuth()
+const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, changePassword, logout } = useAuth()
 const { public: runtimeConfig } = useRuntimeConfig()
+const apiMode = computed(() => runtimeConfig.dataSource === 'api')
 const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, updateUser, deactivateUser } = useUsers()
-const { units, loadUnits } = useUnits()
+const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
 const { occurrences, history: occurrenceHistory, loadOccurrences, createOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
@@ -38,14 +39,15 @@ const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
   { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Usuários', icon: 'users' }, { label: 'Ocorrências', icon: 'alert' },
-  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
+  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Unidades', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
 ] as const
+const unavailableInApi = new Set(['Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'])
 
 function hasAccess(useCase: UseCase) {
   return authUser.value ? can(authUser.value.role, useCase) : false
 }
 
-const visibleNavItems = computed(() => navItems.filter(item => authUser.value ? canViewModule(authUser.value.role, item.label) : false))
+const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label) && (!apiMode.value || !unavailableInApi.has(item.label))))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
 const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence') : false)
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
@@ -61,12 +63,15 @@ const activeReservations = computed(() => reservations.value.filter(item => ['ap
 const residentName = computed(() => authUser.value?.name ?? 'Morador')
 const residentInitials = computed(() => residentName.value.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase())
 
-const stats = computed(() => [
+const stats = computed(() => {
+  const items = [
   { label: 'Moradores', value: String(activeResidents.value.length), note: 'moradores ativos', icon: 'users' as const, tone: 'cyan' },
   { label: 'Ocorrências abertas', value: String(openOccurrences.value.length), note: 'em acompanhamento', icon: 'alert' as const, tone: 'red' },
   { label: 'Reservas ativas', value: String(activeReservations.value.length), note: 'pendentes ou aprovadas', icon: 'calendar' as const, tone: 'blue' },
   { label: 'Comunicados', value: String(notices.value.filter(item => item.status === 'published').length), note: 'publicados', icon: 'message' as const, tone: 'orange' },
-])
+  ]
+  return apiMode.value ? items.filter(item => item.label === 'Moradores' && hasAccess('manage-residents')) : items
+})
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${value}T12:00:00`))
 const formatDateTime = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
@@ -99,9 +104,19 @@ async function openOccurrenceDetail(id: string) {
 }
 
 async function loadDashboard() {
-  const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
   const canManageOccupancies = hasAccess('link-residents-to-units')
-  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve()])
+  const canManageUnits = hasAccess('manage-units')
+  if (apiMode.value) {
+    await Promise.all([
+      hasAccess('manage-residents') ? loadUsers() : Promise.resolve(),
+      canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(),
+      canManageOccupancies ? loadOccupancies() : Promise.resolve(),
+    ])
+    return
+  }
+
+  const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
+  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve()])
   areas.value = areasResponse.data
 }
 
@@ -110,6 +125,11 @@ const reloadReservations = () => resident.value ? loadMyReservations() : loadRes
 async function handleLogin(email: string, password: string) {
   await authenticate({ email, password })
   reportView.value = 'operations'
+  if (!authUser.value?.mustChangePassword) await loadDashboard()
+}
+
+async function handlePasswordChange(input: Parameters<typeof changePassword>[0]) {
+  await changePassword(input)
   await loadDashboard()
 }
 
@@ -132,7 +152,8 @@ async function saveOwnProfile(input: UpdateOwnProfileInput) {
 }
 
 async function createManagedUser(input: Parameters<typeof createUser>[0]) {
-  if (hasAccess('manage-users')) await createUser(input)
+  if (hasAccess('manage-users')) return createUser(input)
+  throw new Error('Sem permissão para gerenciar usuários.')
 }
 
 async function updateManagedUser(id: string, input: Parameters<typeof updateUser>[1]) {
@@ -141,6 +162,18 @@ async function updateManagedUser(id: string, input: Parameters<typeof updateUser
 
 async function deactivateManagedUser(id: string) {
   if (hasAccess('manage-users')) await deactivateUser(id)
+}
+
+async function createManagedUnit(input: Parameters<typeof createUnit>[0]) {
+  if (hasAccess('manage-units')) await createUnit(input)
+}
+
+async function updateManagedUnit(id: string, input: Parameters<typeof updateUnit>[1]) {
+  if (hasAccess('manage-units')) await updateUnit(id, input)
+}
+
+async function deactivateManagedUnit(id: string) {
+  if (hasAccess('manage-units')) await deactivateUnit(id)
 }
 
 async function submitOccurrence() {
@@ -187,7 +220,9 @@ function updateScrollMaterial() {
 }
 
 onMounted(() => {
-  restoreSession().then(user => user && loadDashboard()).catch(() => undefined)
+  restoreSession().then(user => {
+    if (user && !user.mustChangePassword) return loadDashboard()
+  }).catch(() => undefined)
   updateScrollMaterial()
   window.addEventListener('scroll', updateScrollMaterial, { passive: true })
 })
@@ -216,6 +251,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 
 <template>
   <LoginScreen v-if="!authUser" :loading="authLoading" :error="authError" :show-demo-access="runtimeConfig.dataSource !== 'api'" @submit="handleLogin" />
+  <PasswordChangePage v-else-if="authUser.mustChangePassword" :loading="authLoading" :error="authError" :on-submit="handlePasswordChange" :on-logout="handleLogout" />
   <div v-else class="app-shell">
     <AppSidebar :active="active" :items="visibleNavItems" @select="selectNav" />
 
@@ -226,21 +262,22 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
       <div class="page-wrap">
         <section class="page-heading">
           <div><div class="eyebrow">{{ roleLabel }} · Residencial Vale Verde</div><h1>Olá, {{ residentName }}!</h1><p>Veja o que está acontecendo no seu condomínio hoje.</p></div>
-          <button v-if="hasAccess('view-notices')" class="primary-button" @click="active = 'Comunicados'"><SvgIcon name="message" />Ver comunicados</button>
+          <button v-if="!apiMode && hasAccess('view-notices')" class="primary-button" @click="active = 'Comunicados'"><SvgIcon name="message" />Ver comunicados</button>
         </section>
 
         <div v-if="active === 'Início'">
           <section class="stat-grid"><DashboardStat v-for="stat in stats" :key="stat.label" v-bind="stat" /></section>
           <section class="content-grid three-columns">
-            <article class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="active = 'Ocorrências'">Ver todas</button></div><div class="list"><div v-if="!recentOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in recentOccurrences" :key="item.id" class="list-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="dot teal"></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em></button></div></article>
-            <article v-if="hasAccess('view-common-areas') || hasAccess('manage-reservations')" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
-            <article v-if="hasAccess('view-notices') || hasAccess('publish-notices')" class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="active = 'Comunicados'">Ver todos</button></div><div class="list"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="list-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em></button></div></article>
+            <article v-if="!apiMode" class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="active = 'Ocorrências'">Ver todas</button></div><div class="list"><div v-if="!recentOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in recentOccurrences" :key="item.id" class="list-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="dot teal"></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em></button></div></article>
+            <article v-if="!apiMode && (hasAccess('view-common-areas') || hasAccess('manage-reservations'))" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
+            <article v-if="!apiMode && (hasAccess('view-notices') || hasAccess('publish-notices'))" class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="active = 'Comunicados'">Ver todos</button></div><div class="list"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="list-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em></button></div></article>
           </section>
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
 
         <ProfilePage v-else-if="active === 'Meu cadastro' && resident" :user="resident" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-users')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
+        <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
         <OccupancyPage v-else-if="active === 'Moradores e unidades' && hasAccess('link-residents-to-units')" :occupancies="occupancies" :selected-occupancy="selectedOccupancy" :users="users" :units="units" :loading="occupanciesLoading" :error="occupanciesError" @refresh="loadOccupancies" @create="createOccupancy" @delete="finishOccupancy" @open-detail="openOccupancyDetail" @close-detail="closeOccupancyDetail" />
@@ -272,7 +309,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 .glass::after{content:'';position:absolute;inset:1px;border-radius:inherit;pointer-events:none;z-index:-1;background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,0) 28%);opacity:.7}
 .topbar{z-index:3;transform-origin:top center}.topbar:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(16,42,67,.13),inset 0 1px 0 rgba(255,255,255,.9)}.topbar.compact{height:60px;margin-top:10px;border-radius:18px;background:linear-gradient(128deg,rgba(255,255,255,.68),rgba(221,246,247,.42));backdrop-filter:blur(26px) saturate(155%)}
 .sidebar{background:linear-gradient(160deg,rgba(5,49,59,.96),rgba(8,72,79,.84));backdrop-filter:blur(18px) saturate(125%);box-shadow:inset -1px 0 rgba(176,249,250,.12)}
- .search{position:relative;margin:0;flex:0 1 42px;width:42px;min-width:42px;max-width:42px;overflow:hidden;transform-origin:left center;background:linear-gradient(115deg,rgba(255,255,255,.48),rgba(221,246,247,.3));border-color:rgba(255,255,255,.58);backdrop-filter:blur(14px) saturate(135%);box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 3px 10px rgba(16,42,67,.04);transition:flex-basis .48s cubic-bezier(.18,.9,.28,1.08),width .48s cubic-bezier(.18,.9,.28,1.08),max-width .48s cubic-bezier(.18,.9,.28,1.08),background .22s ease,box-shadow .22s ease}.search-trigger{display:grid;place-items:center;flex:none;width:100%;height:100%;padding:0;color:inherit;transform-origin:left center;transition:width .28s ease .1s,opacity .16s ease .12s,transform .22s cubic-bezier(.18,.9,.28,1.08)}.search-trigger span{font-size:20px;line-height:1;transition:transform .22s cubic-bezier(.18,.9,.28,1.08),opacity .16s ease}.search input{position:absolute;inset-inline:16px;width:calc(100% - 32px);min-width:0;border:0;outline:0;background:transparent;color:inherit;font:inherit;opacity:0;clip-path:inset(0 100% 0 0);transition:opacity .16s ease .1s,clip-path .3s ease .1s}.search input::placeholder{color:currentColor;opacity:1}.search.open{flex:1 1 100%;width:100%;max-width:100%}.search.open .search-trigger{width:0;opacity:0;transform:rotate(-12deg) scale(1.08);pointer-events:none}.search.open input{opacity:1;clip-path:inset(0 0 0 0)}
+ .search{position:relative;margin:0;flex:0 1 42px;width:42px;min-width:42px;max-width:42px;overflow:hidden;transform-origin:left center;background:linear-gradient(115deg,rgba(255,255,255,.48),rgba(221,246,247,.3));border-color:rgba(255,255,255,.58);backdrop-filter:blur(14px) saturate(135%);box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 3px 10px rgba(16,42,67,.04);transition:flex-basis .48s cubic-bezier(.18,.9,.28,1.08),width .48s cubic-bezier(.18,.9,.28,1.08),max-width .48s cubic-bezier(.18,.9,.28,1.08),background .22s ease,box-shadow .22s ease}.search-trigger{display:grid;place-items:center;flex:none;width:100%;height:100%;padding:0;color:inherit;transform-origin:left center;transition:width .28s ease .1s,opacity .16s ease .12s,transform .22s cubic-bezier(.18,.9,.28,1.08)}.search-trigger span{font-size:20px;line-height:1;transition:transform .22s cubic-bezier(.18,.9,.28,1.08),opacity .16s ease}.search input{position:absolute;inset-inline:16px;width:calc(100% - 32px);min-width:0;border:0;outline:0;background:transparent;color:inherit;font:inherit;opacity:0;clip-path:inset(0 100% 0 0);pointer-events:none;transition:opacity .16s ease .1s,clip-path .3s ease .1s}.search input::placeholder{color:currentColor;opacity:1}.search.open{flex:1 1 auto;width:auto;max-width:100%}.search.open .search-trigger{width:0;opacity:0;transform:rotate(-12deg) scale(1.08);pointer-events:none}.search.open input{opacity:1;clip-path:inset(0 0 0 0);pointer-events:auto}
 .search:hover{background:linear-gradient(115deg,rgba(255,255,255,.7),rgba(221,246,247,.45));transform:translateY(-1px)}
 .icon-button,.filter{transition:transform .2s cubic-bezier(.2,.8,.2,1),background .22s ease,box-shadow .22s ease}.icon-button:hover{transform:translateY(-1px)}.icon-button:active,.filter:active{transform:scale(.97)}
 .filter{background:linear-gradient(120deg,rgba(255,255,255,.42),rgba(221,246,247,.28));border:1px solid rgba(255,255,255,.55);backdrop-filter:blur(12px) saturate(130%);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 6px rgba(16,42,67,.04)}.filter:hover{background:rgba(255,255,255,.68);transform:translateY(-1px)}.filter.selected{background:linear-gradient(120deg,rgba(221,246,247,.78),rgba(255,255,255,.62));box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 5px 14px rgba(0,106,120,.12)}
@@ -280,10 +317,11 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 .notifications-popover{background:linear-gradient(135deg,rgba(255,255,255,.66),rgba(221,246,247,.48));backdrop-filter:blur(28px) saturate(155%);box-shadow:0 22px 46px rgba(16,42,67,.18),inset 0 1px 0 rgba(255,255,255,.86);transform-origin:top right;animation:glass-expand .32s cubic-bezier(.2,.8,.2,1)}
 .modal-backdrop{backdrop-filter:blur(4px) saturate(115%)}.modal.glass{background:linear-gradient(138deg,rgba(255,255,255,.75),rgba(221,246,247,.53) 58%,rgba(255,255,255,.61));backdrop-filter:blur(30px) saturate(155%);box-shadow:0 24px 64px rgba(16,42,67,.23),inset 0 1px 0 rgba(255,255,255,.92)}
  .modal input:focus,.modal select:focus,.modal textarea:focus,.search:focus-visible,.filter:focus-visible,.primary-button:focus-visible,.icon-button:focus-visible,.interactive-row:focus-visible,.outline-button:focus-visible,.mobile-nav button:focus-visible{outline:3px solid rgba(0,140,158,.42);outline-offset:3px}.interactive-row:hover{background:linear-gradient(100deg,rgba(221,246,247,.46),rgba(255,255,255,.5));box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
- .topbar .condo-brand,.topbar .top-actions{overflow:hidden;max-width:100%;opacity:1;transform:translateX(0) scale(1);visibility:visible;transition:opacity .34s ease,transform .46s cubic-bezier(.18,.9,.28,1.08),max-width .46s cubic-bezier(.18,.9,.28,1.08),margin .46s cubic-bezier(.18,.9,.28,1.08),visibility 0s linear 0s}.topbar.search-open{gap:0}.topbar.search-open .condo-brand,.topbar.search-open .top-actions{max-width:0;margin-left:0;margin-right:0;opacity:0;pointer-events:none;transform:translateX(-10px) scale(.96);visibility:hidden;transition:opacity .24s ease,transform .42s cubic-bezier(.18,.9,.28,1.08),max-width .46s cubic-bezier(.18,.9,.28,1.08),margin .46s cubic-bezier(.18,.9,.28,1.08),visibility 0s linear .46s}
+ .topbar .condo-brand,.topbar .top-actions{overflow:hidden;max-width:100%;opacity:1;transform:translateX(0) scale(1);visibility:visible;transition:opacity .34s ease,transform .46s cubic-bezier(.18,.9,.28,1.08),max-width .46s cubic-bezier(.18,.9,.28,1.08),margin .46s cubic-bezier(.18,.9,.28,1.08),visibility 0s linear 0s}
+@media(max-width:900px){.topbar.search-open{gap:0}.topbar.search-open .condo-brand,.topbar.search-open .top-actions{max-width:0;margin-left:0;margin-right:0;opacity:0;pointer-events:none;transform:translateX(-10px) scale(.96);visibility:hidden;transition:opacity .24s ease,transform .42s cubic-bezier(.18,.9,.28,1.08),max-width .46s cubic-bezier(.18,.9,.28,1.08),margin .46s cubic-bezier(.18,.9,.28,1.08),visibility 0s linear .46s}}
  @keyframes glass-expand{from{opacity:0;transform:translateY(-8px) scale(.94);backdrop-filter:blur(10px) saturate(110%)}to{opacity:1;transform:translateY(0) scale(1);backdrop-filter:blur(28px) saturate(155%)}}
 @media(max-width:900px){.mobile-nav{overflow:visible;background:linear-gradient(124deg,rgba(255,255,255,.52),rgba(221,246,247,.38) 54%,rgba(255,255,255,.46));backdrop-filter:blur(24px) saturate(155%) contrast(104%);border:1px solid transparent;box-shadow:0 14px 34px rgba(16,42,67,.18),0 3px 10px rgba(0,106,120,.08),inset 0 1px 0 rgba(255,255,255,.82)}.mobile-nav::before{background:radial-gradient(75% 120% at 7% 0%,rgba(255,255,255,.82),rgba(255,255,255,0) 55%),linear-gradient(115deg,rgba(255,255,255,.3),transparent 52%,rgba(0,140,158,.08));mask:none;padding:0}.mobile-nav::after{content:'';position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,rgba(255,255,255,.62),rgba(255,255,255,0) 30%,rgba(0,175,193,.15) 72%,rgba(255,255,255,.56));z-index:-2;filter:blur(.2px)}.mobile-nav button{z-index:1;min-width:54px}.mobile-nav button:hover{transform:translateY(-1px)}.mobile-nav button.selected{background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(221,246,247,.58));box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 5px 14px rgba(0,106,120,.13)}.mobile-nav button.selected::after{box-shadow:0 0 0 3px rgba(0,140,158,.14)}.topbar.compact{height:54px;margin-top:7px;border-radius:16px}}
- @media(prefers-reduced-motion:reduce){.glass,.primary-button,.filter,.search,.search-trigger,.search-trigger span,.search input,.icon-button,.mobile-nav button,.topbar .condo-brand,.topbar .top-actions{transition:none!important}.search{flex-basis:42px}.search.open{flex-basis:100%}.search input{width:100%;opacity:1;clip-path:none}.notifications-popover,.detail-modal{animation:none!important}}
+ @media(prefers-reduced-motion:reduce){.glass,.primary-button,.filter,.search,.search-trigger,.search-trigger span,.search input,.icon-button,.mobile-nav button,.topbar .condo-brand,.topbar .top-actions{transition:none!important}.search.open input{width:100%;opacity:1;clip-path:none}.notifications-popover,.detail-modal{animation:none!important}}
 /* Refinamento: fundo calmo; reflexos e gradientes ficam restritos ao material de navegação. */
 .main-content{background:#f5fbfc}.welcome-banner{background:#e7f8f9}.notifications-popover.glass{position:fixed}
 @media(max-width:900px){.mobile-nav.glass{position:fixed;display:grid;grid-template-columns:repeat(var(--mobile-nav-count),minmax(0,1fr));justify-content:initial;align-items:center;isolation:isolate}.mobile-nav.glass::before{z-index:-3}.mobile-nav.glass::after{z-index:-2}.mobile-nav-bubble{position:absolute;z-index:0;left:8px;width:calc((100% - 16px)/var(--mobile-nav-count));height:calc(100% - 14px);border-radius:14px;background:rgba(255,255,255,.46);backdrop-filter:blur(11px) saturate(145%);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 5px 14px rgba(0,106,120,.12);transition:transform .42s cubic-bezier(.18,.9,.28,1),width .32s cubic-bezier(.18,.9,.28,1),height .32s cubic-bezier(.18,.9,.28,1),border-radius .32s cubic-bezier(.18,.9,.28,1),background .32s ease,box-shadow .32s ease}.mobile-nav-bubble::before{content:'';position:absolute;inset:1px;border-radius:inherit;background:radial-gradient(80% 95% at 22% 0%,rgba(255,255,255,.72),rgba(255,255,255,0) 62%);pointer-events:none}.mobile-nav button{width:100%;min-width:0;background:transparent!important;box-shadow:none!important}.mobile-nav button.selected{animation:none}.mobile-nav button.selected::after{display:none}.mobile-nav button span{position:relative}.mobile-nav button.selected .svg-icon{filter:invert(42%) sepia(97%) saturate(885%) hue-rotate(142deg) brightness(89%) contrast(101%)}.mobile-nav button:active{transform:scale(.97)} }

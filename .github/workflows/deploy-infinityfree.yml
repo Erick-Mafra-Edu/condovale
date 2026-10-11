@@ -71,6 +71,9 @@ jobs:
         run: |
           rm -rf vendor
           composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
+          for file in vendor/autoload.php vendor/composer/autoload_*.php; do
+            printf '\n// Deploy %s\n' "$GITHUB_RUN_ID" >> "$file"
+          done
 
       # No servidor o arquivo se chama .env, não .env.production: assim a
       # aplicação sobe mesmo que o mod_env esteja desabilitado e o SetEnv do
@@ -119,4 +122,4 @@ jobs:
           APP_URL: ${{ vars.APP_URL }}
           DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          curl -fsS -X POST "$APP_URL/api/deploy/migrate" -H "X-Deploy-Token: $DEPLOY_TOKEN"
+          python tools/run-deploy-migration.py

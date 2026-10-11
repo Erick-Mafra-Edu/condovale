@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { CreateUserInput, UpdateUserInput, User, UserRole } from '~/domain/user'
+import type { CreateUserInput, UpdateUserInput, User, UserCreationResult, UserRole } from '~/domain/user'
 
 const props = defineProps<{
   users: User[]
   loading?: boolean
   currentUserId?: string
-  onCreate: (input: CreateUserInput) => Promise<unknown>
+  onCreate: (input: CreateUserInput) => Promise<UserCreationResult>
   onUpdate: (id: string, input: UpdateUserInput) => Promise<unknown>
   onDeactivate: (id: string) => Promise<unknown>
 }>()
@@ -17,6 +17,9 @@ const editing = ref<User | null>(null)
 const formOpen = ref(false)
 const formError = ref('')
 const saving = ref(false)
+const creationResult = ref<UserCreationResult | null>(null)
+const copiedPassword = ref(false)
+const copyError = ref('')
 const form = reactive<{ name: string; email: string; role: UserRole; status: User['status'] }>({ name: '', email: '', role: 'resident', status: 'active' })
 
 const filteredUsers = computed(() => props.users.filter(user =>
@@ -44,10 +47,27 @@ async function submit() {
   formError.value = ''
   try {
     if (editing.value) await props.onUpdate(editing.value.id, { name: form.name.trim(), email: form.email.trim(), role: form.role, status: form.status })
-    else await props.onCreate({ name: form.name.trim(), email: form.email.trim(), role: form.role, status: 'active' })
+    else creationResult.value = await props.onCreate({ name: form.name.trim(), email: form.email.trim(), role: form.role, status: 'active' })
     formOpen.value = false
   } catch (cause) { formError.value = cause instanceof Error ? cause.message : 'Não foi possível salvar o usuário.' }
   finally { saving.value = false }
+}
+
+function closeCreationResult() {
+  creationResult.value = null
+  copiedPassword.value = false
+  copyError.value = ''
+}
+
+async function copyTemporaryPassword() {
+  if (!creationResult.value) return
+  try {
+    await navigator.clipboard.writeText(creationResult.value.temporaryPassword)
+    copiedPassword.value = true
+    copyError.value = ''
+  } catch {
+    copyError.value = 'Não foi possível copiar automaticamente. Selecione e copie a senha manualmente.'
+  }
 }
 
 async function requestDeactivate(user: User) {
@@ -96,5 +116,19 @@ async function requestDeactivate(user: User) {
       <p v-if="formError" class="form-error">{{ formError }}</p>
       <div class="modal-actions"><button type="button" class="outline-button" @click="formOpen = false">Cancelar</button><button type="submit" class="primary-button" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar usuário' }}</button></div>
     </form>
+  </div>
+
+  <div v-if="creationResult" class="modal-backdrop" @click.self="closeCreationResult">
+    <section class="modal glass" role="dialog" aria-modal="true" aria-labelledby="temporary-password-title">
+      <button type="button" class="modal-close" aria-label="Fechar senha temporária" @click="closeCreationResult"></button>
+      <div class="section-icon"><SvgIcon name="users" /></div>
+      <h2 id="temporary-password-title">Usuário criado</h2>
+      <p>Repasse esta senha temporária a {{ creationResult.user.name }}. Ela não será exibida novamente.</p>
+      <label>E-mail<input :value="creationResult.user.email" readonly /></label>
+      <label>Senha temporária<input :value="creationResult.temporaryPassword" readonly aria-describedby="temporary-password-help" /></label>
+      <p id="temporary-password-help" class="temporary-password-note">A pessoa deverá trocar a senha no primeiro acesso.</p>
+      <p v-if="copyError" class="form-error" role="alert">{{ copyError }}</p>
+      <div class="modal-actions"><button class="outline-button" type="button" @click="closeCreationResult">Fechar</button><button class="primary-button" type="button" @click="copyTemporaryPassword">{{ copiedPassword ? 'Senha copiada' : 'Copiar senha' }}</button></div>
+    </section>
   </div>
 </template>

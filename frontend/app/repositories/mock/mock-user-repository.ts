@@ -37,7 +37,7 @@ export const mockUserRepository: UserRepository = {
     await simulateRequest()
     const item: User = { ...structuredClone(input), id: crypto.randomUUID() }
     mockUsers.push(item)
-    return response(item)
+    return response({ user: item, temporaryPassword: 'troque-me' })
   },
   async update(id, input) {
     await simulateRequest()

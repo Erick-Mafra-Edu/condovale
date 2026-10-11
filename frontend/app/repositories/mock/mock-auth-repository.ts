@@ -1,5 +1,5 @@
 import { AppError } from '~/domain/app-error'
-import type { AuthSession, LoginInput } from '~/domain/auth'
+import type { AuthSession, ChangePasswordInput, LoginInput } from '~/domain/auth'
 import type { ApiResponse } from '~/domain/common'
 import type { AuthRepository } from '~/repositories/contracts/auth-repository'
 import { mockUsers } from './mock-user-repository'
@@ -25,6 +25,16 @@ export const mockAuthRepository: AuthRepository = {
   async currentSession() {
     await simulateRequest()
     return response(session)
+  },
+  async changePassword(input: ChangePasswordInput) {
+    await simulateRequest()
+    if (!session) throw new AppError('UNAUTHENTICATED', 'Sessão expirada')
+    if (input.current_password !== 'condovale') throw new AppError('VALIDATION_ERROR', 'A senha atual não confere.', { current_password: ['A senha atual não confere.'] })
+    const user = mockUsers.find(item => item.id === session?.user.id)
+    if (!user) throw new AppError('UNAUTHENTICATED', 'Sessão expirada')
+    user.mustChangePassword = false
+    session = { user }
+    return response(user)
   },
   async logout() {
     await simulateRequest()
