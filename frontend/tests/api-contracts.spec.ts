@@ -7,7 +7,7 @@ import { fromApiUser } from '~/repositories/api/api-user-repository'
 
 describe('contratos API Laravel', () => {
   it('converte usuário para snake_case sem campos camelCase', () => {
-    expect(toApiUser({ name: 'Ana', email: 'ana@example.com', role: 'resident', unitId: '7', avatarUrl: '/ana.png' })).toEqual({
+    expect(toApiUser({ name: 'Ana', email: 'ana@example.com', role: 'resident', unitId: '7', avatarUrl: '/ana.png', mustChangePassword: true })).toEqual({
       name: 'Ana', email: 'ana@example.com', role: 'resident', unit_id: '7', avatar_url: '/ana.png',
     })
   })

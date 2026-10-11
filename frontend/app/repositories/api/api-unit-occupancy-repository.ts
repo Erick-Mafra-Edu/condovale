@@ -1,8 +1,11 @@
 import type { CreateUnitOccupancyInput, UnitOccupancy } from '~/domain/unit-occupancy'
+import type { ApiResponse } from '~/domain/common'
 import type { UnitOccupancyRepository } from '~/repositories/contracts/unit-occupancy-repository'
 import { createApiRequest } from './request'
 import { fromApiUnit } from './api-unit-repository'
 import { fromApiUser } from './api-user-repository'
+
+type ApiOccupancyListResponse = ApiResponse<ApiOccupancy[]> & { total?: number; amount?: number }
 
 type ApiOccupancy = Omit<UnitOccupancy, 'id' | 'user_id' | 'unit_id' | 'user' | 'unit'> & {
   id: string | number
@@ -32,8 +35,13 @@ export function createApiUnitOccupancyRepository(): UnitOccupancyRepository {
 
   return {
     async list() {
-      const response = await api<ApiOccupancy[]>('/unit-occupancies', { query: { relations: 'user;unit' } })
-      return { ...response, data: response.data.map(fromApiUnitOccupancy) }
+      const first = await api<ApiOccupancy[]>('/unit-occupancies', { query: { relations: 'user;unit' } }) as ApiOccupancyListResponse
+      const total = first.total ?? first.data.length
+      const pageSize = first.amount || first.data.length || 10
+      const pages = Math.ceil(total / pageSize)
+      if (pages <= 1) return { ...first, data: first.data.map(fromApiUnitOccupancy) }
+      const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => api<ApiOccupancy[]>('/unit-occupancies', { query: { relations: 'user;unit', page: index + 2 } })) as Promise<ApiOccupancyListResponse>[])
+      return { ...first, data: [first, ...rest].flatMap(page => page.data).map(fromApiUnitOccupancy) }
     },
     async findById(id) { return mapOccupancy(await api<ApiOccupancy>(`/unit-occupancies/${encodeURIComponent(id)}`)) },
     async create(input: CreateUnitOccupancyInput) { return mapOccupancy(await api<ApiOccupancy>('/unit-occupancies', { method: 'POST', body: input })) },

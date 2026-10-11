@@ -1,5 +1,5 @@
 import { toAppError, type AppError } from '~/domain/app-error'
-import type { LoginInput } from '~/domain/auth'
+import type { ChangePasswordInput, LoginInput } from '~/domain/auth'
 import type { User } from '~/domain/user'
 import { useServices } from '~/services'
 
@@ -33,10 +33,16 @@ export function useAuth() {
     return user.value
   }
 
+  async function changePassword(input: ChangePasswordInput) {
+    const result = await execute(() => authService.changePassword(input))
+    user.value = result.data
+    return user.value
+  }
+
   async function logout() {
     await execute(() => authService.logout())
     user.value = null
   }
 
-  return { user, loading, error, authenticate, restoreSession, logout }
+  return { user, loading, error, authenticate, restoreSession, changePassword, logout }
 }

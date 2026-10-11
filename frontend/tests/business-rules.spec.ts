@@ -274,6 +274,18 @@ describe('autenticação mock por classificação', () => {
     await expect(service.authenticate({ email: 'admin@example.com', password: 'errada' }))
       .rejects.toMatchObject({ code: 'UNAUTHENTICATED' })
   })
+
+  it('valida a troca de senha antes de chamar o repository', async () => {
+    const repository = { changePassword: vi.fn().mockResolvedValue(response(mockUsers[0])) } as unknown as Parameters<typeof createAuthService>[0]
+    const service = createAuthService(repository)
+
+    await expect(service.changePassword({ current_password: 'condovale', password: 'curta', password_confirmation: 'curta' }))
+      .rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+    expect(repository.changePassword).not.toHaveBeenCalled()
+
+    await service.changePassword({ current_password: 'condovale', password: 'nova-senha', password_confirmation: 'nova-senha' })
+    expect(repository.changePassword).toHaveBeenCalledWith({ current_password: 'condovale', password: 'nova-senha', password_confirmation: 'nova-senha' })
+  })
 })
 
 describe('atualização do próprio cadastro', () => {
