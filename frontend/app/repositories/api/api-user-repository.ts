@@ -8,9 +8,9 @@ export function toApiUser(input: Partial<User>) {
   return { ...rest, ...(unitId !== undefined ? { unit_id: unitId } : {}), ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}) }
 }
 
-export function fromApiUser(value: User & { unit_id?: string; avatar_url?: string }): User {
+export function fromApiUser(value: Omit<User, 'id'> & { id: string | number; unit_id?: string | number | null; avatar_url?: string }): User {
   const { unit_id, avatar_url, ...user } = value
-  return { ...user, unitId: unit_id ?? value.unitId, avatarUrl: avatar_url ?? value.avatarUrl }
+  return { ...user, id: String(user.id), unitId: unit_id != null ? String(unit_id) : value.unitId ?? undefined, avatarUrl: avatar_url ?? value.avatarUrl }
 }
 
 function mapUsers(response: ApiResponse<User[]>): ApiResponse<User[]> { return { ...response, data: response.data.map(item => fromApiUser(item as User & { unit_id?: string; avatar_url?: string })) } }

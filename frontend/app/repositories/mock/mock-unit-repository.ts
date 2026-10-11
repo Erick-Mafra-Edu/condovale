@@ -29,7 +29,7 @@ export const mockUnitRepository: UnitRepository = {
   },
   async create(input) {
     await simulateRequest()
-    const item: Unit = { ...structuredClone(input), id: crypto.randomUUID() }
+    const item: Unit = { ...structuredClone(input), id: crypto.randomUUID(), status: input.status ?? 'active', block: input.block ?? undefined }
     units.push(item)
     return response(item)
   },

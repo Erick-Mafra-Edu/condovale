@@ -32,7 +32,7 @@ export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> =
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]),
   employee: new Set(['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']),
-  syndic: new Set(['login', 'publish-notices', 'generate-reports']),
+  syndic: new Set(['login', 'manage-units', 'publish-notices', 'generate-reports']),
   admin: new Set([
     'login', 'manage-units', 'manage-residents', 'manage-users', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',

@@ -89,7 +89,7 @@ Toda mudança deve registrar ocorrência, autor autenticado, data, estado anteri
 | --- | --- | --- |
 | **RN01** — impedir conflito de reserva | **Atendido no mock** | Reservas `pending` e `approved` bloqueiam sobreposição para mesma área/data. |
 | **RN02** — respeitar disponibilidade e regras da área | **Parcial** | Conflito e disponibilidade visual existem; validação central de área ativa, funcionamento e duração máxima permanece pendente. |
-| **RN03** — somente síndico/admin exclui avisos; somente autorizados alteram unidades | **Parcial** | Unidades agora possuem fluxo administrativo de criar, editar e inativar protegido por `manage-units`. A remoção de avisos no mock ainda existe sem ator/autorização. |
+| **RN03** — somente síndico/admin exclui avisos; somente autorizados alteram unidades | **Parcial** | Síndico e administrador possuem `manage-units`, e unidades têm fluxo administrativo de criar, editar e inativar protegido por essa permissão. A remoção de avisos no mock ainda existe sem ator/autorização. |
 | **RN04** — somente usuários ativos e autorizados acessam funções | **Parcial** | Login mock verifica usuário ativo e a interface usa matriz de permissões. Alguns repositórios mock ainda aceitam operações sem validar sessão/papel; a proteção definitiva depende de policies no backend. |
 | **RN05** — ocorrência associada ao morador e com status | **Atendido no frontend/mock** | `residentId` e `status` são obrigatórios no domínio e na criação. |
 | **RN06** — somente autorizados alteram/finalizam ocorrências | **Parcial** | O mock protege atribuição e ações do funcionário. Falta tela administrativa de atribuição, policy backend e remoção da confiança em `userId` fornecido pelo cliente. |
