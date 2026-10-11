@@ -31,7 +31,7 @@ export function useUsers() {
 
   async function createUser(input: CreateUserInput) {
     const result = await execute(() => userService.create(input))
-    users.value.push(result.data)
+    users.value.push(result.data.user)
     return result.data
   }
 

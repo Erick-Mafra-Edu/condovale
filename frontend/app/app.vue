@@ -25,8 +25,9 @@ const showNotifications = ref(false)
 const detailTarget = ref<{ type: 'occurrence' | 'reservation' | 'notice'; id: string } | null>(null)
 const isScrolled = ref(false)
 
-const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, logout } = useAuth()
+const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, changePassword, logout } = useAuth()
 const { public: runtimeConfig } = useRuntimeConfig()
+const apiMode = computed(() => runtimeConfig.dataSource === 'api')
 const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, updateUser, deactivateUser } = useUsers()
 const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
@@ -40,12 +41,13 @@ const navItems = [
   { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Usuários', icon: 'users' }, { label: 'Ocorrências', icon: 'alert' },
   { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Unidades', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
 ] as const
+const unavailableInApi = new Set(['Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'])
 
 function hasAccess(useCase: UseCase) {
   return authUser.value ? can(authUser.value.role, useCase) : false
 }
 
-const visibleNavItems = computed(() => navItems.filter(item => authUser.value ? canViewModule(authUser.value.role, item.label) : false))
+const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label) && (!apiMode.value || !unavailableInApi.has(item.label))))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
 const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence') : false)
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
@@ -61,12 +63,15 @@ const activeReservations = computed(() => reservations.value.filter(item => ['ap
 const residentName = computed(() => authUser.value?.name ?? 'Morador')
 const residentInitials = computed(() => residentName.value.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase())
 
-const stats = computed(() => [
+const stats = computed(() => {
+  const items = [
   { label: 'Moradores', value: String(activeResidents.value.length), note: 'moradores ativos', icon: 'users' as const, tone: 'cyan' },
   { label: 'Ocorrências abertas', value: String(openOccurrences.value.length), note: 'em acompanhamento', icon: 'alert' as const, tone: 'red' },
   { label: 'Reservas ativas', value: String(activeReservations.value.length), note: 'pendentes ou aprovadas', icon: 'calendar' as const, tone: 'blue' },
   { label: 'Comunicados', value: String(notices.value.filter(item => item.status === 'published').length), note: 'publicados', icon: 'message' as const, tone: 'orange' },
-])
+  ]
+  return apiMode.value ? items.filter(item => item.label === 'Moradores' && hasAccess('manage-residents')) : items
+})
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${value}T12:00:00`))
 const formatDateTime = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
@@ -99,9 +104,18 @@ async function openOccurrenceDetail(id: string) {
 }
 
 async function loadDashboard() {
-  const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
   const canManageOccupancies = hasAccess('link-residents-to-units')
   const canManageUnits = hasAccess('manage-units')
+  if (apiMode.value) {
+    await Promise.all([
+      hasAccess('manage-residents') ? loadUsers() : Promise.resolve(),
+      canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(),
+      canManageOccupancies ? loadOccupancies() : Promise.resolve(),
+    ])
+    return
+  }
+
+  const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
   const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve()])
   areas.value = areasResponse.data
 }
@@ -111,6 +125,11 @@ const reloadReservations = () => resident.value ? loadMyReservations() : loadRes
 async function handleLogin(email: string, password: string) {
   await authenticate({ email, password })
   reportView.value = 'operations'
+  if (!authUser.value?.mustChangePassword) await loadDashboard()
+}
+
+async function handlePasswordChange(input: Parameters<typeof changePassword>[0]) {
+  await changePassword(input)
   await loadDashboard()
 }
 
@@ -133,7 +152,8 @@ async function saveOwnProfile(input: UpdateOwnProfileInput) {
 }
 
 async function createManagedUser(input: Parameters<typeof createUser>[0]) {
-  if (hasAccess('manage-users')) await createUser(input)
+  if (hasAccess('manage-users')) return createUser(input)
+  throw new Error('Sem permissão para gerenciar usuários.')
 }
 
 async function updateManagedUser(id: string, input: Parameters<typeof updateUser>[1]) {
@@ -200,7 +220,9 @@ function updateScrollMaterial() {
 }
 
 onMounted(() => {
-  restoreSession().then(user => user && loadDashboard()).catch(() => undefined)
+  restoreSession().then(user => {
+    if (user && !user.mustChangePassword) return loadDashboard()
+  }).catch(() => undefined)
   updateScrollMaterial()
   window.addEventListener('scroll', updateScrollMaterial, { passive: true })
 })
@@ -229,6 +251,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 
 <template>
   <LoginScreen v-if="!authUser" :loading="authLoading" :error="authError" :show-demo-access="runtimeConfig.dataSource !== 'api'" @submit="handleLogin" />
+  <PasswordChangePage v-else-if="authUser.mustChangePassword" :loading="authLoading" :error="authError" :on-submit="handlePasswordChange" :on-logout="handleLogout" />
   <div v-else class="app-shell">
     <AppSidebar :active="active" :items="visibleNavItems" @select="selectNav" />
 
@@ -239,15 +262,15 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
       <div class="page-wrap">
         <section class="page-heading">
           <div><div class="eyebrow">{{ roleLabel }} · Residencial Vale Verde</div><h1>Olá, {{ residentName }}!</h1><p>Veja o que está acontecendo no seu condomínio hoje.</p></div>
-          <button v-if="hasAccess('view-notices')" class="primary-button" @click="active = 'Comunicados'"><SvgIcon name="message" />Ver comunicados</button>
+          <button v-if="!apiMode && hasAccess('view-notices')" class="primary-button" @click="active = 'Comunicados'"><SvgIcon name="message" />Ver comunicados</button>
         </section>
 
         <div v-if="active === 'Início'">
           <section class="stat-grid"><DashboardStat v-for="stat in stats" :key="stat.label" v-bind="stat" /></section>
           <section class="content-grid three-columns">
-            <article class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="active = 'Ocorrências'">Ver todas</button></div><div class="list"><div v-if="!recentOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in recentOccurrences" :key="item.id" class="list-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="dot teal"></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em></button></div></article>
-            <article v-if="hasAccess('view-common-areas') || hasAccess('manage-reservations')" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
-            <article v-if="hasAccess('view-notices') || hasAccess('publish-notices')" class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="active = 'Comunicados'">Ver todos</button></div><div class="list"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="list-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em></button></div></article>
+            <article v-if="!apiMode" class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="active = 'Ocorrências'">Ver todas</button></div><div class="list"><div v-if="!recentOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in recentOccurrences" :key="item.id" class="list-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="dot teal"></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em></button></div></article>
+            <article v-if="!apiMode && (hasAccess('view-common-areas') || hasAccess('manage-reservations'))" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
+            <article v-if="!apiMode && (hasAccess('view-notices') || hasAccess('publish-notices'))" class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="active = 'Comunicados'">Ver todos</button></div><div class="list"><div v-if="!recentNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in recentNotices" :key="item.id" class="list-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em></button></div></article>
           </section>
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
