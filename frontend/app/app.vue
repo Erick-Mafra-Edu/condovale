@@ -28,7 +28,7 @@ const isScrolled = ref(false)
 const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, logout } = useAuth()
 const { public: runtimeConfig } = useRuntimeConfig()
 const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, updateUser, deactivateUser } = useUsers()
-const { units, loadUnits } = useUnits()
+const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
 const { occurrences, history: occurrenceHistory, loadOccurrences, createOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
@@ -38,7 +38,7 @@ const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
   { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Usuários', icon: 'users' }, { label: 'Ocorrências', icon: 'alert' },
-  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
+  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Unidades', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
 ] as const
 
 function hasAccess(useCase: UseCase) {
@@ -101,7 +101,8 @@ async function openOccurrenceDetail(id: string) {
 async function loadDashboard() {
   const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
   const canManageOccupancies = hasAccess('link-residents-to-units')
-  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve()])
+  const canManageUnits = hasAccess('manage-units')
+  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve()])
   areas.value = areasResponse.data
 }
 
@@ -141,6 +142,18 @@ async function updateManagedUser(id: string, input: Parameters<typeof updateUser
 
 async function deactivateManagedUser(id: string) {
   if (hasAccess('manage-users')) await deactivateUser(id)
+}
+
+async function createManagedUnit(input: Parameters<typeof createUnit>[0]) {
+  if (hasAccess('manage-units')) await createUnit(input)
+}
+
+async function updateManagedUnit(id: string, input: Parameters<typeof updateUnit>[1]) {
+  if (hasAccess('manage-units')) await updateUnit(id, input)
+}
+
+async function deactivateManagedUnit(id: string) {
+  if (hasAccess('manage-units')) await deactivateUnit(id)
 }
 
 async function submitOccurrence() {
@@ -241,6 +254,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 
         <ProfilePage v-else-if="active === 'Meu cadastro' && resident" :user="resident" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-users')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
+        <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
         <OccupancyPage v-else-if="active === 'Moradores e unidades' && hasAccess('link-residents-to-units')" :occupancies="occupancies" :selected-occupancy="selectedOccupancy" :users="users" :units="units" :loading="occupanciesLoading" :error="occupanciesError" @refresh="loadOccupancies" @create="createOccupancy" @delete="finishOccupancy" @open-detail="openOccupancyDetail" @close-detail="closeOccupancyDetail" />

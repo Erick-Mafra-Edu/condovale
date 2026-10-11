@@ -313,7 +313,7 @@ describe('permissões do diagrama de casos de uso', () => {
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]
   const employeeCases: UseCase[] = ['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']
-  const syndicCases: UseCase[] = ['login', 'publish-notices', 'generate-reports']
+  const syndicCases: UseCase[] = ['login', 'manage-units', 'publish-notices', 'generate-reports']
   const adminCases: UseCase[] = [
     'login', 'manage-units', 'manage-residents', 'manage-users', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
@@ -343,10 +343,10 @@ describe('permissões do diagrama de casos de uso', () => {
   it.each([
     ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Ocorrências']],
-    ['syndic', ['Início', 'Comunicados', 'Relatórios']],
-    ['admin', ['Início', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios']],
+    ['syndic', ['Início', 'Comunicados', 'Relatórios', 'Unidades']],
+    ['admin', ['Início', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
-    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'] as const
+    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades'] as const
     expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
   })
 })

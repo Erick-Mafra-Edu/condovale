@@ -1,5 +1,5 @@
 import { toAppError, type AppError } from '~/domain/app-error'
-import type { Unit } from '~/domain/user'
+import type { CreateUnitInput, Unit, UpdateUnitInput } from '~/domain/user'
 import { useServices } from '~/services'
 
 export function useUnits() {
@@ -29,6 +29,26 @@ export function useUnits() {
     return result.data
   }
 
-  return { units, loading, error, loadUnits, findUnit }
+  async function createUnit(input: CreateUnitInput) {
+    const result = await execute(() => unitService.create(input))
+    units.value.push(result.data)
+    return result.data
+  }
+
+  async function updateUnit(id: string, input: UpdateUnitInput) {
+    const result = await execute(() => unitService.update(id, input))
+    const index = units.value.findIndex(item => item.id === id)
+    if (index >= 0) units.value[index] = result.data
+    return result.data
+  }
+
+  async function deactivateUnit(id: string) {
+    const result = await execute(() => unitService.deactivate(id))
+    const index = units.value.findIndex(item => item.id === id)
+    if (index >= 0) units.value[index] = result.data
+    return result.data
+  }
+
+  return { units, loading, error, loadUnits, findUnit, createUnit, updateUnit, deactivateUnit }
 }
 
