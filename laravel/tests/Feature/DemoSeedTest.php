@@ -113,6 +113,36 @@ class DemoSeedTest extends TestCase
         }
     }
 
+    public function test_a_documentacao_lista_todas_as_contas_semeadas(): void
+    {
+        // docs/usuarios-backend.md é por onde quem vai demonstrar descobre com
+        // que credencial entrar. Ele já ficou defasado uma vez, quando as
+        // contas mudaram e ninguém reabriu o arquivo: a tabela apontava para
+        // e-mails que não existiam mais. Esta trava faz a divergência aparecer
+        // na suíte, e não na apresentação.
+        $caminho = base_path('../docs/usuarios-backend.md');
+
+        if (! is_file($caminho)) {
+            $this->markTestSkipped('docs/usuarios-backend.md não está presente nesta árvore.');
+        }
+
+        $doc = file_get_contents($caminho);
+
+        foreach (User::all() as $user) {
+            $this->assertStringContainsString(
+                $user->email,
+                $doc,
+                "A conta {$user->email} está na carga mas não em docs/usuarios-backend.md."
+            );
+        }
+
+        $this->assertStringContainsString(
+            self::SENHA,
+            $doc,
+            'docs/usuarios-backend.md não traz a senha da demonstração.'
+        );
+    }
+
     public function test_a_conta_inativa_nao_entra(): void
     {
         // RN04 — demonstrar a recusa exige uma conta já inativa na carga. A

@@ -86,6 +86,15 @@ Route::get('deploy/mail', [DeployController::class, 'mail'])
     ->withoutMiddleware([StartSession::class])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
+// UC-T01 / RNF01 — o `php artisan optimize` que não há como rodar por SSH.
+//
+// Precisa ser chamada depois de cada publicação: o publicador apaga os caches
+// de inicialização ao enviar arquivos, para que configuração velha nunca
+// sobreviva a um deploy.
+Route::post('deploy/optimize', [DeployController::class, 'optimize'])
+    ->withoutMiddleware([StartSession::class])
+    ->middleware(['throttle:deploy', 'deploy.token']);
+
 /*
 |--------------------------------------------------------------------------
 | Autenticação — UC02 / RF02

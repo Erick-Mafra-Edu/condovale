@@ -23,7 +23,13 @@ class CreateLogAction
         ];
 
         if ($dataLog) {
-            $attributes['data_log'] = json_encode($dataLog);
+            // Sem json_encode aqui: o model declara o cast `array` em
+            // data_log, que já serializa na gravação. Codificar antes fazia o
+            // cast codificar a string de novo, e a coluna guardava JSON dentro
+            // de JSON — ao ler de volta vinha uma string, não os dados. Quem
+            // for montar o relatório de auditoria (RN16) receberia aspas
+            // escapadas em vez do que mudou.
+            $attributes['data_log'] = $dataLog;
         }
 
         Log::create($attributes);

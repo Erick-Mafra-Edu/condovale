@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\TypeLogEnum;
 use App\Enums\UserRole;
+use App\Models\Log;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -45,6 +46,35 @@ class OwnProfileTest extends TestCase
                 ->assertStatus(201)
                 ->assertJsonPath('data.name', 'Nome Novo');
         }
+    }
+
+    public function test_a_edicao_do_proprio_cadastro_vai_para_a_auditoria(): void
+    {
+        // RNF04. Trocar o próprio e-mail troca a identidade de login, e isto
+        // era a única mutação dos módulos entregues que não deixava rastro: a
+        // auditoria não tinha como reconstruir por qual conta alguém entrava
+        // antes da troca.
+        $user = $this->autenticado(['name' => 'Ana Silva']);
+
+        $this->actingAs($user)
+            ->patchJson('/api/users/me', ['name' => 'Ana Silva Costa', 'email' => 'ana@condovale.test'])
+            ->assertStatus(201);
+
+        $this->assertDatabaseHas('logs', [
+            'type_log_id' => TypeLogEnum::USER->value,
+            'user_id' => $user->id,
+            'description' => "Usuário {$user->id} Ana Silva Costa editou o próprio cadastro.",
+        ]);
+
+        $registro = Log::where('user_id', $user->id)->latest('id')->first();
+
+        // Os dados saem da coluna como estrutura, e nao como JSON dentro de
+        // JSON: a CreateLogAction codificava antes de gravar e o cast `array`
+        // do model codificava de novo, de modo que a leitura devolvia uma
+        // string. O relatorio de auditoria receberia aspas escapadas.
+        $this->assertIsArray($registro->data_log);
+        $this->assertSame('eu@condovale.test', $registro->data_log['de']['email']);
+        $this->assertSame('ana@condovale.test', $registro->data_log['para']['email']);
     }
 
     public function test_o_cadastro_proprio_vem_da_sessao_e_nao_da_requisicao(): void
