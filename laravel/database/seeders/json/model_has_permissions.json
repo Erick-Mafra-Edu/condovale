@@ -1,0 +1,10 @@
+[
+    {
+        "user_email": "syndic@gmail.com",
+        "permission": "view-audit-reports"
+    },
+    {
+        "user_email": "employee@gmail.com",
+        "permission": "view-notices"
+    }
+]

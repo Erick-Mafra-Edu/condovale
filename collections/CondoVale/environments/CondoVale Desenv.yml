@@ -7,18 +7,18 @@ variables:
   - name: AUTH_LOGIN_ENDPOINT
     value: /auth/login
   - name: USER_LOGIN
-    value: admin@condovale.com
+    value: admin@gmail.com
   - name: USER_LOGIN
-    value: sindico@condovale.com
+    value: syndic@gmail.com
     disabled: true
   - name: USER_LOGIN
-    value: portaria@condovale.com
+    value: employee@gmail.com
     disabled: true
   - name: USER_LOGIN
-    value: morador1@condovale.com
+    value: resident@gmail.com
     disabled: true
   - name: USER_PASSWORD
-    value: "senha123"
+    value: "123456"
   - name: DEPLOY_TOKEN
     value: PREENCHER_LOCALMENTE
   - name: authUserId

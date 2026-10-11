@@ -1,26 +1,98 @@
 [
     {
-        "occurrence_id": 1,
-        "user_id": 5,
+        "occurrence_title": "Vazamento de água no corredor do 1º andar",
+        "user_email": "resident@gmail.com",
         "type": "created",
         "message": null,
         "previous_status": null,
         "new_status": "open"
     },
     {
-        "occurrence_id": 1,
-        "user_id": 4,
-        "type": "status_changed",
+        "occurrence_title": "Vazamento de água no corredor do 1º andar",
+        "user_email": "syndic@gmail.com",
+        "type": "assigned",
         "message": "Chamado encaminhado para a equipe de manutenção predial.",
         "previous_status": "open",
         "new_status": "assigned"
     },
     {
-        "occurrence_id": 2,
-        "user_id": 6,
+        "occurrence_title": "Lâmpada queimada na garagem B2",
+        "user_email": "resident2@gmail.com",
         "type": "created",
         "message": null,
         "previous_status": null,
         "new_status": "open"
+    },
+    {
+        "occurrence_title": "Portão da garagem com ruído ao abrir",
+        "user_email": "resident@gmail.com",
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    },
+    {
+        "occurrence_title": "Portão da garagem com ruído ao abrir",
+        "user_email": "syndic@gmail.com",
+        "type": "assigned",
+        "message": "Atribuído à manutenção para avaliação do motor.",
+        "previous_status": "open",
+        "new_status": "assigned"
+    },
+    {
+        "occurrence_title": "Portão da garagem com ruído ao abrir",
+        "user_email": "employee2@gmail.com",
+        "type": "status_changed",
+        "message": "Peça solicitada ao fornecedor; serviço iniciado.",
+        "previous_status": "assigned",
+        "new_status": "in_progress"
+    },
+    {
+        "occurrence_title": "Infiltração na parede da sala",
+        "user_email": "resident2@gmail.com",
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    },
+    {
+        "occurrence_title": "Infiltração na parede da sala",
+        "user_email": "employee@gmail.com",
+        "type": "completed",
+        "message": "Impermeabilização refeita e parede repintada.",
+        "previous_status": "in_progress",
+        "new_status": "completed"
+    },
+    {
+        "occurrence_title": "Barulho excessivo após as 22h",
+        "user_email": "resident@gmail.com",
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    },
+    {
+        "occurrence_title": "Barulho excessivo após as 22h",
+        "user_email": "syndic@gmail.com",
+        "type": "comment",
+        "message": "Notificação entregue à unidade; em acompanhamento.",
+        "previous_status": "open",
+        "new_status": "analysis"
+    },
+    {
+        "occurrence_title": "Interfone sem áudio na portaria",
+        "user_email": "firstaccess@gmail.com",
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    },
+    {
+        "occurrence_title": "Interfone sem áudio na portaria",
+        "user_email": "syndic@gmail.com",
+        "type": "status_changed",
+        "message": "Chamado duplicado: já havia registro aberto para o mesmo interfone.",
+        "previous_status": "open",
+        "new_status": "cancelled"
     }
 ]

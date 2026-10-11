@@ -42,5 +42,16 @@
         "max_reservation_minutes": 90,
         "requires_approval": false,
         "status": "available"
+    },
+    {
+        "name": "Piscina Adulto",
+        "description": "Piscina semiolímpica aquecida, em manutenção do sistema de filtragem.",
+        "image_url": null,
+        "capacity": 40,
+        "opening_time": "08:00:00",
+        "closing_time": "20:00:00",
+        "max_reservation_minutes": 120,
+        "requires_approval": false,
+        "status": "unavailable"
     }
 ]
