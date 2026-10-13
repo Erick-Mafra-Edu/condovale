@@ -27,7 +27,7 @@ class OccurrenceSeeder extends Seeder
             $array = [
                 'title' => $item->title,
                 'description' => $item->description,
-                'category' => $item->category,
+                'occurrence_type_id' => $this->occurrenceTypeId($item->occurrence_type_name, 'occurrences.json'),
                 'resident_id' => $this->userId($item->resident_email, 'occurrences.json'),
                 'unit_id' => $this->unitId($item->unit_code, 'occurrences.json'),
                 'assigned_employee_id' => $this->optionalUserId($item->assigned_employee_email, 'occurrences.json'),

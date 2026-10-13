@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
             CommonAreaSeeder::class,
             ReservationSeeder::class,
 
+            OccurrenceTypeSeeder::class,
             OccurrenceSeeder::class,
             OccurrenceHistorySeeder::class,
 

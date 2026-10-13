@@ -23,6 +23,8 @@ enum UseCase: string
     case ManageUnits = 'manage-units';
     case ManageResidents = 'manage-residents';
     case LinkResidentsToUnits = 'link-residents-to-units';
+    case OpenOccurrenceForResident = 'open-occurrence-for-resident';
+    case ManageOccurrenceTypes = 'manage-occurrence-types';
     case AnalyzeOccurrences = 'analyze-occurrences';
     case AssignOccurrence = 'assign-occurrence';
     case PublishNotices = 'publish-notices';

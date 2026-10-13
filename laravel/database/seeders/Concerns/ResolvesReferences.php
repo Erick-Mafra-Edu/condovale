@@ -4,6 +4,7 @@ namespace Database\Seeders\Concerns;
 
 use App\Models\CommonArea;
 use App\Models\Occurrence;
+use App\Models\OccurrenceType;
 use App\Models\Unit;
 use App\Models\User;
 use RuntimeException;
@@ -46,6 +47,12 @@ trait ResolvesReferences
     {
         return Occurrence::where('title', $title)->value('id')
             ?? throw new RuntimeException("{$origem} cita a ocorrência \"{$title}\", que não está em occurrences.json.");
+    }
+
+    protected function occurrenceTypeId(string $name, string $origem): int
+    {
+        return OccurrenceType::where('name', $name)->value('id')
+            ?? throw new RuntimeException("{$origem} cita o tipo de ocorrência {$name}, que não está em occurrence_types.json.");
     }
 
     /**

@@ -48,6 +48,14 @@
         "guard_name": "web"
     },
     {
+        "name": "open-occurrence-for-resident",
+        "guard_name": "web"
+    },
+    {
+        "name": "manage-occurrence-types",
+        "guard_name": "web"
+    },
+    {
         "name": "analyze-occurrences",
         "guard_name": "web"
     },

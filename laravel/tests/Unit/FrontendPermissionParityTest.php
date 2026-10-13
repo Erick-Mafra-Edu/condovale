@@ -38,11 +38,15 @@ class FrontendPermissionParityTest extends TestCase
      * @var array<string, list<string>>
      */
     private const DIVERGENCIAS_POR_PAPEL = [
-        'syndic' => ['update-own-profile'],
+        // open-occurrence-for-resident e manage-occurrence-types nasceram no
+        // card de abertura de chamado: o sindico abre chamado no lugar de quem
+        // nao conseguir, e ele e o administrador respondem pela lista de tipos.
+        // Nenhum dos dois existe no frontend ainda.
+        'syndic' => ['update-own-profile', 'open-occurrence-for-resident', 'manage-occurrence-types'],
         // update-own-profile passou a valer para os quatro perfis aqui, e o
-        // frontend ainda o dá apenas ao morador.
+        // frontend ainda o da apenas ao morador.
         'employee' => ['update-own-profile'],
-        'admin' => ['update-own-profile', 'manage-users'],
+        'admin' => ['update-own-profile', 'manage-users', 'open-occurrence-for-resident', 'manage-occurrence-types'],
         'resident' => [],
     ];
 
@@ -59,6 +63,12 @@ class FrontendPermissionParityTest extends TestCase
      */
     private const CASOS_SO_DE_UM_LADO = [
         'manage-users',
+        // Os dois so existem no backend por enquanto. Enquanto o frontend nao
+        // os conhecer, a interface nao oferece ao sindico abrir chamado para
+        // um morador nem manter a lista de tipos — a API aceita, mas nao ha
+        // por onde chamar.
+        'open-occurrence-for-resident',
+        'manage-occurrence-types',
     ];
 
     private function fonte(): string

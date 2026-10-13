@@ -2,7 +2,7 @@
     {
         "title": "Vazamento de água no corredor do 1º andar",
         "description": "Há uma infiltração visível saindo do teto perto do elevador social.",
-        "category": "manutenção",
+        "occurrence_type_name": "Manutenção predial",
         "resident_email": "resident@gmail.com",
         "unit_code": "A-101",
         "assigned_employee_email": "employee@gmail.com",
@@ -12,7 +12,7 @@
     {
         "title": "Lâmpada queimada na garagem B2",
         "description": "A vaga 102 está escura devido à lâmpada queimada no poste 4.",
-        "category": "iluminação",
+        "occurrence_type_name": "Manutenção predial",
         "resident_email": "resident2@gmail.com",
         "unit_code": "A-102",
         "assigned_employee_email": null,
@@ -22,7 +22,7 @@
     {
         "title": "Portão da garagem com ruído ao abrir",
         "description": "O portão basculante range e trava na metade do curso desde segunda-feira.",
-        "category": "manutenção",
+        "occurrence_type_name": "Estacionamento",
         "resident_email": "resident@gmail.com",
         "unit_code": "A-101",
         "assigned_employee_email": "employee2@gmail.com",
@@ -32,7 +32,7 @@
     {
         "title": "Infiltração na parede da sala",
         "description": "Mancha de umidade na parede que faz divisa com a área da piscina.",
-        "category": "manutenção",
+        "occurrence_type_name": "Manutenção predial",
         "resident_email": "resident2@gmail.com",
         "unit_code": "A-102",
         "assigned_employee_email": "employee@gmail.com",
@@ -42,7 +42,7 @@
     {
         "title": "Barulho excessivo após as 22h",
         "description": "Som alto vindo da unidade vizinha em três noites seguidas.",
-        "category": "convivência",
+        "occurrence_type_name": "Barulho e sossego",
         "resident_email": "resident@gmail.com",
         "unit_code": "A-101",
         "assigned_employee_email": null,
@@ -52,7 +52,7 @@
     {
         "title": "Interfone sem áudio na portaria",
         "description": "A portaria chama, mas não há som do outro lado.",
-        "category": "manutenção",
+        "occurrence_type_name": "Segurança",
         "resident_email": "firstaccess@gmail.com",
         "unit_code": "B-101",
         "assigned_employee_email": null,
