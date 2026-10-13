@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\OccurrenceStatus;
 use App\Models\Occurrence;
+use App\Models\OccurrenceType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,7 +21,7 @@ class OccurrenceFactory extends Factory
         return [
             'title' => fake()->sentence(4),
             'description' => fake()->paragraph(),
-            'category' => fake()->randomElement(['Manutenção', 'Segurança', 'Conservação', 'Convivência']),
+            'occurrence_type_id' => OccurrenceType::factory(),
             'resident_id' => User::factory()->resident(),
             'status' => OccurrenceStatus::Open,
         ];

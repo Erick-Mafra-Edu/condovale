@@ -46,6 +46,8 @@ class PermissionMatrixTest extends TestCase
             'login',
             'update-own-profile',
             'manage-units',
+            'open-occurrence-for-resident',
+            'manage-occurrence-types',
             'publish-notices',
             'generate-reports',
         ]);
@@ -59,6 +61,8 @@ class PermissionMatrixTest extends TestCase
             'manage-units',
             'manage-residents',
             'link-residents-to-units',
+            'open-occurrence-for-resident',
+            'manage-occurrence-types',
             'analyze-occurrences',
             'assign-occurrence',
             'publish-notices',

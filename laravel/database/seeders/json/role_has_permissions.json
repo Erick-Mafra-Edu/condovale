@@ -122,5 +122,21 @@
     {
         "role": "syndic",
         "permission": "manage-units"
+    },
+    {
+        "role": "syndic",
+        "permission": "open-occurrence-for-resident"
+    },
+    {
+        "role": "syndic",
+        "permission": "manage-occurrence-types"
+    },
+    {
+        "role": "admin",
+        "permission": "open-occurrence-for-resident"
+    },
+    {
+        "role": "admin",
+        "permission": "manage-occurrence-types"
     }
 ]

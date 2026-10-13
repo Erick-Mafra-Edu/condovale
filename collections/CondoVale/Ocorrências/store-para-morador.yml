@@ -1,0 +1,27 @@
+info:
+  name: store (síndico abre para o morador)
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{API_URL}}/occurrences"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Portão da garagem travando",
+        "description": "Morador relatou na portaria que o portão trava na metade do curso.",
+        "occurrence_type_id": 2,
+        "resident_id": 4
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

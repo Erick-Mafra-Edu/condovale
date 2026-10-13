@@ -15,7 +15,7 @@ class Occurrence extends Model
     protected $fillable = [
         'title',
         'description',
-        'category',
+        'occurrence_type_id',
         'resident_id',
         'unit_id',
         'assigned_employee_id',
@@ -38,6 +38,11 @@ class Occurrence extends Model
             'status' => OccurrenceStatus::class,
             'completed_at' => 'datetime',
         ];
+    }
+
+    public function occurrenceType(): BelongsTo
+    {
+        return $this->belongsTo(OccurrenceType::class);
     }
 
     public function resident(): BelongsTo

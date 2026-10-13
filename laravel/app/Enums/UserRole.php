@@ -38,6 +38,10 @@ enum UserRole: string
                 // e do administrador. O cadastro de pessoas não: esse é só do
                 // administrador, por manage-residents.
                 UseCase::ManageUnits,
+                // O morador abre o proprio chamado; o sindico abre no lugar de
+                // quem nao conseguir, e responde pela lista de tipos.
+                UseCase::OpenOccurrenceForResident,
+                UseCase::ManageOccurrenceTypes,
                 UseCase::PublishNotices,
                 UseCase::GenerateReports,
             ],
@@ -47,6 +51,8 @@ enum UserRole: string
                 UseCase::ManageUnits,
                 UseCase::ManageResidents,
                 UseCase::LinkResidentsToUnits,
+                UseCase::OpenOccurrenceForResident,
+                UseCase::ManageOccurrenceTypes,
                 UseCase::AnalyzeOccurrences,
                 UseCase::AssignOccurrence,
                 UseCase::PublishNotices,

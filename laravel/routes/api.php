@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\OccurrenceController;
+use App\Http\Controllers\OccurrenceTypeController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UnitController;
@@ -233,5 +235,43 @@ Route::middleware(['auth', 'user.active', 'password.change', 'use.case:link-resi
 | As rotas de cada módulo entram aqui com a task correspondente.
 */
 Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->group(function () {
-    //
+    /*
+    | UC04 / RF04 / RN05 — abertura de chamado de ocorrência.
+    |
+    | Uma rota só para os dois jeitos de abrir. O morador abre o próprio
+    | chamado; o síndico abre no lugar de quem não conseguir, informando
+    | `resident_id`. Separar em duas rotas duplicaria a mesma regra de criação
+    | em dois lugares, e elas sairiam de acordo na primeira alteração.
+    |
+    | O middleware libera quem tiver **qualquer** um dos dois casos de uso;
+    | quem pode usar o campo `resident_id` é a Action que decide, porque isso
+    | depende do corpo da requisição, que o middleware não lê.
+    */
+    Route::post('occurrences', [OccurrenceController::class, 'store'])
+        ->middleware('use.case:create-occurrence,open-occurrence-for-resident');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Tipos de ocorrência — RF04
+|--------------------------------------------------------------------------
+|
+| A lista deixou de ser texto livre e virou cadastro: síndico e administrador
+| acrescentam, editam e aposentam tipos sem depender de deploy.
+|
+| A consulta e a manutenção estão em grupos diferentes de propósito. Ler a
+| lista é insumo para abrir chamado — o morador precisa dela para escolher —,
+| enquanto alterá-la é ato administrativo.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::middleware('use.case:create-occurrence,open-occurrence-for-resident,manage-occurrence-types')->group(function () {
+        Route::get('occurrence-types', [OccurrenceTypeController::class, 'index']);
+        Route::get('occurrence-types/{id}', [OccurrenceTypeController::class, 'show']);
+    });
+
+    Route::middleware('use.case:manage-occurrence-types')->group(function () {
+        Route::post('occurrence-types', [OccurrenceTypeController::class, 'store']);
+        Route::patch('occurrence-types/{id}', [OccurrenceTypeController::class, 'update']);
+        Route::delete('occurrence-types/{id}', [OccurrenceTypeController::class, 'destroy']);
+    });
 });

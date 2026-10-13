@@ -18,6 +18,7 @@ enum TypeLogEnum: int
     case OCCURRENCE = 7;
     case NOTICE = 8;
     case UNIT_OCCUPANCY = 9;
+    case OCCURRENCE_TYPE = 10;
 
     /**
      * Entity name exposed by the audit report (RN16).
@@ -29,7 +30,7 @@ enum TypeLogEnum: int
             self::UNIT, self::UNIT_OCCUPANCY => 'unit',
             self::COMMON_AREA => 'common_area',
             self::RESERVATION => 'reservation',
-            self::OCCURRENCE => 'occurrence',
+            self::OCCURRENCE, self::OCCURRENCE_TYPE => 'occurrence',
             self::NOTICE => 'notice',
         };
     }

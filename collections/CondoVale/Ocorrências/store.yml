@@ -1,0 +1,26 @@
+info:
+  name: store
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{API_URL}}/occurrences"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Vazamento no corredor do 1º andar",
+        "description": "Há água escorrendo do teto perto do elevador social.",
+        "occurrence_type_id": 1
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
