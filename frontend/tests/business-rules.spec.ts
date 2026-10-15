@@ -216,11 +216,11 @@ describe('RN06 — histórico de ocorrência', () => {
 
     await service.assign(occurrence.id, 'employee-01')
     await service.updateStatus(occurrence.id, 'in_progress')
-    await service.finish(occurrence.id, 'Concluído')
+    await service.finish(occurrence.id, { resolved: true, conclusion: 'Concluído' })
 
     expect(repository.assign).toHaveBeenCalledWith(occurrence.id, 'employee-01')
     expect(repository.updateStatus).toHaveBeenCalledWith(occurrence.id, 'in_progress')
-    expect(repository.finish).toHaveBeenCalledWith(occurrence.id, 'Concluído')
+    expect(repository.finish).toHaveBeenCalledWith(occurrence.id, { resolved: true, conclusion: 'Concluído' })
   })
 
   it('permite atualizar e finalizar somente a ocorrência atribuída ao funcionário', async () => {
@@ -325,10 +325,10 @@ describe('permissões do diagrama de casos de uso', () => {
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]
   const employeeCases: UseCase[] = ['login', 'update-own-profile', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']
-  const syndicCases: UseCase[] = ['login', 'update-own-profile', 'manage-units', 'publish-notices', 'generate-reports']
+  const syndicCases: UseCase[] = ['login', 'update-own-profile', 'manage-units', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'generate-reports']
   const adminCases: UseCase[] = [
     'login', 'update-own-profile', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
-    'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
+    'assign-occurrence', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
     'generate-reports', 'view-audit-reports',
   ]
 
@@ -355,10 +355,10 @@ describe('permissões do diagrama de casos de uso', () => {
   it.each([
     ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Meu cadastro', 'Ocorrências']],
-    ['syndic', ['Início', 'Meu cadastro', 'Comunicados', 'Relatórios', 'Unidades']],
-    ['admin', ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades']],
+    ['syndic', ['Início', 'Meu cadastro', 'Tipos de ocorrência', 'Ocorrências', 'Comunicados', 'Relatórios', 'Unidades']],
+    ['admin', ['Início', 'Meu cadastro', 'Usuários', 'Tipos de ocorrência', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
-    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades'] as const
+    const modules = ['Início', 'Meu cadastro', 'Usuários', 'Tipos de ocorrência', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades'] as const
     expect(modules.filter(module => canViewModule(role, module))).toEqual(expected)
   })
 })
