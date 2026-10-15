@@ -67,7 +67,7 @@ class OccurrenceStatusTest extends TestCase
 
         $this->mudarStatus(User::factory()->admin()->create(), $chamado, 'cancelled')
             ->assertStatus(409)
-            ->assertJsonPath('message', 'Não é possível mudar o chamado de Em andamento para Cancelado.');
+            ->assertJsonPath('message', 'O chamado não pode passar de Em andamento para Cancelado: de Em andamento ele segue para Concluído.');
     }
 
     public function test_o_funcionario_atribuido_inicia_o_atendimento(): void
@@ -92,12 +92,14 @@ class OccurrenceStatusTest extends TestCase
 
     public function test_o_funcionario_nao_cancela_o_proprio_chamado(): void
     {
+        // A transição existe no fluxo — a administração cancela chamado
+        // atribuído —, só não para o funcionário. Por isso 403, e não 409.
         $funcionario = User::factory()->employee()->create();
         $chamado = Occurrence::factory()->assignedTo($funcionario)->create();
 
         $this->mudarStatus($funcionario, $chamado, 'cancelled')
-            ->assertStatus(409)
-            ->assertJsonPath('message', 'Não é possível mudar o chamado de Atribuído para Cancelado.');
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'Você não tem autorização para levar o chamado de Atribuído para Cancelado.');
     }
 
     public function test_concluir_nao_passa_pelo_patch(): void
@@ -118,9 +120,20 @@ class OccurrenceStatusTest extends TestCase
     {
         // "Atribuído" sem ninguém atribuído é um chamado que parece estar
         // sendo atendido e que ninguém atende.
-        $this->mudarStatus(User::factory()->admin()->create(), $this->chamado(), 'assigned')
+        $emAnalise = $this->chamado(['status' => OccurrenceStatus::Analysis]);
+
+        $this->mudarStatus(User::factory()->admin()->create(), $emAnalise, 'assigned')
             ->assertStatus(422)
             ->assertJsonPath('message', 'O chamado passa a atribuído quando se escolhe o funcionário responsável.');
+    }
+
+    public function test_fora_do_fluxo_e_409_para_qualquer_um(): void
+    {
+        // Pular a análise não é questão de quem pede: nem o administrador
+        // faz. A resposta lista para onde o chamado pode ir.
+        $this->mudarStatus(User::factory()->admin()->create(), $this->chamado(), 'assigned')
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'O chamado não pode passar de Aberto para Atribuído: de Aberto ele segue para Em análise, Cancelado ou Concluído.');
     }
 
     public function test_chamado_encerrado_nao_muda_mais(): void

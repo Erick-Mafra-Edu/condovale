@@ -13,9 +13,10 @@ use App\Models\User;
 /**
  * RN06 — só quem tem autorização muda o status do chamado.
  *
- * O ciclo é aberto → em análise → atribuído → em andamento → concluído. A
- * administração analisa e pode cancelar enquanto o atendimento não começou; o
- * funcionário atribuído inicia o atendimento (RN15).
+ * O fluxo em si — que transições existem — é do OccurrenceStatus, e o model
+ * o confere em toda gravação. Esta Action decide **quem** faz cada transição:
+ * a administração analisa e pode cancelar enquanto o atendimento não começou;
+ * o funcionário atribuído inicia o atendimento (RN15).
  *
  * Duas transições não passam por aqui, de propósito:
  *
@@ -64,19 +65,24 @@ class UpdateOccurrenceStatusAction
         return $occurrence->refresh();
     }
 
+    /**
+     * Primeiro o fluxo, depois a pessoa.
+     *
+     * As duas recusas são de natureza diferente e saem com códigos diferentes:
+     * fora do fluxo é 409 — ninguém faz essa transição, nem o administrador;
+     * dentro do fluxo mas sem autorização é 403 — a transição existe, só não
+     * para quem pediu. Antes as duas saíam iguais, e quem estava do outro lado
+     * não tinha como saber se devia pedir a outra pessoa ou desistir.
+     */
     private static function checkTransition(Occurrence $occurrence, User $author, OccurrenceStatus $status): void
     {
         $current = $occurrence->status;
 
-        if ($current->isFinal()) {
-            throw BusinessRuleException::conflict(
-                "Este chamado já está {$current->label()} e não muda mais de status."
-            );
-        }
-
-        if ($current === $status) {
+        if ($current === $status && ! $current->isFinal()) {
             throw BusinessRuleException::conflict("O chamado já está {$status->label()}.");
         }
+
+        $current->assertCanTransitionTo($status);
 
         if ($status === OccurrenceStatus::Completed) {
             throw BusinessRuleException::unprocessable(
@@ -93,8 +99,8 @@ class UpdateOccurrenceStatusAction
         self::checkEmployeeOwnsIt($occurrence, $author);
 
         if (! in_array($status, self::allowedTransitions($occurrence, $author), true)) {
-            throw BusinessRuleException::conflict(
-                "Não é possível mudar o chamado de {$current->label()} para {$status->label()}."
+            throw BusinessRuleException::forbidden(
+                "Você não tem autorização para levar o chamado de {$current->label()} para {$status->label()}."
             );
         }
     }

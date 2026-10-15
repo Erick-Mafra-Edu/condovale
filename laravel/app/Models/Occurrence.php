@@ -8,9 +8,43 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Chamado de ocorrência (RF04).
+ *
+ * O status só anda pelo fluxo de OccurrenceStatus, e quem garante isso é o
+ * gancho `updating` abaixo: toda gravação que muda o status passa pelo grafo,
+ * venha de uma Action, de um comando ou de código que alguém escrever depois.
+ * Conferir só nas Actions deixaria a regra valendo apenas para quem lembrasse
+ * de chamá-las.
+ *
+ * Dois limites que são do Eloquent, não desta classe: `updateQuietly()` e o
+ * update em massa pelo query builder (`Occurrence::where(...)->update(...)`)
+ * não disparam eventos e passam por fora. Não use nenhum dos dois para mudar
+ * status.
+ *
+ * A criação não é conferida, de propósito: o chamado nasce Aberto pela
+ * CreateOccurrenceAction, que é a única porta de criação da aplicação, e as
+ * factories precisam criar chamados em qualquer etapa para que os testes
+ * consigam exercitar as transições a partir dela.
+ */
 class Occurrence extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::updating(function (Occurrence $occurrence) {
+            if (! $occurrence->isDirty('status')) {
+                return;
+            }
+
+            $anterior = $occurrence->getOriginal('status');
+
+            if ($anterior instanceof OccurrenceStatus) {
+                $anterior->assertCanTransitionTo($occurrence->status);
+            }
+        });
+    }
 
     protected $fillable = [
         'title',

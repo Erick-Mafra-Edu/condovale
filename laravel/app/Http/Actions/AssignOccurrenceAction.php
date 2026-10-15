@@ -14,7 +14,9 @@ use App\Models\User;
  *
  * Reassigning an attendance that already started is refused: the
  * specification has not defined whether it is allowed nor whether a
- * justification would be required.
+ * justification would be required. Reassigning while still assigned is not a
+ * status transition — only the employee changes — so the state machine lets
+ * it through.
  */
 class AssignOccurrenceAction
 {
@@ -30,6 +32,13 @@ class AssignOccurrenceAction
 
         if ($occurrence->status === OccurrenceStatus::InProgress) {
             throw BusinessRuleException::conflict('Não é possível reatribuir um atendimento já iniciado.');
+        }
+
+        // O fluxo é aberto → em análise → atribuído: quem encaminha precisa
+        // ter lido o chamado antes. O OccurrenceStatus já recusa o atalho; a
+        // recusa aqui é só para dizer o que fazer em vez de listar estados.
+        if ($occurrence->status === OccurrenceStatus::Open) {
+            throw BusinessRuleException::conflict('Analise o chamado antes de encaminhá-lo a um funcionário.');
         }
 
         $previousStatus = $occurrence->status;
