@@ -14,6 +14,7 @@ http:
     data: |-
       {
         "description": "Assuntos que não se encaixam nos demais tipos.",
+        "employee_can_close": false,
         "active": true
       }
   auth: inherit

@@ -21,6 +21,7 @@ class CreateOccurrenceTypeAction
         $type = OccurrenceType::create([
             'name' => trim($attributes['name']),
             'description' => $attributes['description'] ?? null,
+            'employee_can_close' => $attributes['employee_can_close'] ?? false,
             'active' => $attributes['active'] ?? true,
         ]);
 

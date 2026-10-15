@@ -253,6 +253,30 @@ Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->gr
 
 /*
 |--------------------------------------------------------------------------
+| Andamento e encerramento de chamados — RF04 / RN06 / RN15
+|--------------------------------------------------------------------------
+|
+| Fora do `unit.linked`: quem age aqui é a administração, o síndico ou o
+| funcionário, e nenhum deles responde por uma unidade.
+|
+| O grupo só abre a porta para quem tem algum dos casos de uso. O que cada um
+| pode fazer em **cada chamado** é decidido nas Actions, porque depende do
+| registro: o funcionário só mexe no que lhe foi atribuído, e só encerra o
+| tipo que permite (`occurrence_types.employee_can_close`).
+|
+| Concluir não passa pelo PATCH de status: vai pelo POST de finalização, que
+| exige a conclusão e se o problema foi resolvido.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::patch('occurrences/{id}/status', [OccurrenceController::class, 'updateStatus'])
+        ->middleware('use.case:analyze-occurrences,update-occurrence-progress');
+
+    Route::post('occurrences/{id}/finish', [OccurrenceController::class, 'finish'])
+        ->middleware('use.case:finish-occurrence,close-any-occurrence');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Tipos de ocorrência — RF04
 |--------------------------------------------------------------------------
 |

@@ -7,6 +7,8 @@
         "unit_code": "A-101",
         "assigned_employee_email": "employee@gmail.com",
         "status": "assigned",
+        "resolved": null,
+        "conclusion": null,
         "completed_days_ago": null
     },
     {
@@ -17,6 +19,8 @@
         "unit_code": "A-102",
         "assigned_employee_email": null,
         "status": "open",
+        "resolved": null,
+        "conclusion": null,
         "completed_days_ago": null
     },
     {
@@ -27,6 +31,8 @@
         "unit_code": "A-101",
         "assigned_employee_email": "employee2@gmail.com",
         "status": "in_progress",
+        "resolved": null,
+        "conclusion": null,
         "completed_days_ago": null
     },
     {
@@ -37,6 +43,8 @@
         "unit_code": "A-102",
         "assigned_employee_email": "employee@gmail.com",
         "status": "completed",
+        "resolved": true,
+        "conclusion": "Impermeabilização refeita e parede repintada; sem novos sinais de umidade.",
         "completed_days_ago": 4
     },
     {
@@ -47,6 +55,8 @@
         "unit_code": "A-101",
         "assigned_employee_email": null,
         "status": "analysis",
+        "resolved": null,
+        "conclusion": null,
         "completed_days_ago": null
     },
     {
@@ -57,6 +67,8 @@
         "unit_code": "B-101",
         "assigned_employee_email": null,
         "status": "cancelled",
+        "resolved": null,
+        "conclusion": null,
         "completed_days_ago": null
     }
 ]

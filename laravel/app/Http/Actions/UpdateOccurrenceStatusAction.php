@@ -4,21 +4,32 @@ namespace App\Http\Actions;
 
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
-use App\Enums\UserRole;
+use App\Enums\TypeLogEnum;
+use App\Enums\UseCase;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Occurrence;
 use App\Models\User;
 
 /**
- * RN06 — only authorized users change the status of an occurrence.
+ * RN06 — só quem tem autorização muda o status do chamado.
  *
- * The lifecycle of the specification is open -> analysis -> assigned ->
- * in_progress -> completed. The administration analyses and distributes; the
- * assigned employee executes.
+ * O ciclo é aberto → em análise → atribuído → em andamento → concluído. A
+ * administração analisa e pode cancelar enquanto o atendimento não começou; o
+ * funcionário atribuído inicia o atendimento (RN15).
  *
- * Provisional decision: cancelling is allowed to the administration while the
- * attendance has not started, because the specification does not say who may
- * cancel an occurrence (see frontend/docs/requirements-compliance.md).
+ * Duas transições não passam por aqui, de propósito:
+ *
+ * - **Concluir** vai pela FinishOccurrenceAction, que exige a conclusão e se o
+ *   problema foi resolvido. Deixar a conclusão também por aqui seria uma porta
+ *   para encerrar chamado sem dizer como terminou.
+ * - **Atribuir** vai pela AssignOccurrenceAction, que exige o funcionário.
+ *   Status "atribuído" sem ninguém atribuído seria um chamado que ninguém
+ *   atende e que parece estar sendo atendido.
+ *
+ * As transições são decididas pelos **casos de uso**, e não pela coluna
+ * `users.role`. A versão anterior olhava o papel, e por isso ignorava as
+ * concessões individuais: dar `analyze-occurrences` a um funcionário de
+ * confiança não teria efeito nenhum aqui.
  */
 class UpdateOccurrenceStatusAction
 {
@@ -28,15 +39,11 @@ class UpdateOccurrenceStatusAction
         OccurrenceStatus $status,
         ?string $message = null,
     ): Occurrence {
-        self::checkAuthor($occurrence, $author);
         self::checkTransition($occurrence, $author, $status);
 
         $previousStatus = $occurrence->status;
 
-        $occurrence->update([
-            'status' => $status,
-            'completed_at' => $status === OccurrenceStatus::Completed ? now() : $occurrence->completed_at,
-        ]);
+        $occurrence->update(['status' => $status]);
 
         CreateOccurrenceHistoryAction::execute(
             $occurrence,
@@ -47,49 +54,96 @@ class UpdateOccurrenceStatusAction
             $message,
         );
 
-        return $occurrence->refresh();
-    }
+        $description = "Ocorrência {$occurrence->id} {$occurrence->title} passou de {$previousStatus->label()} para {$status->label()}.";
+        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, [
+            'de' => $previousStatus->value,
+            'para' => $status->value,
+            'observacao' => $message,
+        ]);
 
-    /**
-     * An employee only acts on the occurrence assigned to them.
-     */
-    public static function checkAuthor(Occurrence $occurrence, User $author): void
-    {
-        if ($author->role === UserRole::Employee && $occurrence->assigned_employee_id !== $author->id) {
-            throw BusinessRuleException::forbidden('Você só pode atender as ocorrências atribuídas a você.');
-        }
+        return $occurrence->refresh();
     }
 
     private static function checkTransition(Occurrence $occurrence, User $author, OccurrenceStatus $status): void
     {
         $current = $occurrence->status;
 
-        if ($current === $status) {
-            throw BusinessRuleException::conflict('A ocorrência já está neste status.');
-        }
-
         if ($current->isFinal()) {
-            throw BusinessRuleException::conflict('Uma ocorrência encerrada não pode mudar de status.');
-        }
-
-        $allowed = match ($author->role) {
-            UserRole::Admin => match ($current) {
-                OccurrenceStatus::Open => [OccurrenceStatus::Analysis, OccurrenceStatus::Cancelled],
-                OccurrenceStatus::Analysis, OccurrenceStatus::Assigned => [OccurrenceStatus::Cancelled],
-                default => [],
-            },
-            UserRole::Employee => match ($current) {
-                OccurrenceStatus::Assigned => [OccurrenceStatus::InProgress],
-                OccurrenceStatus::InProgress => [OccurrenceStatus::Completed],
-                default => [],
-            },
-            default => [],
-        };
-
-        if (! in_array($status, $allowed, true)) {
             throw BusinessRuleException::conflict(
-                "Transição não permitida para este usuário: {$current->value} para {$status->value}."
+                "Este chamado já está {$current->label()} e não muda mais de status."
             );
         }
+
+        if ($current === $status) {
+            throw BusinessRuleException::conflict("O chamado já está {$status->label()}.");
+        }
+
+        if ($status === OccurrenceStatus::Completed) {
+            throw BusinessRuleException::unprocessable(
+                'O chamado é concluído pela finalização, que exige a conclusão do atendimento e se o problema foi resolvido.'
+            );
+        }
+
+        if ($status === OccurrenceStatus::Assigned) {
+            throw BusinessRuleException::unprocessable(
+                'O chamado passa a atribuído quando se escolhe o funcionário responsável.'
+            );
+        }
+
+        self::checkEmployeeOwnsIt($occurrence, $author);
+
+        if (! in_array($status, self::allowedTransitions($occurrence, $author), true)) {
+            throw BusinessRuleException::conflict(
+                "Não é possível mudar o chamado de {$current->label()} para {$status->label()}."
+            );
+        }
+    }
+
+    /**
+     * RN15 — quem só tem o caso de uso do funcionário age apenas no que é seu.
+     *
+     * A recusa vem antes da checagem de transição para a resposta dizer o
+     * motivo real: "não é seu" explica, "transição não permitida" confunde.
+     */
+    private static function checkEmployeeOwnsIt(Occurrence $occurrence, User $author): void
+    {
+        $soAtende = ! $author->hasUseCase(UseCase::AnalyzeOccurrences)
+            && $author->hasUseCase(UseCase::UpdateOccurrenceProgress);
+
+        if ($soAtende && $occurrence->assigned_employee_id !== $author->id) {
+            throw BusinessRuleException::forbidden('Você só pode atender os chamados atribuídos a você.');
+        }
+    }
+
+    /**
+     * O que cada caso de uso permite a partir do status atual.
+     *
+     * É a união do que a pessoa tem: quem acumula os dois casos de uso por
+     * concessão individual soma as duas listas.
+     *
+     * @return list<OccurrenceStatus>
+     */
+    private static function allowedTransitions(Occurrence $occurrence, User $author): array
+    {
+        $current = $occurrence->status;
+        $allowed = [];
+
+        if ($author->hasUseCase(UseCase::AnalyzeOccurrences)) {
+            $allowed = match ($current) {
+                OccurrenceStatus::Open => [OccurrenceStatus::Analysis, OccurrenceStatus::Cancelled],
+                // Cancelar só enquanto o atendimento não começou: depois disso
+                // o desfecho é dado pela finalização, como resolvido ou não.
+                OccurrenceStatus::Analysis, OccurrenceStatus::Assigned => [OccurrenceStatus::Cancelled],
+                default => [],
+            };
+        }
+
+        $atribuidoAoAutor = $occurrence->assigned_employee_id === $author->id;
+
+        if ($author->hasUseCase(UseCase::UpdateOccurrenceProgress) && $atribuidoAoAutor && $current === OccurrenceStatus::Assigned) {
+            $allowed[] = OccurrenceStatus::InProgress;
+        }
+
+        return $allowed;
     }
 }

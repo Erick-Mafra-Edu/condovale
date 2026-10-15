@@ -20,6 +20,8 @@ class Occurrence extends Model
         'unit_id',
         'assigned_employee_id',
         'status',
+        'resolved',
+        'conclusion',
         'completed_at',
     ];
 
@@ -36,6 +38,7 @@ class Occurrence extends Model
     {
         return [
             'status' => OccurrenceStatus::class,
+            'resolved' => 'boolean',
             'completed_at' => 'datetime',
         ];
     }

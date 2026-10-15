@@ -88,6 +88,10 @@
         "guard_name": "web"
     },
     {
+        "name": "close-any-occurrence",
+        "guard_name": "web"
+    },
+    {
         "name": "generate-reports",
         "guard_name": "web"
     },

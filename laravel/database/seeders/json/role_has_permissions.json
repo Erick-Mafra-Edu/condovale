@@ -138,5 +138,13 @@
     {
         "role": "admin",
         "permission": "manage-occurrence-types"
+    },
+    {
+        "role": "syndic",
+        "permission": "close-any-occurrence"
+    },
+    {
+        "role": "admin",
+        "permission": "close-any-occurrence"
     }
 ]

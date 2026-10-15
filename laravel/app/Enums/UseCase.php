@@ -33,6 +33,7 @@ enum UseCase: string
     case ViewAssignedOccurrences = 'view-assigned-occurrences';
     case UpdateOccurrenceProgress = 'update-occurrence-progress';
     case FinishOccurrence = 'finish-occurrence';
+    case CloseAnyOccurrence = 'close-any-occurrence';
     case GenerateReports = 'generate-reports';
     case ViewAuditReports = 'view-audit-reports';
 }

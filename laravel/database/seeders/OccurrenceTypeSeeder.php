@@ -24,6 +24,7 @@ class OccurrenceTypeSeeder extends Seeder
             $array = [
                 'name' => $item->name,
                 'description' => $item->description,
+                'employee_can_close' => $item->employee_can_close,
                 'active' => $item->active,
             ];
 

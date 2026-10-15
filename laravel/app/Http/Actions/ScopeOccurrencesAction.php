@@ -15,7 +15,11 @@ class ScopeOccurrencesAction
 {
     public static function execute(Builder $query, User $user): Builder
     {
-        if ($user->hasUseCase(UseCase::AnalyzeOccurrences)) {
+        // Quem pode dar baixa em qualquer chamado precisa enxergar todos: o
+        // síndico recebeu `close-any-occurrence` sem `analyze-occurrences`, e
+        // sem esta linha a listagem lhe mostraria só os chamados em que ele
+        // mesmo é o morador — ou seja, nenhum.
+        if ($user->hasUseCase(UseCase::AnalyzeOccurrences) || $user->hasUseCase(UseCase::CloseAnyOccurrence)) {
             return $query;
         }
 

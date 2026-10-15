@@ -20,6 +20,9 @@ class OccurrenceTypeStoreRequest extends FormRequest
             // duas linhas.
             'name' => 'required|string|max:60|unique:occurrence_types,name',
             'description' => 'nullable|string|max:255',
+            // Se o funcionário atribuído encerra chamados deste tipo, ou se
+            // isso fica com o síndico e a administração.
+            'employee_can_close' => 'sometimes|boolean',
             'active' => 'sometimes|boolean',
         ];
     }
@@ -31,6 +34,7 @@ class OccurrenceTypeStoreRequest extends FormRequest
             'name.unique' => 'Já existe um tipo de ocorrência com este nome.',
             'name.max' => 'O nome do tipo deve ter no máximo 60 caracteres.',
             'description.max' => 'A descrição deve ter no máximo 255 caracteres.',
+            'employee_can_close.boolean' => 'Informe com verdadeiro ou falso se o funcionário encerra este tipo.',
         ];
     }
 }

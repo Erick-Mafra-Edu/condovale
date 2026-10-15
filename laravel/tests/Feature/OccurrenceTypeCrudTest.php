@@ -109,6 +109,39 @@ class OccurrenceTypeCrudTest extends TestCase
         $this->assertDatabaseHas('occurrence_types', ['name' => 'Pets e animais']);
     }
 
+    public function test_tipo_novo_nasce_reservado_a_administracao(): void
+    {
+        // O padrão é o conservador: tipo que ninguém configurou não deve
+        // deixar o funcionário encerrar chamado de conflito entre vizinhos.
+        $this->actingAs($this->sindico())
+            ->postJson('/api/occurrence-types', ['name' => 'Pets e animais'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.employee_can_close', false);
+    }
+
+    public function test_define_na_criacao_que_o_funcionario_encerra_o_tipo(): void
+    {
+        $this->actingAs($this->sindico())
+            ->postJson('/api/occurrence-types', ['name' => 'Jardinagem', 'employee_can_close' => true])
+            ->assertStatus(201)
+            ->assertJsonPath('data.employee_can_close', true);
+    }
+
+    public function test_muda_pelo_patch_quem_encerra_o_tipo(): void
+    {
+        $tipo = OccurrenceType::factory()->create();
+
+        $this->actingAs($this->sindico())
+            ->patchJson("/api/occurrence-types/{$tipo->id}", ['employee_can_close' => true])
+            ->assertStatus(201)
+            ->assertJsonPath('data.employee_can_close', true);
+
+        $this->actingAs($this->sindico())
+            ->patchJson("/api/occurrence-types/{$tipo->id}", ['employee_can_close' => 'talvez'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.employee_can_close.0', 'Informe com verdadeiro ou falso se o funcionário encerra este tipo.');
+    }
+
     public function test_recusa_nome_repetido(): void
     {
         // Dois tipos com o mesmo nome dividiriam o mesmo assunto em duas

@@ -42,6 +42,10 @@ enum UserRole: string
                 // quem nao conseguir, e responde pela lista de tipos.
                 UseCase::OpenOccurrenceForResident,
                 UseCase::ManageOccurrenceTypes,
+                // Dá baixa em qualquer chamado, de qualquer tipo. O
+                // funcionário só encerra o que lhe foi atribuído, e só quando
+                // o tipo permite (occurrence_types.employee_can_close).
+                UseCase::CloseAnyOccurrence,
                 UseCase::PublishNotices,
                 UseCase::GenerateReports,
             ],
@@ -55,6 +59,7 @@ enum UserRole: string
                 UseCase::ManageOccurrenceTypes,
                 UseCase::AnalyzeOccurrences,
                 UseCase::AssignOccurrence,
+                UseCase::CloseAnyOccurrence,
                 UseCase::PublishNotices,
                 UseCase::ManageReservations,
                 UseCase::ApproveOrRejectReservation,
