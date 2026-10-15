@@ -6,7 +6,9 @@ import { mockUsers } from './mock-user-repository'
 import { simulateRequest } from './mock-config'
 
 const response = <T>(data: T): ApiResponse<T> => ({ data: structuredClone(data), message: null })
-const catalog: PermissionCatalogItem[] = [...new Set(Object.values(rolePermissions).flatMap(items => [...items]))].sort().map(name => ({ name }))
+const catalog: PermissionCatalogItem[] = [...new Set(Object.values(rolePermissions).flatMap(items => [...items]))]
+  .sort((left, right) => left.localeCompare(right))
+  .map(name => ({ name }))
 const direct = new Map<string, UseCase[]>()
 
 function summary(userId: string): UserPermissionSummary {
