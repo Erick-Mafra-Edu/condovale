@@ -96,4 +96,9 @@ class Occurrence extends Model
     {
         return $this->hasMany(OccurrenceHistory::class);
     }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(OccurrenceAttachment::class)->orderBy('id');
+    }
 }

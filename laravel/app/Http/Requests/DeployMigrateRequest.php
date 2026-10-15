@@ -17,6 +17,9 @@ class DeployMigrateRequest extends FormRequest
         // o middleware deploy.token, aqui só se garante o formato.
         return [
             'token' => 'nullable|string|max:255',
+            // Falso roda só as migrations pendentes, sem apagar nada. O padrão
+            // continua sendo recriar, que é o que o workflow espera.
+            'fresh' => 'nullable|boolean',
         ];
     }
 
