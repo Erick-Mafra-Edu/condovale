@@ -1,5 +1,5 @@
 import type { ApiResponse } from '~/domain/common'
-import type { CreateOccurrenceInput, Occurrence, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
 
 export interface OccurrenceRepository {
   list(): Promise<ApiResponse<Occurrence[]>>
@@ -7,6 +7,6 @@ export interface OccurrenceRepository {
   create(input: CreateOccurrenceInput): Promise<ApiResponse<Occurrence>>
   assign(id: string, employeeId: string): Promise<ApiResponse<Occurrence>>
   updateStatus(id: string, status: OccurrenceStatus): Promise<ApiResponse<Occurrence>>
-  finish(id: string, message?: string): Promise<ApiResponse<Occurrence>>
+  finish(id: string, input: FinishOccurrenceInput | string): Promise<ApiResponse<Occurrence>>
   history(id: string): Promise<ApiResponse<OccurrenceHistory[]>>
 }

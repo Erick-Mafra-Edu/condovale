@@ -9,8 +9,11 @@ import OccupancyPage from '~/components/OccupancyPage.vue'
 const active = ref('Início')
 const showOccurrence = ref(false)
 const occurrenceTitle = ref('')
-const occurrenceCategory = ref('Manutenção')
+const occurrenceCategory = ref('')
 const occurrenceDescription = ref('')
+const occurrenceResidentId = ref('')
+const occurrenceTypesError = ref('')
+const occurrenceSuccess = ref('')
 const submittingOccurrence = ref(false)
 const updatingOccurrence = ref(false)
 const occurrenceNote = ref('')
@@ -32,24 +35,28 @@ const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, u
 const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
-const { occurrences, history: occurrenceHistory, loadOccurrences, createOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
+const { occurrences, history: occurrenceHistory, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, createOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
+const { types: occurrenceTypes, activeTypes: activeOccurrenceTypes, loading: occurrenceTypesLoading, load: loadOccurrenceTypes, loadActive: loadActiveOccurrenceTypes, create: createOccurrenceType, update: updateOccurrenceType, remove: removeOccurrenceType } = useOccurrenceTypes()
 const { reservations, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
 const { notices, loadNotices } = useNotices()
 const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
-  { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Usuários', icon: 'users' }, { label: 'Ocorrências', icon: 'alert' },
+  { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'users' }, { label: 'Usuários', icon: 'users' }, { label: 'Tipos de ocorrência', icon: 'alert' }, { label: 'Ocorrências', icon: 'alert' },
   { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'building' }, { label: 'Unidades', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
 ] as const
-const unavailableInApi = new Set(['Ocorrências', 'Reservas', 'Comunicados', 'Relatórios'])
+const unavailableInApi = new Set(['Reservas', 'Comunicados', 'Relatórios'])
 
 function hasAccess(useCase: UseCase) {
-  return authUser.value ? can(authUser.value.role, useCase) : false
+  return authUser.value ? can(authUser.value.role, useCase, authUser.value.permissions) : false
 }
 
-const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label) && (!apiMode.value || !unavailableInApi.has(item.label))))
+const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label, authUser.value.permissions) && (!apiMode.value || (!unavailableInApi.has(item.label) && (item.label !== 'Ocorrências' || hasAccess('create-occurrence') || hasAccess('open-occurrence-for-resident'))))))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
-const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence') : false)
+const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence', authUser.value.permissions) : false)
+const canOpenForResident = computed(() => authUser.value ? can(authUser.value.role, 'open-occurrence-for-resident', authUser.value.permissions) : false)
+const loadActiveOccurrenceTypesRequest = () => loadActiveOccurrenceTypes().catch((cause) => { occurrenceTypesError.value = cause instanceof Error ? cause.message : 'Não foi possível carregar os tipos de ocorrência.' })
+async function openOccurrenceForm() { showOccurrence.value = true; occurrenceSuccess.value = ''; occurrenceError.value = null; if (!activeOccurrenceTypes.value.length) await loadActiveOccurrenceTypesRequest() }
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
 const areaById = computed(() => new Map(areas.value.map(area => [area.id, area])))
 const activeResidents = computed(() => users.value.filter(user => user.role === 'resident' && user.status === 'active'))
@@ -111,12 +118,14 @@ async function loadDashboard() {
       hasAccess('manage-residents') ? loadUsers() : Promise.resolve(),
       canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(),
       canManageOccupancies ? loadOccupancies() : Promise.resolve(),
+      canCreateOccurrence.value || canOpenForResident.value ? loadActiveOccurrenceTypesRequest() : Promise.resolve(),
+      hasAccess('manage-occurrence-types') ? loadOccurrenceTypes() : Promise.resolve(),
     ])
     return
   }
 
   const loadRelevantReservations = resident.value ? loadMyReservations() : loadReservations()
-  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve()])
+  const [areasResponse] = await Promise.all([listAreas(), loadUsers(), canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(), loadOccurrences(), loadRelevantReservations, loadNotices(), hasAccess('view-audit-reports') ? loadAuditLogs() : Promise.resolve(), canManageOccupancies ? loadOccupancies() : Promise.resolve(), hasAccess('manage-occurrence-types') ? loadOccurrenceTypes() : Promise.resolve()])
   areas.value = areasResponse.data
 }
 
@@ -176,14 +185,28 @@ async function deactivateManagedUnit(id: string) {
   if (hasAccess('manage-units')) await deactivateUnit(id)
 }
 
+async function createManagedOccurrenceType(input: Parameters<typeof createOccurrenceType>[0]) {
+  if (hasAccess('manage-occurrence-types')) return createOccurrenceType(input)
+  throw new Error('Sem permissão para gerenciar tipos de ocorrência.')
+}
+async function updateManagedOccurrenceType(id: string, input: Parameters<typeof updateOccurrenceType>[1]) {
+  if (hasAccess('manage-occurrence-types')) await updateOccurrenceType(id, input)
+}
+async function removeManagedOccurrenceType(id: string) {
+  if (hasAccess('manage-occurrence-types')) await removeOccurrenceType(id)
+}
+
 async function submitOccurrence() {
-  if (!resident.value || !occurrenceTitle.value.trim() || !occurrenceDescription.value.trim()) return
+  const residentId = canOpenForResident.value && occurrenceResidentId.value ? occurrenceResidentId.value : resident.value?.id
+  if (!residentId || !occurrenceTitle.value.trim() || !occurrenceDescription.value.trim() || !occurrenceCategory.value) return
   submittingOccurrence.value = true
+  occurrenceSuccess.value = ''
   try {
-    await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), category: occurrenceCategory.value })
+    await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), occurrenceTypeId: occurrenceCategory.value, residentId })
     occurrenceTitle.value = ''
     occurrenceDescription.value = ''
-    showOccurrence.value = false
+    occurrenceResidentId.value = ''
+    occurrenceSuccess.value = 'Ocorrência registrada com sucesso.'
   } finally { submittingOccurrence.value = false }
 }
 
@@ -209,7 +232,7 @@ async function completeOccurrence() {
   if (!selectedOccurrence.value || !authUser.value || !hasAccess('finish-occurrence')) return
   updatingOccurrence.value = true
   try {
-    await finishOccurrence(selectedOccurrence.value.id, occurrenceNote.value.trim() || undefined)
+    await finishOccurrence(selectedOccurrence.value.id, { resolved: true, conclusion: occurrenceNote.value.trim() })
     occurrenceNote.value = ''
     await loadHistory(selectedOccurrence.value.id)
   } finally { updatingOccurrence.value = false }
@@ -277,12 +300,13 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 
         <ProfilePage v-else-if="active === 'Meu cadastro' && authUser && hasAccess('update-own-profile')" :user="authUser" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-residents')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
+        <OccurrenceTypeAdminPage v-else-if="active === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')" :types="occurrenceTypes" :loading="occurrenceTypesLoading" :error="occurrenceTypesError" :on-create="createManagedOccurrenceType" :on-update="updateManagedOccurrenceType" :on-remove="removeManagedOccurrenceType" />
         <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
         <OccupancyPage v-else-if="active === 'Moradores e unidades' && hasAccess('link-residents-to-units')" :occupancies="occupancies" :selected-occupancy="selectedOccupancy" :users="users" :units="units" :loading="occupanciesLoading" :error="occupanciesError" @refresh="loadOccupancies" @create="createOccupancy" @delete="finishOccupancy" @open-detail="openOccupancyDetail" @close-detail="closeOccupancyDetail" />
         <div v-else>
-          <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && canCreateOccurrence" class="primary-button" @click="showOccurrence = true">Nova ocorrência</button></section>
+          <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && (canCreateOccurrence || canOpenForResident)" class="primary-button" @click="openOccurrenceForm">Nova ocorrência</button></section>
           <article class="panel detail-panel" v-if="active === 'Comunicados'"><div v-if="!publishedNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in publishedNotices" :key="item.id" class="detail-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon large"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em><span class="arrow"></span></button></article>
           <article class="panel detail-panel" v-else><div v-if="!sortedOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in sortedOccurrences" :key="item.id" class="detail-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="row-icon large"><SvgIcon name="alert" /></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em><span class="arrow"></span></button></article>
         </div>
@@ -290,7 +314,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
     </main>
 
     <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
-    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory"><option>Manutenção</option><option>Convivência</option><option>Segurança</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..."></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || !resident" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
+    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
     <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl><label v-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="occurrence-note">Observação da conclusão<textarea v-model="occurrenceNote" placeholder="Descreva o atendimento realizado (opcional)"></textarea></label><div v-if="selectedOccurrence.status === 'assigned' && hasAccess('update-occurrence-progress')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="startOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Atualizar para em andamento' }}</button></div><div v-else-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="completeOccurrence">{{ updatingOccurrence ? 'Finalizando...' : 'Finalizar atendimento' }}</button></div></DetailModal>
     <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl><div v-if="hasAccess('approve-or-reject-reservation') && selectedReservation.status === 'pending'" class="modal-actions reservation-review-actions"><button class="outline-button danger-action" :disabled="reviewingReservation" @click="reviewReservation('rejected')"><SvgIcon name="reject" />Reprovar</button><button class="primary-button approve-action" :disabled="reviewingReservation" @click="reviewReservation('approved')"><SvgIcon name="approve" />{{ reviewingReservation ? 'Salvando...' : 'Aprovar reserva' }}</button></div></DetailModal>
     <DetailModal v-if="selectedNotice" title="Detalhes do comunicado" icon="message" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="noticeTone(selectedNotice.status)">{{ noticeLabel(selectedNotice.status) }}</em></dd></div><div><dt>Publicado em</dt><dd>{{ formatDateTime(selectedNotice.publishedAt) }}</dd></div><div class="full"><dt>Mensagem</dt><dd>{{ selectedNotice.content }}</dd></div></dl></DetailModal>

@@ -63,7 +63,7 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     await simulateRequest()
     const resident = authenticatedUser()
     const now = new Date().toISOString()
-    const occurrence: Occurrence = { ...input, residentId: resident.id, unitId: resident.unitId, id: crypto.randomUUID(), status: 'open', createdAt: now, updatedAt: now }
+    const occurrence: Occurrence = { title: input.title, description: input.description, category: String(input.occurrenceTypeId), occurrenceTypeId: String(input.occurrenceTypeId), residentId: input.residentId ? String(input.residentId) : resident.id, unitId: resident.unitId, id: crypto.randomUUID(), status: 'open', createdAt: now, updatedAt: now }
     mockOccurrences.push(occurrence)
     record(occurrence, 'created', resident.id)
     return response(occurrence)
@@ -94,14 +94,15 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     recordAudit({ userId, action: 'occurrence.status_updated', entity: 'occurrence', entityId: id, metadata: { from: previousStatus, to: status } })
     return result
   },
-  async finish(id, message) {
+  async finish(id, input) {
     await simulateRequest()
     const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
     ensureAssignedEmployee(occurrence, userId)
     if (occurrence.status !== 'in_progress') throw new AppError('INVALID_STATUS_TRANSITION', 'Somente atendimentos em andamento podem ser finalizados')
-    const result = changeStatus(occurrence, 'completed', userId, 'completed', message)
-    recordAudit({ userId, action: 'occurrence.completed', entity: 'occurrence', entityId: id, metadata: message ? { message } : undefined })
+    const finish = typeof input === 'string' ? { resolved: true, conclusion: input } : input
+    const result = changeStatus(occurrence, 'completed', userId, 'completed', finish.conclusion)
+    recordAudit({ userId, action: 'occurrence.completed', entity: 'occurrence', entityId: id, metadata: finish })
     return result
   },
   async history(id) {
