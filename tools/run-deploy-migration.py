@@ -140,6 +140,9 @@ def main() -> int:
     if isinstance(dados, dict):
         for comando, saida in dados.items():
             print(f'  {comando}: {saida}')
+    elif isinstance(dados, str) and dados.strip():
+        # A saída do artisan: é o que diz quais migrations rodaram.
+        print(dados)
 
     return 0
 
