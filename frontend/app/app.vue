@@ -152,16 +152,16 @@ async function saveOwnProfile(input: UpdateOwnProfileInput) {
 }
 
 async function createManagedUser(input: Parameters<typeof createUser>[0]) {
-  if (hasAccess('manage-users')) return createUser(input)
+  if (hasAccess('manage-residents')) return createUser(input)
   throw new Error('Sem permissão para gerenciar usuários.')
 }
 
 async function updateManagedUser(id: string, input: Parameters<typeof updateUser>[1]) {
-  if (hasAccess('manage-users')) await updateUser(id, input)
+  if (hasAccess('manage-residents')) await updateUser(id, input)
 }
 
 async function deactivateManagedUser(id: string) {
-  if (hasAccess('manage-users')) await deactivateUser(id)
+  if (hasAccess('manage-residents')) await deactivateUser(id)
 }
 
 async function createManagedUnit(input: Parameters<typeof createUnit>[0]) {
@@ -275,8 +275,8 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
 
-        <ProfilePage v-else-if="active === 'Meu cadastro' && resident" :user="resident" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
-        <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-users')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
+        <ProfilePage v-else-if="active === 'Meu cadastro' && authUser && hasAccess('update-own-profile')" :user="authUser" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
+        <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-residents')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
         <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />

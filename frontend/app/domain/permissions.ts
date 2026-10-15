@@ -13,7 +13,6 @@ export type UseCase =
   | 'cancel-own-reservation'
   | 'manage-units'
   | 'manage-residents'
-  | 'manage-users'
   | 'link-residents-to-units'
   | 'analyze-occurrences'
   | 'assign-occurrence'
@@ -31,10 +30,10 @@ export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> =
     'login', 'update-own-profile', 'view-notices', 'create-occurrence', 'track-own-occurrences',
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]),
-  employee: new Set(['login', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']),
-  syndic: new Set(['login', 'manage-units', 'publish-notices', 'generate-reports']),
+  employee: new Set(['login', 'update-own-profile', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']),
+  syndic: new Set(['login', 'update-own-profile', 'manage-units', 'publish-notices', 'generate-reports']),
   admin: new Set([
-    'login', 'manage-units', 'manage-residents', 'manage-users', 'link-residents-to-units', 'analyze-occurrences',
+    'login', 'update-own-profile', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
     'generate-reports', 'view-audit-reports',
   ]),
@@ -48,7 +47,7 @@ export type AppModule = 'Início' | 'Meu cadastro' | 'Usuários' | 'Ocorrências
 
 const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly UseCase[]>> = {
   'Meu cadastro': ['update-own-profile'],
-  Usuários: ['manage-users'],
+  Usuários: ['manage-residents'],
   Ocorrências: ['create-occurrence', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
   Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
   Comunicados: ['view-notices', 'publish-notices'],
