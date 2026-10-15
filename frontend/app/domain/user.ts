@@ -1,5 +1,6 @@
 export type UserRole = 'resident' | 'employee' | 'admin' | 'syndic'
 export type UserStatus = 'active' | 'inactive'
+import type { UseCase } from './permissions'
 
 export interface User {
   id: string
@@ -10,6 +11,8 @@ export interface User {
   mustChangePassword?: boolean
   unitId?: string
   avatarUrl?: string
+  /** Effective permissions when the session endpoint exposes them. */
+  permissions?: UseCase[]
 }
 
 export interface Unit {
