@@ -2,41 +2,49 @@
     {
         "name": "Manutenção predial",
         "description": "Reparos em áreas do prédio: hidráulica, elétrica, elevadores, infiltrações.",
+        "employee_can_close": true,
         "active": true
     },
     {
         "name": "Estacionamento",
         "description": "Vagas ocupadas indevidamente, portão, manobras e danos na garagem.",
+        "employee_can_close": false,
         "active": true
     },
     {
         "name": "Barulho e sossego",
         "description": "Ruído fora do horário permitido e perturbação do sossego.",
+        "employee_can_close": false,
         "active": true
     },
     {
         "name": "Limpeza e conservação",
         "description": "Lixo fora do lugar, áreas sujas e conservação de jardins.",
+        "employee_can_close": true,
         "active": true
     },
     {
         "name": "Segurança",
         "description": "Portaria, controle de acesso, câmeras e circulação de estranhos.",
+        "employee_can_close": false,
         "active": true
     },
     {
         "name": "Áreas comuns",
         "description": "Problemas no salão de festas, academia, piscina, quadra e demais espaços.",
+        "employee_can_close": true,
         "active": true
     },
     {
         "name": "Telefonia e TV a cabo",
         "description": "Tipo aposentado: o condomínio deixou de intermediar o atendimento das operadoras.",
+        "employee_can_close": false,
         "active": false
     },
     {
         "name": "Outros",
         "description": "Assuntos que não se encaixam nos demais tipos.",
+        "employee_can_close": false,
         "active": true
     }
 ]

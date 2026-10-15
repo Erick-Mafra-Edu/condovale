@@ -21,8 +21,15 @@ class OccurrenceTypeFactory extends Factory
             // pela regra que ele mede.
             'name' => ucfirst(fake()->unique()->words(2, true)),
             'description' => fake()->sentence(),
+            'employee_can_close' => false,
             'active' => true,
         ];
+    }
+
+    /** Reparo operacional: o funcionário atribuído encerra o próprio atendimento. */
+    public function closableByEmployee(): static
+    {
+        return $this->state(['employee_can_close' => true]);
     }
 
     /** Tipo aposentado: continua nos chamados antigos, mas não entra em chamado novo. */

@@ -25,7 +25,7 @@ class UserPermissionCrudTest extends TestCase
         $this->actingAs($this->administrador())
             ->getJson('/api/permissions?limit=100')
             ->assertStatus(201)
-            ->assertJsonPath('total', 24);
+            ->assertJsonPath('total', 25);
     }
 
     public function test_lista_os_perfis_com_os_casos_de_uso_de_cada_um(): void
@@ -37,7 +37,7 @@ class UserPermissionCrudTest extends TestCase
         $perfis = collect($resposta->json('data'))->keyBy('name');
 
         $this->assertCount(4, $perfis);
-        $this->assertCount(14, $perfis['admin']['permissions']);
+        $this->assertCount(15, $perfis['admin']['permissions']);
         $this->assertContains('request-reservation', $perfis['resident']['permissions']);
     }
 
@@ -51,8 +51,8 @@ class UserPermissionCrudTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('data.role', 'syndic')
             ->assertJsonPath('data.direct', ['manage-residents'])
-            ->assertJsonPath('data.from_role', ['generate-reports', 'login', 'manage-occurrence-types', 'manage-units', 'open-occurrence-for-resident', 'publish-notices', 'update-own-profile'])
-            ->assertJsonCount(8, 'data.effective');
+            ->assertJsonPath('data.from_role', ['close-any-occurrence', 'generate-reports', 'login', 'manage-occurrence-types', 'manage-units', 'open-occurrence-for-resident', 'publish-notices', 'update-own-profile'])
+            ->assertJsonCount(9, 'data.effective');
     }
 
     public function test_concede_um_caso_de_uso_a_uma_pessoa(): void

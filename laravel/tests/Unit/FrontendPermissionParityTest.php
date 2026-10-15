@@ -42,11 +42,13 @@ class FrontendPermissionParityTest extends TestCase
         // card de abertura de chamado: o sindico abre chamado no lugar de quem
         // nao conseguir, e ele e o administrador respondem pela lista de tipos.
         // Nenhum dos dois existe no frontend ainda.
-        'syndic' => ['update-own-profile', 'open-occurrence-for-resident', 'manage-occurrence-types'],
+        // close-any-occurrence veio do card de status do chamado: sindico e
+        // administracao dao baixa em qualquer chamado.
+        'syndic' => ['update-own-profile', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence'],
         // update-own-profile passou a valer para os quatro perfis aqui, e o
         // frontend ainda o da apenas ao morador.
         'employee' => ['update-own-profile'],
-        'admin' => ['update-own-profile', 'manage-users', 'open-occurrence-for-resident', 'manage-occurrence-types'],
+        'admin' => ['update-own-profile', 'manage-users', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence'],
         'resident' => [],
     ];
 
@@ -69,6 +71,7 @@ class FrontendPermissionParityTest extends TestCase
         // por onde chamar.
         'open-occurrence-for-resident',
         'manage-occurrence-types',
+        'close-any-occurrence',
     ];
 
     private function fonte(): string

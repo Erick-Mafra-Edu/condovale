@@ -1,0 +1,25 @@
+info:
+  name: finish
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{API_URL}}/occurrences/5/finish"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "resolved": true,
+        "conclusion": "Conversa com a unidade vizinha; o morador se comprometeu a respeitar o horário de silêncio."
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

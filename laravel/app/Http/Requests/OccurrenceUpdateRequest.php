@@ -5,8 +5,11 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * UC10 — progress of the attendance. The allowed transitions per role are a
- * business rule and live in UpdateOccurrenceStatusAction.
+ * RN06 — mudança de status do chamado.
+ *
+ * Aqui só se valida que o status existe. Qual transição cada pessoa pode
+ * fazer depende de quem ela é e de em que ponto o chamado está, e quem decide
+ * isso é a UpdateOccurrenceStatusAction — que também explica por que recusou.
  */
 class OccurrenceUpdateRequest extends FormRequest
 {
@@ -28,6 +31,7 @@ class OccurrenceUpdateRequest extends FormRequest
         return [
             'status.required' => 'Informe o novo status da ocorrência.',
             'status.in' => 'Status de ocorrência inválido.',
+            'message.max' => 'A observação deve ter no máximo 255 caracteres.',
         ];
     }
 }

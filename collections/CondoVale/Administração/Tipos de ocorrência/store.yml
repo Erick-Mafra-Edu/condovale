@@ -14,7 +14,8 @@ http:
     data: |-
       {
         "name": "Pets e animais",
-        "description": "Circulação de animais fora das regras do condomínio."
+        "description": "Circulação de animais fora das regras do condomínio.",
+        "employee_can_close": false
       }
   auth: inherit
 

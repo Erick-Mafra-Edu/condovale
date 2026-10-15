@@ -48,6 +48,7 @@ class PermissionMatrixTest extends TestCase
             'manage-units',
             'open-occurrence-for-resident',
             'manage-occurrence-types',
+            'close-any-occurrence',
             'publish-notices',
             'generate-reports',
         ]);
@@ -65,6 +66,7 @@ class PermissionMatrixTest extends TestCase
             'manage-occurrence-types',
             'analyze-occurrences',
             'assign-occurrence',
+            'close-any-occurrence',
             'publish-notices',
             'manage-reservations',
             'approve-or-reject-reservation',

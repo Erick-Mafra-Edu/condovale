@@ -32,6 +32,8 @@ class OccurrenceSeeder extends Seeder
                 'unit_id' => $this->unitId($item->unit_code, 'occurrences.json'),
                 'assigned_employee_id' => $this->optionalUserId($item->assigned_employee_email, 'occurrences.json'),
                 'status' => $item->status,
+                'resolved' => $item->resolved,
+                'conclusion' => $item->conclusion,
                 'completed_at' => $item->completed_days_ago === null
                     ? null
                     : now()->subDays($item->completed_days_ago),

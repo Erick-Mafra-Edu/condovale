@@ -24,7 +24,7 @@ class UpdateOccurrenceTypeAction
      */
     public static function execute(OccurrenceType $type, array $attributes): OccurrenceType
     {
-        $anterior = ['name' => $type->name, 'description' => $type->description, 'active' => $type->active];
+        $anterior = $type->only(['name', 'description', 'employee_can_close', 'active']);
 
         if (isset($attributes['name'])) {
             $attributes['name'] = trim($attributes['name']);
@@ -35,7 +35,7 @@ class UpdateOccurrenceTypeAction
         $description = "Tipo de ocorrência {$type->id} {$type->name} editado.";
         CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description, [
             'de' => $anterior,
-            'para' => ['name' => $type->name, 'description' => $type->description, 'active' => $type->active],
+            'para' => $type->only(['name', 'description', 'employee_can_close', 'active']),
         ]);
 
         return $type->refresh();

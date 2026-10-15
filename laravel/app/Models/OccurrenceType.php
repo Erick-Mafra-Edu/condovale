@@ -22,6 +22,7 @@ class OccurrenceType extends Model
     protected $fillable = [
         'name',
         'description',
+        'employee_can_close',
         'active',
     ];
 
@@ -36,6 +37,7 @@ class OccurrenceType extends Model
     protected function casts(): array
     {
         return [
+            'employee_can_close' => 'boolean',
             'active' => 'boolean',
         ];
     }

@@ -15,4 +15,20 @@ enum OccurrenceStatus: string
     {
         return $this === self::Completed || $this === self::Cancelled;
     }
+
+    /**
+     * Rótulo para as mensagens que chegam ao usuário: "Não é possível mudar o
+     * chamado de Aberto para Em andamento" se lê; "open para in_progress", não.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Open => 'Aberto',
+            self::Analysis => 'Em análise',
+            self::Assigned => 'Atribuído',
+            self::InProgress => 'Em andamento',
+            self::Completed => 'Concluído',
+            self::Cancelled => 'Cancelado',
+        };
+    }
 }
