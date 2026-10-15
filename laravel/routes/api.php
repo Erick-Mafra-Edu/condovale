@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\OccurrenceAttachmentController;
 use App\Http\Controllers\OccurrenceController;
 use App\Http\Controllers\OccurrenceTypeController;
 use App\Http\Controllers\PermissionController;
@@ -85,6 +86,13 @@ Route::get('deploy/hashing', [DeployController::class, 'hashing'])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
 Route::get('deploy/mail', [DeployController::class, 'mail'])
+    ->withoutMiddleware([StartSession::class])
+    ->middleware(['throttle:deploy', 'deploy.token']);
+
+// Os limites de upload do InfinityFree só são conhecidos por relato de fórum;
+// esta rota diz, de dentro do servidor, o teto real, se há GD e quanto disco
+// resta.
+Route::get('deploy/uploads', [DeployController::class, 'uploads'])
     ->withoutMiddleware([StartSession::class])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
@@ -273,6 +281,34 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
 
     Route::post('occurrences/{id}/finish', [OccurrenceController::class, 'finish'])
         ->middleware('use.case:finish-occurrence,close-any-occurrence');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Imagens do chamado — RF04
+|--------------------------------------------------------------------------
+|
+| O envio é multipart/form-data, no campo `image`.
+|
+| Entra quem acompanha chamados por algum caminho — o morador os próprios, o
+| funcionário os atribuídos, o síndico e a administração todos. Qual chamado
+| cada um alcança é decidido por registro, na CheckOccurrenceAccessAction, com
+| a mesma regra da listagem.
+|
+| A imagem nunca é servida como arquivo estático: sai pela rota `show`, que
+| confere o acesso antes de entregar. Um link direto para o disco seria
+| autorização por quem conhece o endereço.
+*/
+Route::middleware([
+    'auth',
+    'user.active',
+    'password.change',
+    'use.case:track-own-occurrences,view-assigned-occurrences,analyze-occurrences,close-any-occurrence',
+])->group(function () {
+    Route::get('occurrences/{id}/attachments', [OccurrenceAttachmentController::class, 'index']);
+    Route::post('occurrences/{id}/attachments', [OccurrenceAttachmentController::class, 'store']);
+    Route::get('occurrences/{id}/attachments/{attachment}', [OccurrenceAttachmentController::class, 'show'])
+        ->name('occurrences.attachments.show');
 });
 
 /*

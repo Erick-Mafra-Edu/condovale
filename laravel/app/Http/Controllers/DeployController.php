@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Actions\CheckHashingSupportAction;
 use App\Http\Actions\CheckOutboundMailAction;
+use App\Http\Actions\CheckUploadSupportAction;
 use App\Http\Actions\OptimizeApplicationAction;
 use App\Http\Actions\RunFreshMigrationAction;
 use App\Http\Requests\DeployMigrateRequest;
@@ -75,9 +76,25 @@ class DeployController extends Controller
         return MessageService::success('Diagnóstico de envio de e-mail.', CheckOutboundMailAction::execute());
     }
 
+    /**
+     * Reports what the host offers for receiving images.
+     *
+     * Os limites do InfinityFree só são conhecidos por relato de fórum, que
+     * diverge; o teto de upload, a presença do GD e o disco livre só se sabem
+     * de dentro do servidor.
+     */
+    public function uploads()
+    {
+        return MessageService::success('Diagnóstico de upload de imagens.', CheckUploadSupportAction::execute());
+    }
+
     public function migrate(DeployMigrateRequest $request)
     {
         try {
+            if (! $request->boolean('fresh', true)) {
+                return MessageService::success('Migrations pendentes aplicadas.', RunFreshMigrationAction::pending());
+            }
+
             $output = RunFreshMigrationAction::execute();
 
             return MessageService::success('Base de dados recriada e populada.', $output);
