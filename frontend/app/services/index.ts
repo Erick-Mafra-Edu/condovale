@@ -22,6 +22,12 @@ import { createAuditService } from './audit-service'
 import { createApiUnitOccupancyRepository } from '~/repositories/api/api-unit-occupancy-repository'
 import { mockUnitOccupancyRepository } from '~/repositories/mock/mock-unit-occupancy-repository'
 import { createUnitOccupancyService } from './unit-occupancy-service'
+import { createApiOccurrenceTypeRepository } from '~/repositories/api/api-occurrence-type-repository'
+import { mockOccurrenceTypeRepository } from '~/repositories/mock/mock-occurrence-type-repository'
+import { createOccurrenceTypeService } from './occurrence-type-service'
+import { createApiPermissionRepository } from '~/repositories/api/api-permission-repository'
+import { mockPermissionRepository } from '~/repositories/mock/mock-permission-repository'
+import { createPermissionService } from './permission-service'
 
 export function useServices() {
   const { public: config } = useRuntimeConfig()
@@ -32,9 +38,11 @@ export function useServices() {
     auditService: createAuditService(useMock ? mockAuditRepository : createApiAuditRepository()),
     reservationService: createReservationService(useMock ? mockReservationRepository : createApiReservationRepository()),
     occurrenceService: createOccurrenceService(useMock ? mockOccurrenceRepository : createApiOccurrenceRepository()),
+    occurrenceTypeService: createOccurrenceTypeService(useMock ? mockOccurrenceTypeRepository : createApiOccurrenceTypeRepository()),
     noticeService: createNoticeService(useMock ? mockNoticeRepository : createApiNoticeRepository()),
     userService: createUserService(useMock ? mockUserRepository : createApiUserRepository()),
     unitService: createUnitService(useMock ? mockUnitRepository : createApiUnitRepository()),
     unitOccupancyService: createUnitOccupancyService(useMock ? mockUnitOccupancyRepository : createApiUnitOccupancyRepository()),
+    permissionService: createPermissionService(useMock ? mockPermissionRepository : createApiPermissionRepository()),
   }
 }

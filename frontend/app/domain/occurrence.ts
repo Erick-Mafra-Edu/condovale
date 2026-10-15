@@ -6,9 +6,13 @@ export interface Occurrence {
   title: string
   description: string
   category: string
+  occurrenceTypeId?: string
+  occurrenceTypeName?: string
   residentId: string
   unitId?: string
   assignedEmployeeId?: string
+  resolved?: boolean
+  conclusion?: string
   status: OccurrenceStatus
   createdAt: string
   updatedAt: string
@@ -26,4 +30,14 @@ export interface OccurrenceHistory {
   createdAt: string
 }
 
-export type CreateOccurrenceInput = Pick<Occurrence, 'title' | 'description' | 'category'>
+export type CreateOccurrenceInput = {
+  title: string
+  description: string
+  occurrenceTypeId: string | number
+  residentId?: string | number
+}
+
+export type FinishOccurrenceInput = {
+  resolved: boolean
+  conclusion: string
+}

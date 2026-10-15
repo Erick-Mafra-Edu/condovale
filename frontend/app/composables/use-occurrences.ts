@@ -1,5 +1,5 @@
 import { AppError, toAppError } from '~/domain/app-error'
-import type { CreateOccurrenceInput, Occurrence, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
 import { useServices } from '~/services'
 
 export function useOccurrences() {
@@ -50,8 +50,8 @@ export function useOccurrences() {
     return store((await execute(() => occurrenceService.updateStatus(id, status))).data)
   }
 
-  async function finishOccurrence(id: string, message?: string) {
-    return store((await execute(() => occurrenceService.finish(id, message))).data)
+  async function finishOccurrence(id: string, input: FinishOccurrenceInput | string) {
+    return store((await execute(() => occurrenceService.finish(id, input))).data)
   }
 
   async function loadHistory(id: string) {

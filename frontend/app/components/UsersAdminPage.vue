@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { CreateUserInput, UpdateUserInput, User, UserCreationResult, UserRole } from '~/domain/user'
+import type { PermissionCatalogItem } from '~/domain/permission'
+
+const { catalog: permissionCatalog, selected: permissionSummary, loading: permissionsLoading, error: permissionsError, loadCatalog, loadUserPermissions, grant, revoke } = usePermissions()
 
 const props = defineProps<{
   users: User[]
@@ -20,6 +23,9 @@ const saving = ref(false)
 const creationResult = ref<UserCreationResult | null>(null)
 const copiedPassword = ref(false)
 const copyError = ref('')
+const permissionUser = ref<User | null>(null)
+const permissionMessage = ref('')
+const permissionSaving = ref(false)
 const form = reactive<{ name: string; email: string; role: UserRole; status: User['status'] }>({ name: '', email: '', role: 'resident', status: 'active' })
 
 const filteredUsers = computed(() => props.users.filter(user =>
@@ -39,6 +45,38 @@ function openEdit(user: User) {
   Object.assign(form, { name: user.name, email: user.email, role: user.role, status: user.status })
   formError.value = ''
   formOpen.value = true
+}
+
+const permissionLabel = (permission: string) => permission.replaceAll('-', ' ').replace(/(^| )\S/g, value => value.toUpperCase())
+const hasDirectPermission = (permission: PermissionCatalogItem['name']) => permissionSummary.value?.direct.includes(permission) ?? false
+const hasRolePermission = (permission: PermissionCatalogItem['name']) => permissionSummary.value?.fromRole.includes(permission) ?? false
+
+async function openPermissions(user: User) {
+  permissionUser.value = user
+  permissionMessage.value = ''
+  await Promise.all([loadCatalog(), loadUserPermissions(user.id)])
+}
+
+async function grantPermission(permission: PermissionCatalogItem['name']) {
+  if (!permissionUser.value || hasRolePermission(permission)) return
+  permissionSaving.value = true
+  permissionMessage.value = ''
+  try {
+    await grant(permissionUser.value.id, permission)
+    permissionMessage.value = 'Permissão concedida.'
+  } catch { /* composable exposes the API error in permissionsError */ }
+  finally { permissionSaving.value = false }
+}
+
+async function revokePermission(permission: PermissionCatalogItem['name']) {
+  if (!permissionUser.value || !hasDirectPermission(permission) || !confirm(`Revogar ${permissionLabel(permission)} de ${permissionUser.value.name}?`)) return
+  permissionSaving.value = true
+  permissionMessage.value = ''
+  try {
+    await revoke(permissionUser.value.id, permission)
+    permissionMessage.value = 'Permissão revogada.'
+  } catch { /* composable exposes the API error in permissionsError */ }
+  finally { permissionSaving.value = false }
 }
 
 async function submit() {
@@ -98,6 +136,7 @@ async function requestDeactivate(user: User) {
       <span class="avatar user-avatar">{{ user.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase() }}</span>
       <span><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span>
       <em :class="user.status === 'active' ? 'green' : 'gray'">{{ roleLabels[user.role] }} · {{ user.status === 'active' ? 'Ativo' : 'Inativo' }}</em>
+      <button class="outline-button" @click="openPermissions(user)">Permissões</button>
       <button class="outline-button" @click="openEdit(user)">Editar</button>
       <button v-if="user.status === 'active'" class="outline-button danger-action" :disabled="user.id === currentUserId" @click="requestDeactivate(user)">Inativar</button>
     </div>
@@ -129,6 +168,27 @@ async function requestDeactivate(user: User) {
       <p id="temporary-password-help" class="temporary-password-note">A pessoa deverá trocar a senha no primeiro acesso.</p>
       <p v-if="copyError" class="form-error" role="alert">{{ copyError }}</p>
       <div class="modal-actions"><button class="outline-button" type="button" @click="closeCreationResult">Fechar</button><button class="primary-button" type="button" @click="copyTemporaryPassword">{{ copiedPassword ? 'Senha copiada' : 'Copiar senha' }}</button></div>
+    </section>
+  </div>
+
+  <div v-if="permissionUser" class="modal-backdrop" @click.self="permissionUser = null">
+    <section class="modal glass" role="dialog" aria-modal="true" aria-labelledby="permissions-title">
+      <button type="button" class="modal-close" aria-label="Fechar permissões" @click="permissionUser = null"></button>
+      <div class="section-icon"><SvgIcon name="users" /></div>
+      <h2 id="permissions-title">Permissões de {{ permissionUser.name }}</h2>
+      <p>As permissões herdadas do papel não podem ser revogadas aqui.</p>
+      <div v-if="permissionsLoading" class="empty-row">Carregando permissões...</div>
+      <p v-else-if="permissionsError" class="form-error" role="alert">{{ permissionsError.message }}</p>
+      <div v-else class="permissions-list">
+        <div v-for="permission in permissionCatalog" :key="permission.name" class="detail-row permission-row">
+          <span><strong>{{ permissionLabel(permission.name) }}</strong><small v-if="hasRolePermission(permission.name)">Concedida pelo papel</small><small v-else-if="hasDirectPermission(permission.name)">Concessão individual</small></span>
+          <button v-if="hasDirectPermission(permission.name)" class="outline-button danger-action" :disabled="permissionSaving" @click="revokePermission(permission.name)">Revogar</button>
+          <button v-else-if="!hasRolePermission(permission.name)" class="outline-button" :disabled="permissionSaving" @click="grantPermission(permission.name)">Conceder</button>
+          <span v-else class="gray">Herdada</span>
+        </div>
+      </div>
+      <p v-if="permissionMessage" class="success-message" role="status">{{ permissionMessage }}</p>
+      <div class="modal-actions"><button type="button" class="outline-button" @click="permissionUser = null">Fechar</button></div>
     </section>
   </div>
 </template>

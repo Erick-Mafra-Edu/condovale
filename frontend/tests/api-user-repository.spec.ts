@@ -37,4 +37,20 @@ describe('contratos API de autenticação e usuários', () => {
     expect(created.data).toMatchObject({ user: { id: '3' }, temporaryPassword: 'temp' })
     expect(fetch).toHaveBeenNthCalledWith(2, '/users', expect.objectContaining({ query: { page: 2 } }))
   })
+
+  it('traduz os campos camelCase do domínio ao atualizar um usuário', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      data: { id: 4, name: 'Ana', email: 'ana@example.com', role: 'resident', status: 'active', unit_id: 12, avatar_url: '/avatar.png' },
+      message: 'Usuário 4 editado.',
+    })
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
+    vi.stubGlobal('$fetch', fetch)
+
+    await createApiUserRepository().update('4', { unitId: '12', avatarUrl: '/avatar.png' })
+
+    expect(fetch).toHaveBeenCalledWith('/users/4', expect.objectContaining({
+      method: 'PATCH',
+      body: { unit_id: '12', avatar_url: '/avatar.png' },
+    }))
+  })
 })
