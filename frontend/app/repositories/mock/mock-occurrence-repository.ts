@@ -7,6 +7,7 @@ import { mockUsers } from './mock-user-repository'
 import { simulateRequest } from './mock-config'
 import { recordAudit } from './mock-audit-repository'
 import { getMockAuthenticatedUserId } from './mock-session'
+import { can } from '~/domain/permissions'
 
 const entries: OccurrenceHistory[] = []
 
@@ -32,9 +33,9 @@ function authenticatedUser() {
   return ensureActiveUser(id)
 }
 
-function ensureAssignedEmployee(occurrence: Occurrence, userId: string) {
+function ensureAssignedEmployee(occurrence: Occurrence, userId: string, useCase: 'update-occurrence-progress' | 'finish-occurrence') {
   const user = ensureActiveUser(userId)
-  if (user.role !== 'employee' || occurrence.assignedEmployeeId !== userId) throw new AppError('FORBIDDEN', 'Ocorrência não atribuída a este funcionário')
+  if (!can(user.role, useCase, user.permissions) || occurrence.assignedEmployeeId !== userId) throw new AppError('FORBIDDEN', 'Ocorrência não atribuída a este responsável')
 }
 
 function record(occurrence: Occurrence, type: OccurrenceHistoryType, userId: string, previousStatus?: OccurrenceStatus, message?: string) {
@@ -72,7 +73,8 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     await simulateRequest()
     const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
-    if (ensureActiveUser(userId).role !== 'admin') throw new AppError('FORBIDDEN', 'Somente a administração pode atribuir ocorrências')
+    const actor = ensureActiveUser(userId)
+    if (!can(actor.role, 'assign-occurrence', actor.permissions) || occurrence.status !== 'analysis' || occurrence.assignedEmployeeId) throw new AppError('FORBIDDEN', 'A ocorrência só pode ser encaminhada uma vez após a análise')
     const employee = ensureActiveUser(employeeId)
     if (employee.role !== 'employee') throw new AppError('VALIDATION_ERROR', 'Selecione um funcionário ativo')
     occurrence.assignedEmployeeId = employeeId
@@ -85,10 +87,12 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
     const actor = ensureActiveUser(userId)
-    if (actor.role === 'employee') {
-      ensureAssignedEmployee(occurrence, userId)
+    if (can(actor.role, 'update-occurrence-progress', actor.permissions)) {
+      ensureAssignedEmployee(occurrence, userId, 'update-occurrence-progress')
       if (occurrence.status !== 'assigned' || status !== 'in_progress') throw new AppError('INVALID_STATUS_TRANSITION', 'O atendimento só pode avançar de atribuído para em andamento')
-    } else if (actor.role !== 'admin') throw new AppError('FORBIDDEN', 'Usuário não autorizado')
+    } else if (can(actor.role, 'analyze-occurrences', actor.permissions) && occurrence.status === 'open' && status === 'analysis') {
+      // análise é a única transição que a gestão faz antes do encaminhamento
+    } else throw new AppError('FORBIDDEN', 'Usuário não autorizado')
     const previousStatus = occurrence.status
     const result = changeStatus(occurrence, status, userId, 'status_changed')
     recordAudit({ userId, action: 'occurrence.status_updated', entity: 'occurrence', entityId: id, metadata: { from: previousStatus, to: status } })
@@ -98,7 +102,7 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     await simulateRequest()
     const userId = authenticatedUser().id
     const occurrence = ensureOccurrence(id)
-    ensureAssignedEmployee(occurrence, userId)
+    ensureAssignedEmployee(occurrence, userId, 'finish-occurrence')
     if (occurrence.status !== 'in_progress') throw new AppError('INVALID_STATUS_TRANSITION', 'Somente atendimentos em andamento podem ser finalizados')
     const finish = typeof input === 'string' ? { resolved: true, conclusion: input } : input
     const result = changeStatus(occurrence, 'completed', userId, 'completed', finish.conclusion)
