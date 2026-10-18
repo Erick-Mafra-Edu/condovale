@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Enums\OccurrenceStatus;
 use App\Enums\UnitStatus;
 use App\Enums\UseCase;
+use App\Models\Occurrence;
+use App\Models\OccurrenceType;
 use App\Models\Unit;
 use App\Models\UnitOccupancy;
 use App\Models\User;
@@ -180,6 +182,45 @@ class DemoSeedTest extends TestCase
         $this->assertSame(['view-audit-reports'], $sindico->getDirectPermissions()->pluck('name')->all());
         $this->assertFalse($sindico->role->can(UseCase::ViewAuditReports));
         $this->assertTrue($sindico->can('view-audit-reports'));
+    }
+
+    public function test_toda_permissao_tem_uma_conta_de_demonstracao_que_a_exerce(): void
+    {
+        // Um caso de uso que nenhuma conta possui não tem como ser
+        // demonstrado nem testado à mão. A conta de primeiro acesso não conta:
+        // ela entra, mas fica presa na troca de senha.
+        $contas = User::where('status', 'active')->where('must_change_password', false)->get();
+
+        foreach (UseCase::cases() as $caso) {
+            $this->assertTrue(
+                $contas->contains(fn (User $user) => $user->can($caso->value)),
+                "Nenhuma conta de demonstração ativa exerce {$caso->value}."
+            );
+        }
+    }
+
+    public function test_cada_fluxo_de_ocorrencia_tem_um_chamado_de_partida(): void
+    {
+        // Os fluxos do sprint 3 precisam começar de algum lugar sem que
+        // ninguém prepare nada à mão antes da demonstração.
+        $funcionario = User::where('email', 'employee@gmail.com')->first();
+        $fechaveis = OccurrenceType::where('employee_can_close', true)->pluck('id');
+        $reservados = OccurrenceType::where('employee_can_close', false)->pluck('id');
+
+        $partidas = [
+            'analisar' => Occurrence::where('status', OccurrenceStatus::Open)->exists(),
+            'encaminhar' => Occurrence::where('status', OccurrenceStatus::Analysis)->exists(),
+            'iniciar ou repassar' => Occurrence::where('status', OccurrenceStatus::Assigned)->where('assigned_employee_id', $funcionario->id)->exists(),
+            'funcionário finalizar' => Occurrence::where('status', OccurrenceStatus::InProgress)
+                ->where('assigned_employee_id', $funcionario->id)->whereIn('occurrence_type_id', $fechaveis)->exists(),
+            'funcionário ser recusado pelo tipo' => Occurrence::where('status', OccurrenceStatus::InProgress)
+                ->whereIn('occurrence_type_id', $reservados)->exists(),
+            'excluir tipo sem uso' => OccurrenceType::doesntHave('occurrences')->exists(),
+        ];
+
+        foreach ($partidas as $fluxo => $existe) {
+            $this->assertTrue($existe, "A carga não tem chamado para demonstrar: {$fluxo}.");
+        }
     }
 
     public function test_a_carga_cobre_os_estados_que_precisam_ser_demonstrados(): void
