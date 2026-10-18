@@ -70,5 +70,17 @@
         "resolved": null,
         "conclusion": null,
         "completed_days_ago": null
+    },
+    {
+        "title": "Lixeira quebrada no hall do Bloco A",
+        "description": "A tampa da lixeira do hall soltou e o lixo está espalhando pelo chão.",
+        "occurrence_type_name": "Limpeza e conservação",
+        "resident_email": "resident2@gmail.com",
+        "unit_code": "A-102",
+        "assigned_employee_email": "employee@gmail.com",
+        "status": "in_progress",
+        "resolved": null,
+        "conclusion": null,
+        "completed_days_ago": null
     }
 ]

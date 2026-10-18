@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\OccurrenceAttachmentController;
 use App\Http\Controllers\OccurrenceController;
 use App\Http\Controllers\OccurrenceTypeController;
 use App\Http\Controllers\PermissionController;
@@ -85,6 +86,13 @@ Route::get('deploy/hashing', [DeployController::class, 'hashing'])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
 Route::get('deploy/mail', [DeployController::class, 'mail'])
+    ->withoutMiddleware([StartSession::class])
+    ->middleware(['throttle:deploy', 'deploy.token']);
+
+// Os limites de upload do InfinityFree só são conhecidos por relato de fórum;
+// esta rota diz, de dentro do servidor, o teto real, se há GD e quanto disco
+// resta.
+Route::get('deploy/uploads', [DeployController::class, 'uploads'])
     ->withoutMiddleware([StartSession::class])
     ->middleware(['throttle:deploy', 'deploy.token']);
 
@@ -268,11 +276,77 @@ Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->gr
 | exige a conclusão e se o problema foi resolvido.
 */
 Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    // Atualização do atendimento: status, anotação de andamento, ou os dois.
+    // A parte de status passa pela mesma Action do PATCH /status, que segue
+    // existindo porque o frontend já o integrou — duas portas, uma regra.
+    Route::patch('occurrences/{id}', [OccurrenceController::class, 'updateAttendance'])
+        ->middleware('use.case:analyze-occurrences,update-occurrence-progress');
+
     Route::patch('occurrences/{id}/status', [OccurrenceController::class, 'updateStatus'])
         ->middleware('use.case:analyze-occurrences,update-occurrence-progress');
 
     Route::post('occurrences/{id}/finish', [OccurrenceController::class, 'finish'])
         ->middleware('use.case:finish-occurrence,close-any-occurrence');
+
+    // Ocorrencia.encaminhar(). Uma rota para os dois jeitos: administração e
+    // síndico encaminham qualquer chamado, o funcionário repassa o seu. Quem
+    // pode o quê em cada chamado é decidido na AssignOccurrenceAction.
+    Route::patch('occurrences/{id}/assign', [OccurrenceController::class, 'assign'])
+        ->middleware('use.case:assign-occurrence,hand-over-occurrence');
+
+    // Para o seletor de quem recebe: sem ela, só o administrador — único com
+    // a listagem de usuários — saberia para quem encaminhar.
+    Route::get('assignable-employees', [OccurrenceController::class, 'assignableEmployees'])
+        ->middleware('use.case:assign-occurrence,hand-over-occurrence');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Consulta de chamados — RF04 / RN06
+|--------------------------------------------------------------------------
+|
+| Entra quem acompanha chamados por algum caminho. Quais chamados cada um vê
+| é decidido pelo ScopeOccurrencesAction na listagem e pela
+| CheckOccurrenceAccessAction no detalhe e no histórico — a mesma regra nos
+| três lugares.
+*/
+Route::middleware([
+    'auth',
+    'user.active',
+    'password.change',
+    'use.case:track-own-occurrences,view-assigned-occurrences,analyze-occurrences,close-any-occurrence',
+])->group(function () {
+    Route::get('occurrences', [OccurrenceController::class, 'index']);
+    Route::get('occurrences/{id}', [OccurrenceController::class, 'show']);
+    Route::get('occurrences/{id}/history', [OccurrenceController::class, 'history']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Imagens do chamado — RF04
+|--------------------------------------------------------------------------
+|
+| O envio é multipart/form-data, no campo `image`.
+|
+| Entra quem acompanha chamados por algum caminho — o morador os próprios, o
+| funcionário os atribuídos, o síndico e a administração todos. Qual chamado
+| cada um alcança é decidido por registro, na CheckOccurrenceAccessAction, com
+| a mesma regra da listagem.
+|
+| A imagem nunca é servida como arquivo estático: sai pela rota `show`, que
+| confere o acesso antes de entregar. Um link direto para o disco seria
+| autorização por quem conhece o endereço.
+*/
+Route::middleware([
+    'auth',
+    'user.active',
+    'password.change',
+    'use.case:track-own-occurrences,view-assigned-occurrences,analyze-occurrences,close-any-occurrence',
+])->group(function () {
+    Route::get('occurrences/{id}/attachments', [OccurrenceAttachmentController::class, 'index']);
+    Route::post('occurrences/{id}/attachments', [OccurrenceAttachmentController::class, 'store']);
+    Route::get('occurrences/{id}/attachments/{attachment}', [OccurrenceAttachmentController::class, 'show'])
+        ->name('occurrences.attachments.show');
 });
 
 /*

@@ -1,0 +1,25 @@
+info:
+  name: assign
+  type: http
+  seq: 6
+
+http:
+  method: PATCH
+  url: "{{API_URL}}/occurrences/5/assign"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "employee_id": 3,
+        "message": "Verificar a unidade vizinha antes de falar com o morador."
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

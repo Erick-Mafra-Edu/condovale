@@ -80,7 +80,7 @@ class OccurrenceTransitionGuardTest extends TestCase
 
         $chamado = Occurrence::factory()->assignedTo($primeiro)->create();
 
-        AssignOccurrenceAction::execute($chamado, $admin, $segundo);
+        AssignOccurrenceAction::execute($chamado, $admin, $segundo, 'O primeiro entrou de férias.');
 
         $this->assertSame($segundo->id, $chamado->fresh()->assigned_employee_id);
         $this->assertSame(OccurrenceStatus::Assigned, $chamado->fresh()->status);

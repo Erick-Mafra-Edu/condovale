@@ -146,5 +146,17 @@
     {
         "role": "admin",
         "permission": "close-any-occurrence"
+    },
+    {
+        "role": "syndic",
+        "permission": "analyze-occurrences"
+    },
+    {
+        "role": "syndic",
+        "permission": "assign-occurrence"
+    },
+    {
+        "role": "employee",
+        "permission": "hand-over-occurrence"
     }
 ]

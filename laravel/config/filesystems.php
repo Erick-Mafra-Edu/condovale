@@ -33,8 +33,26 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Desligado: com `serve` o Laravel registra a rota /storage/{path},
+            // que entrega arquivo privado a quem tiver uma URL assinada. Nada no
+            // projeto usa isso, e uma URL assinada sozinha não é autorização —
+            // arquivo privado sai por rota autenticada que confere quem pode
+            // ver aquele arquivo específico.
+            'serve' => false,
             'throw' => false,
+            'report' => false,
+        ],
+
+        // Anexos das ocorrências (RF04). Fora de public/: quem entrega cada
+        // arquivo é a aplicação, depois de conferir que a pessoa enxerga o
+        // chamado. `throw` ligado para que uma gravação que falhe — disco
+        // cheio, limite de inodes — estoure em vez de criar o registro de um
+        // arquivo que não existe.
+        'occurrence_attachments' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/occurrence-attachments'),
+            'visibility' => 'private',
+            'throw' => true,
             'report' => false,
         ],
 

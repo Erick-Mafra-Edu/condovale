@@ -1,6 +1,7 @@
 """Executa uma tarefa de implantação depois de resolver o desafio do InfinityFree.
 
     python tools/run-deploy-migration.py              # migrate:fresh --seed
+    python tools/run-deploy-migration.py --pending    # só as migrations pendentes, sem apagar nada
     python tools/run-deploy-migration.py --optimize   # config:cache + route:cache
     python tools/run-deploy-migration.py --clear      # apaga os caches de inicialização
 
@@ -88,6 +89,7 @@ def main() -> int:
     grupo = parser.add_mutually_exclusive_group()
     grupo.add_argument('--optimize', action='store_true', help='gera os caches de inicialização')
     grupo.add_argument('--clear', action='store_true', help='apaga os caches de inicialização')
+    grupo.add_argument('--pending', action='store_true', help='aplica só as migrations pendentes, sem apagar dados')
     args = parser.parse_args()
 
     base = do_env('APP_URL').rstrip('/')
@@ -100,6 +102,9 @@ def main() -> int:
     if args.optimize or args.clear:
         caminho, corpo = '/api/deploy/optimize', {'clear': args.clear}
         rotulo = 'Caches de inicialização apagados.' if args.clear else 'Caches de inicialização gerados.'
+    elif args.pending:
+        caminho, corpo = '/api/deploy/migrate', {'fresh': False}
+        rotulo = 'Migrations pendentes aplicadas.'
     else:
         caminho, corpo = '/api/deploy/migrate', {}
         rotulo = 'Migração concluída.'
@@ -135,6 +140,9 @@ def main() -> int:
     if isinstance(dados, dict):
         for comando, saida in dados.items():
             print(f'  {comando}: {saida}')
+    elif isinstance(dados, str) and dados.strip():
+        # A saída do artisan: é o que diz quais migrations rodaram.
+        print(dados)
 
     return 0
 

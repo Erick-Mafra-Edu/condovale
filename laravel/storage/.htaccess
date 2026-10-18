@@ -1,0 +1,13 @@
+# Nada em storage/ é servido pela web: logs, cache, sessões e os anexos das
+# ocorrências saem só pela aplicação, que confere quem pode ver cada arquivo.
+#
+# O .htaccess da raiz já manda tudo para public/, mas só enquanto o
+# mod_rewrite estiver ativo. Sem ele, a raiz da conta seria servida direto e
+# estas pastas ficariam abertas. Esta é a segunda tranca.
+<IfModule mod_authz_core.c>
+Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+Order deny,allow
+Deny from all
+</IfModule>

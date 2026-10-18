@@ -30,7 +30,7 @@ class OccurrenceStateMachineTest extends TestCase
         'open' => ['analysis', 'cancelled', 'completed'],
         'analysis' => ['assigned', 'cancelled', 'completed'],
         'assigned' => ['in_progress', 'cancelled', 'completed'],
-        'in_progress' => ['completed'],
+        'in_progress' => ['assigned', 'completed'],
         'completed' => [],
         'cancelled' => [],
     ];
@@ -76,11 +76,18 @@ class OccurrenceStateMachineTest extends TestCase
         $this->assertFalse(OccurrenceStatus::Open->canTransitionTo(OccurrenceStatus::InProgress));
     }
 
-    public function test_nao_se_volta_uma_etapa(): void
+    public function test_nao_se_volta_a_analise_nem_a_abertura(): void
     {
         $this->assertFalse(OccurrenceStatus::Analysis->canTransitionTo(OccurrenceStatus::Open));
         $this->assertFalse(OccurrenceStatus::Assigned->canTransitionTo(OccurrenceStatus::Analysis));
-        $this->assertFalse(OccurrenceStatus::InProgress->canTransitionTo(OccurrenceStatus::Assigned));
+        $this->assertFalse(OccurrenceStatus::InProgress->canTransitionTo(OccurrenceStatus::Analysis));
+    }
+
+    public function test_atendimento_iniciado_pode_ser_repassado(): void
+    {
+        // O encanador que descobre que o problema é elétrico. Sem esta volta,
+        // a única saída seria encerrar como não resolvido e abrir outro.
+        $this->assertTrue(OccurrenceStatus::InProgress->canTransitionTo(OccurrenceStatus::Assigned));
     }
 
     public function test_atendimento_iniciado_nao_e_cancelado(): void
@@ -130,14 +137,14 @@ class OccurrenceStateMachineTest extends TestCase
         }
     }
 
-    public function test_a_recusa_de_um_destino_so_nao_usa_lista(): void
+    public function test_a_recusa_com_dois_destinos_usa_ou(): void
     {
         try {
             OccurrenceStatus::InProgress->assertCanTransitionTo(OccurrenceStatus::Open);
             $this->fail('A transição deveria ter sido recusada.');
         } catch (BusinessRuleException $e) {
             $this->assertSame(
-                'O chamado não pode passar de Em andamento para Aberto: de Em andamento ele segue para Concluído.',
+                'O chamado não pode passar de Em andamento para Aberto: de Em andamento ele segue para Atribuído ou Concluído.',
                 $e->getMessage()
             );
         }

@@ -1,0 +1,26 @@
+info:
+  name: optimize
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{API_URL}}/deploy/optimize"
+  headers:
+    - name: Accept
+      value: application/json
+    - name: X-Deploy-Token
+      value: "{{DEPLOY_TOKEN}}"
+  body:
+    type: json
+    data: |-
+      {
+        "clear": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

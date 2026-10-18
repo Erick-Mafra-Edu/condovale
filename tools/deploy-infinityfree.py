@@ -89,11 +89,14 @@ def should_send(rel: str) -> bool:
     if rel == "database/database.sqlite":
         return False
 
-    # De storage/ e bootstrap/cache/ sobe apenas o .gitignore: ele é o que cria
-    # os diretórios graváveis lá. O conteúdo é gerado em produção e sobrescrevê-lo
-    # apagaria log e cache do servidor.
+    # De storage/ e bootstrap/cache/ sobem apenas o .gitignore, que cria os
+    # diretórios graváveis lá, e o .htaccess, que nega acesso pela web caso o
+    # mod_rewrite da raiz falhe. O resto é gerado em produção — log, cache e os
+    # anexos que os moradores enviaram —, e sobrescrevê-lo apagaria dado real.
+    # Pelo mesmo motivo nada disso entra no manifesto, e por isso o --prune
+    # nunca apaga um anexo: ele só remove o que este script enviou antes.
     if rel.startswith("storage/") or rel.startswith("bootstrap/cache/"):
-        return name == ".gitignore"
+        return name in (".gitignore", ".htaccess")
 
     return True
 

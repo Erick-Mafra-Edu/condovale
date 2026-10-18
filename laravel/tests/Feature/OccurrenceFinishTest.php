@@ -196,13 +196,42 @@ class OccurrenceFinishTest extends TestCase
         }
     }
 
-    public function test_exige_a_conclusao_e_o_desfecho(): void
+    public function test_exige_so_o_texto_do_que_foi_feito(): void
     {
+        // O status não vem na requisição — finalizar sempre leva a
+        // Concluído —, e `resolved` é opcional. O único campo obrigatório é
+        // a conclusão.
         $this->actingAs(User::factory()->syndic()->create())
             ->postJson('/api/occurrences/'.Occurrence::factory()->create()->id.'/finish', [])
             ->assertStatus(422)
-            ->assertJsonPath('errors.resolved.0', 'Informe se o problema foi resolvido.')
-            ->assertJsonPath('errors.conclusion.0', 'Descreva a conclusão do atendimento.');
+            ->assertJsonPath('errors.conclusion.0', 'Descreva o que foi feito para finalizar o atendimento.')
+            ->assertJsonMissingPath('errors.resolved');
+    }
+
+    public function test_finalizar_so_com_o_texto_registra_como_resolvido(): void
+    {
+        // Quem descreve o que fez para finalizar, na regra, resolveu. O
+        // contrário é a exceção, e precisa ser dito com `resolved: false`.
+        $chamado = Occurrence::factory()->create();
+
+        $this->actingAs(User::factory()->syndic()->create())
+            ->postJson("/api/occurrences/{$chamado->id}/finish", ['conclusion' => 'Registro trocado.'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.resolved', true)
+            ->assertJsonPath('data.conclusion', 'Registro trocado.');
+    }
+
+    public function test_o_status_enviado_pelo_cliente_e_ignorado(): void
+    {
+        // "O status será alterado automaticamente pelo backend": mandar outro
+        // status junto não muda o desfecho.
+        $chamado = Occurrence::factory()->create();
+
+        $this->actingAs(User::factory()->syndic()->create())
+            ->postJson("/api/occurrences/{$chamado->id}/finish", ['conclusion' => 'Feito.', 'status' => 'cancelled'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'completed');
     }
 
     public function test_registra_o_desfecho_no_historico(): void
