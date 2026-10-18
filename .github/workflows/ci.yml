@@ -16,6 +16,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pull-request-conventions:
+    name: Validar título e branch do PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validar convenções do PR
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|perf|refactor|test|docs|chore|build|ci)(\([a-z0-9._/-]+\))?!?:[[:space:]].+ ]]; then
+            echo "::error::O título do PR deve seguir Conventional Commit: tipo, escopo opcional, ! opcional e descrição."
+            echo "::error::Exemplo: feat(ocorrencias): permitir encaminhamento"
+            exit 1
+          fi
+
+          if [[ ! "$PR_BRANCH" =~ ^(feat|fix|perf|refactor|test|docs|chore|build|ci)/[a-z0-9][a-z0-9._/-]*$ ]] && [[ ! "$PR_BRANCH" =~ ^release-please--[a-z0-9][a-z0-9._/-]*$ ]]; then
+            echo "::error::A branch do PR deve começar com feat/, fix/, perf/, refactor/, test/, docs/, chore/, build/ ou ci/ e usar somente sufixo seguro em minúsculas."
+            echo "::error::Branches release-please--* são permitidas automaticamente."
+            exit 1
+          fi
+
+          echo "Convenções do título e da branch validadas com sucesso."
+
   frontend:
     name: Frontend (testes e build)
     runs-on: ubuntu-latest
