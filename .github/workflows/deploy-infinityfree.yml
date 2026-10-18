@@ -123,3 +123,15 @@ jobs:
           DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
           python tools/run-deploy-migration.py
+
+      # Produção lê rotas e configuração dos caches de inicialização. O FTP acima
+      # troca os arquivos, mas não os caches: sem renová-los, uma rota nova
+      # responderia 404 e uma configuração nova seria ignorada, sem erro
+      # nenhum. Roda em todo deploy, depois do banco, a partir do código que
+      # acabou de subir.
+      - name: Renovar os caches de inicialização
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          python tools/run-deploy-migration.py --optimize

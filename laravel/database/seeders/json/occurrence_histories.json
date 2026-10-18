@@ -94,5 +94,37 @@
         "message": "Chamado duplicado: já havia registro aberto para o mesmo interfone.",
         "previous_status": "open",
         "new_status": "cancelled"
+    },
+    {
+        "occurrence_title": "Lixeira quebrada no hall do Bloco A",
+        "user_email": "resident2@gmail.com",
+        "type": "created",
+        "message": null,
+        "previous_status": null,
+        "new_status": "open"
+    },
+    {
+        "occurrence_title": "Lixeira quebrada no hall do Bloco A",
+        "user_email": "syndic@gmail.com",
+        "type": "status_changed",
+        "message": "Verificado com a portaria.",
+        "previous_status": "open",
+        "new_status": "analysis"
+    },
+    {
+        "occurrence_title": "Lixeira quebrada no hall do Bloco A",
+        "user_email": "syndic@gmail.com",
+        "type": "assigned",
+        "message": "Encaminhado a Funcionário CondoVale.",
+        "previous_status": "analysis",
+        "new_status": "assigned"
+    },
+    {
+        "occurrence_title": "Lixeira quebrada no hall do Bloco A",
+        "user_email": "employee@gmail.com",
+        "type": "status_changed",
+        "message": "Separando material para o conserto.",
+        "previous_status": "assigned",
+        "new_status": "in_progress"
     }
 ]

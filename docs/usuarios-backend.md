@@ -40,9 +40,9 @@ confere o JSON contra ela.
 | Perfil | Capacidades |
 | --- | --- |
 | Morador | Atualizar o próprio perfil, visualizar comunicados e áreas comuns, abrir e acompanhar ocorrências próprias, solicitar/visualizar/cancelar as próprias reservas |
-| Funcionário | Atualizar o próprio perfil, visualizar ocorrências atribuídas, atualizar o andamento e finalizar ocorrências |
-| Síndico | Atualizar o próprio perfil, gerenciar unidades, publicar comunicados e gerar relatórios |
-| Administrador | Atualizar o próprio perfil, gerenciar unidades e moradores, vincular moradores a unidades, analisar e atribuir ocorrências, publicar comunicados, gerenciar e aprovar/rejeitar reservas, gerar relatórios e visualizar relatórios de auditoria |
+| Funcionário | Atualizar o próprio perfil, visualizar ocorrências atribuídas, atualizar o andamento, finalizar ocorrências (quando o tipo permite) e repassar o próprio chamado a outro funcionário |
+| Síndico | Atualizar o próprio perfil, gerenciar unidades, abrir chamado para um morador, manter os tipos de ocorrência, analisar e encaminhar ocorrências, dar baixa em qualquer chamado, publicar comunicados e gerar relatórios |
+| Administrador | Atualizar o próprio perfil, gerenciar unidades e moradores, vincular moradores a unidades, abrir chamado para um morador, manter os tipos de ocorrência, analisar e encaminhar ocorrências, dar baixa em qualquer chamado, publicar comunicados, gerenciar e aprovar/rejeitar reservas, gerar relatórios e visualizar relatórios de auditoria |
 
 Todos os perfis podem fazer login e editar o próprio cadastro. O síndico
 gerencia unidades pela RN03 — "alterações estruturais de unidades restritas ao
