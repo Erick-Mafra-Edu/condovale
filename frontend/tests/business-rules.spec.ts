@@ -324,7 +324,7 @@ describe('permissões do diagrama de casos de uso', () => {
     'login', 'update-own-profile', 'view-notices', 'create-occurrence', 'track-own-occurrences',
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]
-  const employeeCases: UseCase[] = ['login', 'update-own-profile', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence']
+  const employeeCases: UseCase[] = ['login', 'update-own-profile', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence', 'hand-over-occurrence']
   const syndicCases: UseCase[] = ['login', 'update-own-profile', 'manage-units', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'generate-reports']
   const adminCases: UseCase[] = [
     'login', 'update-own-profile', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',

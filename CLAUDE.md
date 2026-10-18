@@ -1031,3 +1031,60 @@ php artisan pail
 11. Seeder que roda em produção usa `updateOrCreate` chaveado por campo de negócio.
 12. `vendor/bin/pint --dirty` rodou.
 13. Nenhum `env()` fora de `config/`.
+
+---
+
+## Git, branches, commits e releases
+
+Esta política é obrigatória para manter o histórico legível e permitir que o
+CI/CD determine a próxima versão sem intervenção manual.
+
+### Branches
+
+- `main` deve ser protegida nas configurações do GitHub: sem *push* direto,
+  *force-push* ou commits locais de release; a proteção deve exigir o workflow
+  `Validação` aprovado.
+- O trabalho acontece em branches curtas derivadas de `main`: `feat/<nome>`,
+  `fix/<nome>`, `refactor/<nome>`, `test/<nome>`, `docs/<nome>`, `chore/<nome>`,
+  `perf/<nome>`, `build/<nome>` ou `ci/<nome>`. A única exceção automática é o
+  PR de release criado pelo release-please.
+- Toda mudança chega à `main` por Pull Request revisado, com CI verde. A branch
+  deve ser atualizada com a `main` antes do merge quando houver divergência.
+- O título do PR e o commit de *squash* que chega à `main` devem seguir
+  Conventional Commits: é esse texto que o release-please lê.
+- O CI valida o prefixo da branch e o título do PR antes de permitir o merge.
+
+### Conventional Commits e SemVer
+
+Use `tipo(escopo opcional): descrição` no imperativo e sem ponto final. Os
+tipos que determinam a versão são:
+
+| Tipo | Versão SemVer | Uso |
+|---|---|---|
+| `fix`, `perf`, `refactor`, `test`, `docs`, `chore`, `build`, `ci` | *patch* | alteração compatível; manutenção isolada também gera *patch* |
+| `feat` | *minor* | funcionalidade compatível e nova capacidade |
+| qualquer tipo com `!` ou rodapé `BREAKING CHANGE:` | *major* | quebra de API, contrato, comportamento ou migração necessária |
+
+Exemplos:
+
+```text
+fix(occurrences): reject assignment before analysis
+feat(occurrences): add maintenance request history
+feat(api)!: rename occurrence status field
+chore: update CI dependencies
+```
+
+Um commit `feat` com `BREAKING CHANGE:` continua sendo *major*. O texto do
+commit deve explicar a migração no rodapé quando necessário.
+
+### Releases
+
+O release-please segue este fluxo: deploy da `main` aprovado → PR de release
+aberto → CI verde → merge do PR → novo deploy → tag e release criadas pelo CI.
+O token `RELEASE_PLEASE_TOKEN` ainda precisa ser configurado como segredo do
+repositório; use um fine-grained token com `Contents: read/write`, `Issues:
+read/write` e `Pull requests: read/write` no repositório.
+
+Tags e changelogs são criados exclusivamente pelo release-please. É proibido
+criar, mover ou publicar tags manualmente (`git tag`, `git push --tags`) ou
+editar uma release publicada.

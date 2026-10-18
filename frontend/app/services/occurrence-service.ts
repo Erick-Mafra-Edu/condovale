@@ -1,5 +1,5 @@
 import { AppError } from '~/domain/app-error'
-import type { CreateOccurrenceInput, FinishOccurrenceInput, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, OccurrenceAttendanceInput, OccurrenceStatus } from '~/domain/occurrence'
 import type { OccurrenceRepository } from '~/repositories/contracts/occurrence-repository'
 
 export function createOccurrenceService(repository: OccurrenceRepository) {
@@ -15,9 +15,19 @@ export function createOccurrenceService(repository: OccurrenceRepository) {
       if (Object.keys(fields).length) throw new AppError('VALIDATION_ERROR', 'Revise os dados da ocorrência', fields)
       return repository.create(input)
     },
-    async assign(id: string, employeeId: string) {
+    async assign(id: string, employeeId: string, message?: string) {
       if (!employeeId.trim()) throw new AppError('VALIDATION_ERROR', 'Informe o funcionário', { employeeId: ['Campo obrigatório'] })
-      return repository.assign(id, employeeId)
+      if (message && message.length > 255) throw new AppError('VALIDATION_ERROR', 'A justificativa deve ter no máximo 255 caracteres', { message: ['A justificativa deve ter no máximo 255 caracteres'] })
+      return message === undefined
+        ? repository.assign(id, employeeId)
+        : repository.assign(id, employeeId, message)
+    },
+    async updateAttendance(id: string, input: OccurrenceAttendanceInput) {
+      const fields: Record<string, string[]> = {}
+      if (!input.status && !input.message?.trim()) fields.message = ['Informe o novo status ou descreva a atualização do atendimento']
+      if (input.message && input.message.length > 2000) fields.message = ['A atualização deve ter no máximo 2000 caracteres']
+      if (Object.keys(fields).length) throw new AppError('VALIDATION_ERROR', 'Revise a atualização do atendimento', fields)
+      return repository.updateAttendance(id, { ...input, message: input.message?.trim() || undefined })
     },
     async updateStatus(id: string, status: OccurrenceStatus) {
       return repository.updateStatus(id, status)
@@ -28,5 +38,9 @@ export function createOccurrenceService(repository: OccurrenceRepository) {
       return repository.finish(id, input)
     },
     history: (id: string) => repository.history(id),
+    assignableEmployees: (query?: { search?: string }) => repository.listAssignableEmployees(query),
+    listAttachments: (id: string) => repository.listAttachments(id),
+    uploadAttachment: (id: string, file: File) => repository.uploadAttachment(id, file),
+    attachmentUrl: (id: string, attachmentId: string) => repository.attachmentUrl(id, attachmentId),
   }
 }
