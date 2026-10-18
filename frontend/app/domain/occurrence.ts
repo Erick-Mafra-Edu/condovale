@@ -8,15 +8,38 @@ export interface Occurrence {
   category: string
   occurrenceTypeId?: string
   occurrenceTypeName?: string
+  employeeCanClose?: boolean
   residentId: string
+  residentName?: string
   unitId?: string
+  unitCode?: string
+  unitNumber?: string
   assignedEmployeeId?: string
+  assignedEmployeeName?: string
   resolved?: boolean
   conclusion?: string
   status: OccurrenceStatus
   createdAt: string
   updatedAt: string
   completedAt?: string
+  attachments?: OccurrenceAttachment[]
+}
+
+export interface OccurrenceAttachment {
+  id: string
+  occurrenceId: string
+  uploadedBy: string
+  originalName: string
+  mimeType: string
+  size: number
+  width?: number
+  height?: number
+  url: string
+}
+
+export interface OccurrenceEmployee {
+  id: string
+  name: string
 }
 
 export interface OccurrenceHistory {
@@ -24,6 +47,7 @@ export interface OccurrenceHistory {
   occurrenceId: string
   type: OccurrenceHistoryType
   userId: string
+  userName?: string
   message?: string
   previousStatus?: OccurrenceStatus
   newStatus?: OccurrenceStatus
@@ -40,4 +64,9 @@ export type CreateOccurrenceInput = {
 export type FinishOccurrenceInput = {
   resolved: boolean
   conclusion: string
+}
+
+export type OccurrenceAttendanceInput = {
+  status?: OccurrenceStatus
+  message?: string
 }

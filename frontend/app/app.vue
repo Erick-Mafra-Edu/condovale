@@ -17,7 +17,12 @@ const occurrenceSuccess = ref('')
 const submittingOccurrence = ref(false)
 const updatingOccurrence = ref(false)
 const occurrenceNote = ref('')
+const occurrenceMessage = ref('')
+const occurrenceTransferReason = ref('')
 const occurrenceEmployeeId = ref('')
+const occurrenceAttachmentError = ref('')
+const uploadingOccurrenceAttachment = ref(false)
+const occurrenceAttachmentInput = ref<HTMLInputElement | null>(null)
 const reviewingReservation = ref(false)
 const reportView = ref<'operations' | 'audit'>('operations')
 const profileSaving = ref(false)
@@ -36,8 +41,8 @@ const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, u
 const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
-const { occurrences, history: occurrenceHistory, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, createOccurrence, assignOccurrence, loadHistory, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
-const { types: occurrenceTypes, activeTypes: activeOccurrenceTypes, loading: occurrenceTypesLoading, load: loadOccurrenceTypes, loadActive: loadActiveOccurrenceTypes, create: createOccurrenceType, update: updateOccurrenceType, remove: removeOccurrenceType } = useOccurrenceTypes()
+const { occurrences, history: occurrenceHistory, assignableEmployees, attachments: occurrenceAttachments, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, loadAssignableEmployees, loadHistory, loadAttachments, uploadAttachment, attachmentUrl, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
+const { types: occurrenceTypes, activeTypes: activeOccurrenceTypes, loading: occurrenceTypesLoading, load: loadOccurrenceTypes, loadActive: loadActiveOccurrenceTypes, find: findOccurrenceType, create: createOccurrenceType, update: updateOccurrenceType, remove: removeOccurrenceType } = useOccurrenceTypes()
 const { reservations, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
 const { notices, loadNotices } = useNotices()
 const { auditLogs, loadAuditLogs } = useAuditLogs()
@@ -52,18 +57,21 @@ function hasAccess(useCase: UseCase) {
   return authUser.value ? can(authUser.value.role, useCase, authUser.value.permissions) : false
 }
 
-const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label, authUser.value.permissions) && (!apiMode.value || (!unavailableInApi.has(item.label) && (item.label !== 'Ocorrências' || hasAccess('create-occurrence') || hasAccess('open-occurrence-for-resident'))))))
+const canViewOccurrences = computed(() => ['create-occurrence', 'open-occurrence-for-resident', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence', 'close-any-occurrence'].some(useCase => hasAccess(useCase as UseCase)))
+const canTransferOccurrence = computed(() => canAssignOccurrence.value || hasAccess('hand-over-occurrence' as UseCase))
+const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label, authUser.value.permissions) && (!apiMode.value || (!unavailableInApi.has(item.label) && (item.label !== 'Ocorrências' || canViewOccurrences.value)))))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
 const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence', authUser.value.permissions) : false)
 const canOpenForResident = computed(() => authUser.value ? can(authUser.value.role, 'open-occurrence-for-resident', authUser.value.permissions) : false)
 const canAssignOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'assign-occurrence', authUser.value.permissions) : false)
 const canAnalyzeOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'analyze-occurrences', authUser.value.permissions) : false)
+const canCommentOccurrence = computed(() => hasAccess('analyze-occurrences') || hasAccess('update-occurrence-progress'))
 const loadActiveOccurrenceTypesRequest = () => loadActiveOccurrenceTypes().catch((cause) => { occurrenceTypesError.value = cause instanceof Error ? cause.message : 'Não foi possível carregar os tipos de ocorrência.' })
 async function openOccurrenceForm() { showOccurrence.value = true; occurrenceSuccess.value = ''; occurrenceError.value = null; if (!activeOccurrenceTypes.value.length) await loadActiveOccurrenceTypesRequest() }
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
 const areaById = computed(() => new Map(areas.value.map(area => [area.id, area])))
 const activeResidents = computed(() => users.value.filter(user => user.role === 'resident' && user.status === 'active'))
-const activeEmployees = computed(() => users.value.filter(user => user.role === 'employee' && user.status === 'active'))
+const activeEmployees = computed(() => apiMode.value ? assignableEmployees.value : users.value.filter(user => user.role === 'employee' && user.status === 'active'))
 const visibleOccurrences = computed(() => {
   if (authUser.value?.role === 'employee') return occurrences.value.filter(item => item.assignedEmployeeId === authUser.value?.id)
   if (authUser.value?.role === 'resident') return occurrences.value.filter(item => item.residentId === authUser.value?.id)
@@ -88,7 +96,7 @@ const formatDate = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2
 const formatDateTime = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
 const occurrenceLabel = (status: string) => ({ open: 'Aberta', analysis: 'Em análise', assigned: 'Atribuída', in_progress: 'Em andamento', completed: 'Concluída', cancelled: 'Cancelada' }[status] ?? status)
 const occurrenceTone = (status: string) => ({ open: 'red', analysis: 'blue', assigned: 'yellow', in_progress: 'blue', completed: 'green', cancelled: 'gray' }[status] ?? 'gray')
-const occurrenceEmployeeName = (id?: string) => id ? users.value.find(item => item.id === id)?.name ?? `Funcionário #${id}` : ''
+const occurrenceEmployeeName = (id?: string, nestedName?: string) => id ? nestedName ?? users.value.find(item => item.id === id)?.name ?? activeEmployees.value.find(item => item.id === id)?.name ?? `Funcionário #${id}` : ''
 const reservationLabel = (status: Reservation['status']) => ({ approved: 'Aprovada', pending: 'Pendente', rejected: 'Recusada', cancelled: 'Cancelada' }[status])
 const reservationTone = (status: Reservation['status']) => ({ approved: 'green', pending: 'yellow', rejected: 'red', cancelled: 'gray' }[status])
 
@@ -97,6 +105,10 @@ const recentOccurrences = computed(() => sortedOccurrences.value.slice(0, 3))
 const upcomingReservations = computed(() => [...activeReservations.value].sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)))
 const filteredReservations = computed(() => selectedAreaId.value ? upcomingReservations.value.filter(item => item.areaId === selectedAreaId.value) : upcomingReservations.value)
 const selectedOccurrence = computed(() => detailTarget.value?.type === 'occurrence' ? occurrences.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
+const canUploadSelectedOccurrence = computed(() => {
+  const occurrence = selectedOccurrence.value
+  return Boolean(occurrence && !['completed', 'cancelled'].includes(occurrence.status) && visibleOccurrences.value.some(item => item.id === occurrence.id))
+})
 const selectedReservation = computed(() => detailTarget.value?.type === 'reservation' ? reservations.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
 const selectedNotice = computed(() => detailTarget.value?.type === 'notice' ? notices.value.find(item => item.id === detailTarget.value?.id) ?? null : null)
 const publishedNotices = computed(() => getPublishedNotices(notices.value))
@@ -111,9 +123,21 @@ const openDetail = (type: 'occurrence' | 'reservation' | 'notice', id: string) =
 
 async function openOccurrenceDetail(id: string) {
   occurrenceNote.value = ''
+  occurrenceMessage.value = ''
+  occurrenceTransferReason.value = ''
+  occurrenceAttachmentError.value = ''
   occurrenceEmployeeId.value = ''
   detailTarget.value = { type: 'occurrence', id }
+  if (apiMode.value) {
+    const detail = await findOccurrence(id).catch(() => undefined)
+    if (detail) {
+      const index = occurrences.value.findIndex(item => item.id === detail.id)
+      if (index >= 0) occurrences.value[index] = detail
+      else occurrences.value.push(detail)
+    }
+  }
   await loadHistory(id).catch(() => undefined)
+  await loadAttachments(id).catch(() => undefined)
 }
 
 async function loadDashboard() {
@@ -124,6 +148,8 @@ async function loadDashboard() {
       hasAccess('manage-residents') || canAssignOccurrence.value ? loadUsers() : Promise.resolve(),
       canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(),
       canManageOccupancies ? loadOccupancies() : Promise.resolve(),
+      canViewOccurrences.value ? loadOccurrences() : Promise.resolve(),
+      canTransferOccurrence.value ? loadAssignableEmployees() : Promise.resolve(),
       canCreateOccurrence.value || canOpenForResident.value ? loadActiveOccurrenceTypesRequest() : Promise.resolve(),
       hasAccess('manage-occurrence-types') ? loadOccurrenceTypes() : Promise.resolve(),
     ])
@@ -209,6 +235,7 @@ async function submitOccurrence() {
   occurrenceSuccess.value = ''
   try {
     await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), occurrenceTypeId: occurrenceCategory.value, residentId })
+    if (apiMode.value) await loadOccurrences()
     occurrenceTitle.value = ''
     occurrenceDescription.value = ''
     occurrenceResidentId.value = ''
@@ -235,12 +262,52 @@ async function startOccurrence() {
 }
 
 async function assignSelectedOccurrence() {
-  if (!selectedOccurrence.value || !occurrenceEmployeeId.value || !canAssignOccurrence.value) return
+  if (!selectedOccurrence.value || !occurrenceEmployeeId.value || !canTransferOccurrence.value) return
+  const reason = occurrenceTransferReason.value.trim()
+  if (selectedOccurrence.value.status !== 'analysis' && !reason) return
   updatingOccurrence.value = true
   try {
-    await assignOccurrence(selectedOccurrence.value.id, occurrenceEmployeeId.value)
+    await assignOccurrence(selectedOccurrence.value.id, occurrenceEmployeeId.value, reason || undefined)
+    occurrenceTransferReason.value = ''
     await loadHistory(selectedOccurrence.value.id)
   } finally { updatingOccurrence.value = false }
+}
+
+async function addOccurrenceMessage() {
+  if (!selectedOccurrence.value || !canCommentOccurrence.value || !occurrenceMessage.value.trim()) return
+  updatingOccurrence.value = true
+  try {
+    await updateOccurrenceAttendance(selectedOccurrence.value.id, { message: occurrenceMessage.value.trim() })
+    occurrenceMessage.value = ''
+    await loadHistory(selectedOccurrence.value.id)
+  } finally { updatingOccurrence.value = false }
+}
+
+async function uploadSelectedOccurrenceAttachment(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file || !selectedOccurrence.value) return
+  occurrenceAttachmentError.value = ''
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    occurrenceAttachmentError.value = 'Envie uma imagem JPG, PNG ou WEBP.'
+    if (occurrenceAttachmentInput.value) occurrenceAttachmentInput.value.value = ''
+    return
+  }
+  uploadingOccurrenceAttachment.value = true
+  try {
+    await uploadAttachment(selectedOccurrence.value.id, file)
+    await loadAttachments(selectedOccurrence.value.id)
+  } catch (cause) {
+    occurrenceAttachmentError.value = cause instanceof Error ? cause.message : 'Não foi possível enviar o anexo.'
+  } finally {
+    uploadingOccurrenceAttachment.value = false
+    if (occurrenceAttachmentInput.value) occurrenceAttachmentInput.value.value = ''
+  }
+}
+
+function openOccurrenceAttachment(id: string, url?: string) {
+  if (!selectedOccurrence.value) return
+  const target = url || attachmentUrl(selectedOccurrence.value.id, id)
+  window.open(target, '_blank', 'noopener,noreferrer')
 }
 
 async function analyzeSelectedOccurrence() {
@@ -324,7 +391,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 
         <ProfilePage v-else-if="active === 'Meu cadastro' && authUser && hasAccess('update-own-profile')" :user="authUser" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-residents')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
-        <OccurrenceTypeAdminPage v-else-if="active === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')" :types="occurrenceTypes" :loading="occurrenceTypesLoading" :error="occurrenceTypesError" :on-create="createManagedOccurrenceType" :on-update="updateManagedOccurrenceType" :on-remove="removeManagedOccurrenceType" />
+        <OccurrenceTypeAdminPage v-else-if="active === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')" :types="occurrenceTypes" :loading="occurrenceTypesLoading" :error="occurrenceTypesError" :on-find="findOccurrenceType" :on-create="createManagedOccurrenceType" :on-update="updateManagedOccurrenceType" :on-remove="removeManagedOccurrenceType" />
         <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
         <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
@@ -339,7 +406,15 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 
     <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
     <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
-    <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div v-if="selectedOccurrence.assignedEmployeeId" class="full"><dt>Responsável</dt><dd>{{ occurrenceEmployeeName(selectedOccurrence.assignedEmployeeId) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl><div v-if="canAnalyzeOccurrence && selectedOccurrence.status === 'open'" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="analyzeSelectedOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Iniciar análise' }}</button></div><div v-if="canAssignOccurrence && selectedOccurrence.status === 'analysis'" class="modal-actions occurrence-actions"><select v-model="occurrenceEmployeeId" aria-label="Responsável pela ocorrência"><option value="">Selecione o funcionário</option><option v-for="employee in activeEmployees" :key="employee.id" :value="employee.id">{{ employee.name }}</option></select><button class="primary-button" :disabled="updatingOccurrence || !occurrenceEmployeeId" @click="assignSelectedOccurrence">{{ updatingOccurrence ? 'Encaminhando...' : 'Encaminhar' }}</button></div><label v-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="occurrence-note">Observação da conclusão<textarea v-model="occurrenceNote" placeholder="Descreva o atendimento realizado (opcional)"></textarea></label><div v-if="selectedOccurrence.status === 'assigned' && hasAccess('update-occurrence-progress')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="startOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Atualizar para em andamento' }}</button></div><div v-else-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="completeOccurrence">{{ updatingOccurrence ? 'Finalizando...' : 'Finalizar atendimento' }}</button></div></DetailModal>
+          <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null">
+            <dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.occurrenceTypeName ?? selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div v-if="selectedOccurrence.assignedEmployeeId" class="full"><dt>Responsável</dt><dd>{{ occurrenceEmployeeName(selectedOccurrence.assignedEmployeeId, selectedOccurrence.assignedEmployeeName) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl>
+            <label v-if="canCommentOccurrence && selectedOccurrence.status !== 'completed' && selectedOccurrence.status !== 'cancelled'" class="occurrence-note">Atualização do atendimento<textarea v-model="occurrenceMessage" placeholder="Descreva uma atualização para o histórico"></textarea></label>
+            <div v-if="canCommentOccurrence && selectedOccurrence.status !== 'completed' && selectedOccurrence.status !== 'cancelled'" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence || !occurrenceMessage.trim()" @click="addOccurrenceMessage">{{ updatingOccurrence ? 'Salvando...' : 'Adicionar atualização' }}</button></div>
+            <section class="occurrence-attachments full"><div class="occurrence-section-head"><strong>Anexos</strong><label v-if="canUploadSelectedOccurrence" class="outline-button occurrence-upload">{{ uploadingOccurrenceAttachment ? 'Enviando...' : 'Adicionar imagem' }}<input ref="occurrenceAttachmentInput" type="file" accept="image/jpeg,image/png,image/webp" :disabled="uploadingOccurrenceAttachment" @change="uploadSelectedOccurrenceAttachment"></label></div><p v-if="occurrenceAttachmentError" class="form-error">{{ occurrenceAttachmentError }}</p><div v-if="occurrenceAttachments.length" class="occurrence-attachment-grid"><button v-for="attachment in occurrenceAttachments" :key="attachment.id" class="occurrence-attachment" type="button" @click="openOccurrenceAttachment(attachment.id, attachment.url)"><img :src="attachment.url || attachmentUrl(selectedOccurrence.id, attachment.id)" :alt="attachment.originalName"><small>{{ attachment.originalName }}</small></button></div><p v-else class="empty-row">Nenhum anexo.</p></section>
+            <div v-if="canAnalyzeOccurrence && selectedOccurrence.status === 'open'" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="analyzeSelectedOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Iniciar análise' }}</button></div>
+            <div v-if="canTransferOccurrence && ['analysis', 'assigned', 'in_progress'].includes(selectedOccurrence.status)" class="occurrence-transfer"><select v-model="occurrenceEmployeeId" aria-label="Responsável pela ocorrência"><option value="">Selecione o funcionário</option><option v-for="employee in activeEmployees" :key="employee.id" :value="employee.id">{{ employee.name }}</option></select><label v-if="selectedOccurrence.status !== 'analysis'" class="occurrence-note">Justificativa do repasse<textarea v-model="occurrenceTransferReason" maxlength="255" placeholder="Informe por que a ocorrência está sendo repassada"></textarea></label><button class="primary-button" :disabled="updatingOccurrence || !occurrenceEmployeeId || (selectedOccurrence.status !== 'analysis' && !occurrenceTransferReason.trim())" @click="assignSelectedOccurrence">{{ updatingOccurrence ? 'Encaminhando...' : selectedOccurrence.status === 'analysis' ? 'Encaminhar' : 'Repassar' }}</button></div>
+            <label v-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="occurrence-note">Observação da conclusão<textarea v-model="occurrenceNote" placeholder="Descreva a conclusão do atendimento"></textarea></label><div v-if="selectedOccurrence.status === 'assigned' && hasAccess('update-occurrence-progress')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="startOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Atualizar para em andamento' }}</button></div><div v-else-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence || !occurrenceNote.trim()" @click="completeOccurrence">{{ updatingOccurrence ? 'Finalizando...' : 'Finalizar atendimento' }}</button></div>
+          </DetailModal>
     <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl><div v-if="hasAccess('approve-or-reject-reservation') && selectedReservation.status === 'pending'" class="modal-actions reservation-review-actions"><button class="outline-button danger-action" :disabled="reviewingReservation" @click="reviewReservation('rejected')"><SvgIcon name="reject" />Reprovar</button><button class="primary-button approve-action" :disabled="reviewingReservation" @click="reviewReservation('approved')"><SvgIcon name="approve" />{{ reviewingReservation ? 'Salvando...' : 'Aprovar reserva' }}</button></div></DetailModal>
     <DetailModal v-if="selectedNotice" title="Detalhes do comunicado" icon="message" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="noticeTone(selectedNotice.status)">{{ noticeLabel(selectedNotice.status) }}</em></dd></div><div><dt>Publicado em</dt><dd>{{ formatDateTime(selectedNotice.publishedAt) }}</dd></div><div class="full"><dt>Mensagem</dt><dd>{{ selectedNotice.content }}</dd></div></dl></DetailModal>
   </div>
@@ -497,7 +572,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
 @keyframes material-rise{from{opacity:0;transform:translateY(8px) scale(.975);filter:blur(2px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){.nav-item,.nav-item .svg-icon,.unit-card{transition:none!important}.nav-item.selected,.modal{animation:none!important}}
 .reservation-review-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.reservation-review-actions button{min-height:42px;justify-content:center}.reservation-review-actions .svg-icon{width:16px;height:16px}.danger-action{display:inline-flex;align-items:center;gap:7px;border-color:#efb5b9!important;background:#fff5f5!important;color:#b4232c!important}.danger-action:hover{border-color:#dc2626!important;background:#fee8e9!important}.danger-action .svg-icon{filter:invert(22%) sepia(79%) saturate(3299%) hue-rotate(347deg) brightness(89%) contrast(88%)}.approve-action{background:#008c9e}.approve-action:hover{background:#006a78}.danger-action:focus-visible,.approve-action:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.danger-action{border-color:#8c3d45!important;background:#3e242a!important;color:#ffb6bc!important}.danger-action:hover{background:#512a31!important}.reservation-review-actions{border-color:rgba(180,215,225,.14)}}
-.occurrence-history{display:grid;gap:10px}.occurrence-history span{display:flex;justify-content:space-between;gap:16px}.occurrence-history small{color:var(--neutral);text-align:right}.occurrence-note{display:grid;gap:8px;margin-top:18px;font-size:12px;font-weight:700}.occurrence-note textarea{min-height:82px}.occurrence-actions{margin-top:16px}.occurrence-actions .primary-button{margin-left:auto;min-height:42px}
+.occurrence-history{display:grid;gap:10px}.occurrence-history span{display:flex;justify-content:space-between;gap:16px}.occurrence-history small{color:var(--neutral);text-align:right}.occurrence-note{display:grid;gap:8px;margin-top:18px;font-size:12px;font-weight:700}.occurrence-note textarea{min-height:82px}.occurrence-actions{margin-top:16px}.occurrence-actions .primary-button{margin-left:auto;min-height:42px}.occurrence-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}.occurrence-upload{position:relative;cursor:pointer}.occurrence-upload input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.occurrence-attachments{margin-top:18px}.occurrence-attachment-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px}.occurrence-attachment{display:grid;gap:5px;min-width:0;text-align:left;border:1px solid var(--line);border-radius:10px;padding:6px;background:transparent;color:var(--navy)}.occurrence-attachment img{width:100%;height:82px;object-fit:cover;border-radius:7px}.occurrence-attachment small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.occurrence-transfer{display:grid;gap:10px;margin-top:16px}.occurrence-transfer select{width:100%}
 .report-kind-tabs{max-width:1180px;margin:0 auto 24px;display:flex;gap:8px;padding:5px;width:max-content;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.55)}.report-kind-tabs button{min-height:38px;padding:0 18px;border-radius:9px;color:var(--neutral);font-weight:700}.report-kind-tabs button.selected{background:#008c9e;color:#fff}.report-kind-tabs button:focus-visible{outline:3px solid rgba(0,175,193,.35);outline-offset:2px}@media(prefers-color-scheme:dark){.report-kind-tabs{background:rgba(12,39,50,.7)}.report-kind-tabs button.selected{background:#008c9e;color:#fff}}
 .users-toolbar{display:flex;align-items:center;gap:12px;padding:8px 0 16px;border-bottom:1px solid var(--line)}.users-search{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--bg);color:var(--navy);font-size:11px}.users-filters{border:0;padding:0}.user-row{gap:12px}.user-row>span:nth-child(2){flex:1;min-width:0}.user-avatar{flex:none;width:36px;height:36px;font-size:10px}.user-row em{font-size:9px;font-style:normal;border-radius:12px;padding:5px 8px;white-space:nowrap}.user-row .outline-button{padding:7px 10px;white-space:nowrap}.form-error{color:#b4232c!important;font-size:11px!important;margin:12px 0 0!important}
 @media(max-width:900px){.users-toolbar{display:block}.users-filters{margin-top:10px}.user-row{align-items:flex-start;flex-wrap:wrap}.user-row>span:nth-child(2){min-width:calc(100% - 52px)}.user-row em{margin-left:48px}.user-row .outline-button{margin-left:0}.users-admin-panel{padding:8px 12px}}

@@ -27,13 +27,13 @@ describe('fluxo Sprint 3 de ocorrências', () => {
     setMockAuthenticatedUserId('user-admin')
     await mockOccurrenceRepository.assign(item.id, 'user-employee')
     expect(item).toMatchObject({ status: 'assigned', assignedEmployeeId: 'user-employee' })
-    await expect(mockOccurrenceRepository.assign(item.id, 'user-employee-security')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(mockOccurrenceRepository.assign(item.id, 'user-employee-security')).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
   })
 
   it('recusa encaminhamento fora de análise ou para usuário inativo', async () => {
     const item = occurrence()
     setMockAuthenticatedUserId('user-admin')
-    await expect(mockOccurrenceRepository.assign(item.id, 'user-employee')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(mockOccurrenceRepository.assign(item.id, 'user-employee')).rejects.toMatchObject({ code: 'CONFLICT' })
     const employee = mockUsers.find(user => user.id === 'user-employee')!
     employee.status = 'inactive'
     await mockOccurrenceRepository.updateStatus(item.id, 'analysis')
@@ -59,5 +59,17 @@ describe('fluxo Sprint 3 de ocorrências', () => {
     const history = (await repository.history(createdItem.id)).data
     expect(finalItem.status).toBe('completed')
     expect(history.map(entry => entry.newStatus)).toEqual(['open', 'analysis', 'assigned', 'in_progress', 'completed'])
+  })
+
+  it('permite ao responsável repassar chamados atribuídos ou em andamento com justificativa', async () => {
+    for (const status of ['assigned', 'in_progress'] as const) {
+      const item = occurrence(status)
+      item.assignedEmployeeId = 'user-employee'
+      setMockAuthenticatedUserId('user-employee')
+
+      await mockOccurrenceRepository.assign(item.id, 'user-employee-security', 'Necessário redirecionar para a equipe de segurança')
+
+      expect(item).toMatchObject({ status: 'assigned', assignedEmployeeId: 'user-employee-security' })
+    }
   })
 })

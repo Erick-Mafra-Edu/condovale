@@ -1,11 +1,13 @@
 import { AppError, toAppError } from '~/domain/app-error'
-import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
 import { useServices } from '~/services'
 
 export function useOccurrences() {
   const { occurrenceService } = useServices()
   const occurrences = ref<Occurrence[]>([])
   const history = ref<OccurrenceHistory[]>([])
+  const assignableEmployees = ref<OccurrenceEmployee[]>([])
+  const attachments = ref<OccurrenceAttachment[]>([])
   const loading = ref(false)
   const error = ref<AppError | null>(null)
 
@@ -42,12 +44,16 @@ export function useOccurrences() {
     return store((await execute(() => occurrenceService.create(input))).data)
   }
 
-  async function assignOccurrence(id: string, employeeId: string) {
-    return store((await execute(() => occurrenceService.assign(id, employeeId))).data)
+  async function assignOccurrence(id: string, employeeId: string, message?: string) {
+    return store((await execute(() => occurrenceService.assign(id, employeeId, message))).data)
   }
 
   async function updateOccurrenceStatus(id: string, status: OccurrenceStatus) {
     return store((await execute(() => occurrenceService.updateStatus(id, status))).data)
+  }
+
+  async function updateOccurrenceAttendance(id: string, input: OccurrenceAttendanceInput) {
+    return store((await execute(() => occurrenceService.updateAttendance(id, input))).data)
   }
 
   async function finishOccurrence(id: string, input: FinishOccurrenceInput | string) {
@@ -60,5 +66,27 @@ export function useOccurrences() {
     return result.data
   }
 
-  return { occurrences, history, loading, error, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceStatus, finishOccurrence, loadHistory }
+  async function loadAssignableEmployees(query?: { search?: string }) {
+    const result = await execute(() => occurrenceService.assignableEmployees(query))
+    assignableEmployees.value = result.data
+    return result.data
+  }
+
+  async function loadAttachments(id: string) {
+    const result = await execute(() => occurrenceService.listAttachments(id))
+    attachments.value = result.data
+    return result.data
+  }
+
+  async function uploadAttachment(id: string, file: File) {
+    const result = await execute(() => occurrenceService.uploadAttachment(id, file))
+    attachments.value.push(result.data)
+    return result.data
+  }
+
+  function attachmentUrl(id: string, attachmentId: string) {
+    return occurrenceService.attachmentUrl(id, attachmentId)
+  }
+
+  return { occurrences, history, assignableEmployees, attachments, loading, error, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, updateOccurrenceStatus, finishOccurrence, loadHistory, loadAssignableEmployees, loadAttachments, uploadAttachment, attachmentUrl }
 }
