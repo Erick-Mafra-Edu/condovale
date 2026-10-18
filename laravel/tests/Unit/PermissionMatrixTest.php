@@ -37,6 +37,7 @@ class PermissionMatrixTest extends TestCase
             'view-assigned-occurrences',
             'update-occurrence-progress',
             'finish-occurrence',
+            'hand-over-occurrence',
         ]);
     }
 
@@ -48,6 +49,8 @@ class PermissionMatrixTest extends TestCase
             'manage-units',
             'open-occurrence-for-resident',
             'manage-occurrence-types',
+            'analyze-occurrences',
+            'assign-occurrence',
             'close-any-occurrence',
             'publish-notices',
             'generate-reports',
@@ -88,13 +91,27 @@ class PermissionMatrixTest extends TestCase
 
     public function test_o_cadastro_de_pessoas_e_so_do_administrador(): void
     {
-        foreach ([UseCase::ManageResidents, UseCase::AssignOccurrence] as $useCase) {
-            foreach ([UserRole::Resident, UserRole::Employee, UserRole::Syndic] as $role) {
-                $this->assertFalse($role->can($useCase), "Papel {$role->value} não deveria ter {$useCase->value}");
-            }
-
-            $this->assertTrue(UserRole::Admin->can($useCase));
+        foreach ([UserRole::Resident, UserRole::Employee, UserRole::Syndic] as $role) {
+            $this->assertFalse($role->can(UseCase::ManageResidents), "Papel {$role->value} não deveria ter manage-residents");
         }
+
+        $this->assertTrue(UserRole::Admin->can(UseCase::ManageResidents));
+    }
+
+    public function test_encaminhar_e_da_administracao_e_do_sindico(): void
+    {
+        // A especificação dava o encaminhamento só ao administrador; o card de
+        // encaminhamento o estendeu ao síndico. O funcionário não encaminha:
+        // repassa o próprio chamado, por hand-over-occurrence.
+        foreach ([UserRole::Admin, UserRole::Syndic] as $role) {
+            $this->assertTrue($role->can(UseCase::AssignOccurrence), $role->value);
+        }
+
+        foreach ([UserRole::Resident, UserRole::Employee] as $role) {
+            $this->assertFalse($role->can(UseCase::AssignOccurrence), $role->value);
+        }
+
+        $this->assertTrue(UserRole::Employee->can(UseCase::HandOverOccurrence));
     }
 
     public function test_rn03_as_unidades_sao_do_sindico_e_do_administrador(): void

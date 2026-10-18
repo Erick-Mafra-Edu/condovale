@@ -67,7 +67,7 @@ class OccurrenceStatusTest extends TestCase
 
         $this->mudarStatus(User::factory()->admin()->create(), $chamado, 'cancelled')
             ->assertStatus(409)
-            ->assertJsonPath('message', 'O chamado não pode passar de Em andamento para Cancelado: de Em andamento ele segue para Concluído.');
+            ->assertJsonPath('message', 'O chamado não pode passar de Em andamento para Cancelado: de Em andamento ele segue para Atribuído ou Concluído.');
     }
 
     public function test_o_funcionario_atribuido_inicia_o_atendimento(): void
@@ -198,12 +198,14 @@ class OccurrenceStatusTest extends TestCase
             ->assertJsonPath('data.status', 'analysis');
     }
 
-    public function test_o_sindico_encerra_mas_nao_movimenta_o_status(): void
+    public function test_o_sindico_analisa_como_a_administracao(): void
     {
-        // O síndico dá baixa pela finalização; as etapas intermediárias são
-        // da administração e do funcionário.
+        // O síndico passou a encaminhar, e o fluxo exige a análise antes:
+        // sem ela, ele só encaminharia o que o administrador já tivesse
+        // analisado.
         $this->mudarStatus(User::factory()->syndic()->create(), $this->chamado(), 'analysis')
-            ->assertStatus(403);
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'analysis');
     }
 
     public function test_o_morador_nao_muda_status(): void

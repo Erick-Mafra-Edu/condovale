@@ -281,6 +281,17 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
 
     Route::post('occurrences/{id}/finish', [OccurrenceController::class, 'finish'])
         ->middleware('use.case:finish-occurrence,close-any-occurrence');
+
+    // Ocorrencia.encaminhar(). Uma rota para os dois jeitos: administração e
+    // síndico encaminham qualquer chamado, o funcionário repassa o seu. Quem
+    // pode o quê em cada chamado é decidido na AssignOccurrenceAction.
+    Route::patch('occurrences/{id}/assign', [OccurrenceController::class, 'assign'])
+        ->middleware('use.case:assign-occurrence,hand-over-occurrence');
+
+    // Para o seletor de quem recebe: sem ela, só o administrador — único com
+    // a listagem de usuários — saberia para quem encaminhar.
+    Route::get('assignable-employees', [OccurrenceController::class, 'assignableEmployees'])
+        ->middleware('use.case:assign-occurrence,hand-over-occurrence');
 });
 
 /*

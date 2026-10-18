@@ -27,6 +27,7 @@ enum UseCase: string
     case ManageOccurrenceTypes = 'manage-occurrence-types';
     case AnalyzeOccurrences = 'analyze-occurrences';
     case AssignOccurrence = 'assign-occurrence';
+    case HandOverOccurrence = 'hand-over-occurrence';
     case PublishNotices = 'publish-notices';
     case ManageReservations = 'manage-reservations';
     case ApproveOrRejectReservation = 'approve-or-reject-reservation';
