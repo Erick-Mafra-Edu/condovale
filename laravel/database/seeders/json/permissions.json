@@ -64,6 +64,10 @@
         "guard_name": "web"
     },
     {
+        "name": "hand-over-occurrence",
+        "guard_name": "web"
+    },
+    {
         "name": "publish-notices",
         "guard_name": "web"
     },

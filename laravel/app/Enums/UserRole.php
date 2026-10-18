@@ -30,6 +30,10 @@ enum UserRole: string
                 UseCase::ViewAssignedOccurrences,
                 UseCase::UpdateOccurrenceProgress,
                 UseCase::FinishOccurrence,
+                // Repassa o próprio chamado a outro funcionário — o encanador
+                // que descobre que o problema é elétrico. Só o que é dele, e
+                // sempre com justificativa.
+                UseCase::HandOverOccurrence,
             ],
             self::Syndic => [
                 UseCase::Login,
@@ -42,6 +46,12 @@ enum UserRole: string
                 // quem nao conseguir, e responde pela lista de tipos.
                 UseCase::OpenOccurrenceForResident,
                 UseCase::ManageOccurrenceTypes,
+                // Analisa e encaminha, como a administração. A análise vem
+                // junto porque o fluxo a exige antes do encaminhamento: sem
+                // ela o síndico só encaminharia o que o administrador já
+                // tivesse analisado.
+                UseCase::AnalyzeOccurrences,
+                UseCase::AssignOccurrence,
                 // Dá baixa em qualquer chamado, de qualquer tipo. O
                 // funcionário só encerra o que lhe foi atribuído, e só quando
                 // o tipo permite (occurrence_types.employee_can_close).

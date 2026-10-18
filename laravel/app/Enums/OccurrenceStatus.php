@@ -16,7 +16,7 @@ use App\Exceptions\BusinessRuleException;
  *
  *     open → analysis → assigned → in_progress → completed
  *
- * Fora dele há dois atalhos, ambos decididos nos cards anteriores:
+ * Fora dele há três desvios, todos decididos nos cards:
  *
  * - **Cancelar** enquanto o atendimento não começou. Depois de iniciado, o
  *   fim é a finalização, como resolvido ou não: cancelar apagaria o fato de
@@ -24,6 +24,11 @@ use App\Exceptions\BusinessRuleException;
  * - **Finalizar de qualquer etapa aberta.** Síndico e administração dão baixa
  *   no que ninguém vai atender — uma queixa de barulho resolvida numa conversa
  *   não passa por "em andamento".
+ * - **Repassar um atendimento iniciado** (in_progress → assigned). O
+ *   encanador que descobre que o problema é elétrico precisa passar o chamado
+ *   adiante; sem esta volta, a única saída seria encerrá-lo como não
+ *   resolvido e abrir outro. Só acontece pelo encaminhamento, que exige
+ *   justificativa — o PATCH de status recusa "atribuído".
  *
  * Este enum diz **o que** o fluxo permite, independente de quem pede. Quem
  * pode fazer cada transição é decidido pelos casos de uso, nas Actions. E
@@ -43,7 +48,7 @@ enum OccurrenceStatus: string
      * Para onde o chamado pode ir a partir deste status.
      *
      * Note o que **não** está aqui: atribuir sem analisar (open → assigned),
-     * voltar uma etapa, cancelar um atendimento iniciado e reabrir um chamado
+     * voltar à análise, cancelar um atendimento iniciado e reabrir um chamado
      * encerrado. Reabrir é decisão pendente da especificação; enquanto não for
      * tomada, encerrado é encerrado.
      *
@@ -55,7 +60,7 @@ enum OccurrenceStatus: string
             self::Open => [self::Analysis, self::Cancelled, self::Completed],
             self::Analysis => [self::Assigned, self::Cancelled, self::Completed],
             self::Assigned => [self::InProgress, self::Cancelled, self::Completed],
-            self::InProgress => [self::Completed],
+            self::InProgress => [self::Assigned, self::Completed],
             self::Completed, self::Cancelled => [],
         };
     }

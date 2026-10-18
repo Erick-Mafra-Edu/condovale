@@ -38,40 +38,32 @@ class FrontendPermissionParityTest extends TestCase
      * @var array<string, list<string>>
      */
     private const DIVERGENCIAS_POR_PAPEL = [
-        // open-occurrence-for-resident e manage-occurrence-types nasceram no
-        // card de abertura de chamado: o sindico abre chamado no lugar de quem
-        // nao conseguir, e ele e o administrador respondem pela lista de tipos.
-        // Nenhum dos dois existe no frontend ainda.
-        // close-any-occurrence veio do card de status do chamado: sindico e
-        // administracao dao baixa em qualquer chamado.
-        'syndic' => ['update-own-profile', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence'],
-        // update-own-profile passou a valer para os quatro perfis aqui, e o
-        // frontend ainda o da apenas ao morador.
-        'employee' => ['update-own-profile'],
-        'admin' => ['update-own-profile', 'manage-users', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence'],
+        // O card de encaminhamento deu ao síndico a análise e o encaminhamento,
+        // e ao funcionário o repasse do próprio chamado. O frontend ainda não
+        // os conhece.
+        //
+        // As divergências anteriores — update-own-profile nos quatro perfis,
+        // manage-users e os casos de uso de abertura, tipos e baixa — foram
+        // fechadas pelo frontend no PR #25 e saíram desta lista.
+        'syndic' => ['analyze-occurrences', 'assign-occurrence'],
+        'employee' => ['hand-over-occurrence'],
+        'admin' => [],
         'resident' => [],
     ];
 
     /**
      * Casos de uso que existem de um lado só.
      *
-     * `manage-users` foi acrescentado ao frontend pelo trabalho de gestão de
-     * usuários e não existe no backend. Enquanto não existir, uma rota
+     * Um caso de uso só no frontend é pior que só no backend: uma rota
      * protegida por ele responderia 403, porque a permissão não está no banco.
-     * Falta decidir se é outro nome para `manage-residents` ou um caso de uso
-     * distinto.
+     * Só no backend, a API aceita mas a interface não oferece o caminho.
      *
      * @var list<string>
      */
     private const CASOS_SO_DE_UM_LADO = [
-        'manage-users',
-        // Os dois so existem no backend por enquanto. Enquanto o frontend nao
-        // os conhecer, a interface nao oferece ao sindico abrir chamado para
-        // um morador nem manter a lista de tipos — a API aceita, mas nao ha
-        // por onde chamar.
-        'open-occurrence-for-resident',
-        'manage-occurrence-types',
-        'close-any-occurrence',
+        // Só existe no backend até o frontend oferecer ao funcionário o
+        // repasse do próprio chamado.
+        'hand-over-occurrence',
     ];
 
     private function fonte(): string
