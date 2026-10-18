@@ -5,13 +5,16 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * RF04 / RN06 — encerrar o chamado exige dizer como terminou.
+ * RF04 / RN06 — finalizar o chamado: o id vem na rota, e o corpo diz o que foi
+ * feito.
  *
- * Encerrar não é o mesmo que resolver: a peça pode não existir, o problema
- * pode ser da concessionária, o vizinho pode não ter atendido. O relatório do
- * síndico precisa separar o que foi resolvido do que só foi fechado, e o
- * morador precisa saber o que aconteceu com o pedido dele — por isso as duas
- * informações são obrigatórias.
+ * Só a conclusão é obrigatória. O status não vem da requisição — finalizar
+ * leva o chamado a Concluído sempre, e quem decide isso é o backend.
+ *
+ * `resolved` é opcional e vale verdadeiro quando não vem: quem descreve o que
+ * fez para finalizar, na regra, resolveu. Ele existe para a exceção — a peça
+ * que não existe, o problema que é da concessionária —, porque o relatório do
+ * síndico precisa separar o que foi resolvido do que só foi fechado.
  */
 class OccurrenceFinishRequest extends FormRequest
 {
@@ -23,18 +26,17 @@ class OccurrenceFinishRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'resolved' => 'required|boolean',
             'conclusion' => 'required|string|max:2000',
+            'resolved' => 'sometimes|boolean',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'resolved.required' => 'Informe se o problema foi resolvido.',
-            'resolved.boolean' => 'Informe se o problema foi resolvido com verdadeiro ou falso.',
-            'conclusion.required' => 'Descreva a conclusão do atendimento.',
+            'conclusion.required' => 'Descreva o que foi feito para finalizar o atendimento.',
             'conclusion.max' => 'A conclusão deve ter no máximo 2000 caracteres.',
+            'resolved.boolean' => 'Informe se o problema foi resolvido com verdadeiro ou falso.',
         ];
     }
 }

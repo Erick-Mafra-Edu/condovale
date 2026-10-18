@@ -13,7 +13,6 @@ http:
     type: json
     data: |-
       {
-        "resolved": true,
         "conclusion": "Conversa com a unidade vizinha; o morador se comprometeu a respeitar o horário de silêncio."
       }
   auth: inherit

@@ -230,7 +230,8 @@ class OccurrenceController extends Controller
             $occurrence = FinishOccurrenceAction::execute(
                 $occurrence,
                 AuthUtil::user(),
-                (bool) $item->resolved,
+                // Sem `resolved`, vale resolvido: ver OccurrenceFinishRequest.
+                (bool) ($item->resolved ?? true),
                 $item->conclusion,
             );
 
