@@ -276,6 +276,12 @@ Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->gr
 | exige a conclusão e se o problema foi resolvido.
 */
 Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    // Atualização do atendimento: status, anotação de andamento, ou os dois.
+    // A parte de status passa pela mesma Action do PATCH /status, que segue
+    // existindo porque o frontend já o integrou — duas portas, uma regra.
+    Route::patch('occurrences/{id}', [OccurrenceController::class, 'updateAttendance'])
+        ->middleware('use.case:analyze-occurrences,update-occurrence-progress');
+
     Route::patch('occurrences/{id}/status', [OccurrenceController::class, 'updateStatus'])
         ->middleware('use.case:analyze-occurrences,update-occurrence-progress');
 
@@ -292,6 +298,27 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
     // a listagem de usuários — saberia para quem encaminhar.
     Route::get('assignable-employees', [OccurrenceController::class, 'assignableEmployees'])
         ->middleware('use.case:assign-occurrence,hand-over-occurrence');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Consulta de chamados — RF04 / RN06
+|--------------------------------------------------------------------------
+|
+| Entra quem acompanha chamados por algum caminho. Quais chamados cada um vê
+| é decidido pelo ScopeOccurrencesAction na listagem e pela
+| CheckOccurrenceAccessAction no detalhe e no histórico — a mesma regra nos
+| três lugares.
+*/
+Route::middleware([
+    'auth',
+    'user.active',
+    'password.change',
+    'use.case:track-own-occurrences,view-assigned-occurrences,analyze-occurrences,close-any-occurrence',
+])->group(function () {
+    Route::get('occurrences', [OccurrenceController::class, 'index']);
+    Route::get('occurrences/{id}', [OccurrenceController::class, 'show']);
+    Route::get('occurrences/{id}/history', [OccurrenceController::class, 'history']);
 });
 
 /*

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OccurrenceStatus;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * não disparam eventos e passam por fora. Não use nenhum dos dois para mudar
  * status.
  *
+ * O mesmo gancho garante que o chamado continua sendo de quem o abriu: o
+ * morador não muda depois da abertura. Atualizar o atendimento mexe no status
+ * e no histórico, nunca em de quem é o problema — trocar o morador apagaria
+ * do registro quem pediu e transferiria o chamado para alguém que não pediu.
+ *
  * A criação não é conferida, de propósito: o chamado nasce Aberto pela
  * CreateOccurrenceAction, que é a única porta de criação da aplicação, e as
  * factories precisam criar chamados em qualquer etapa para que os testes
@@ -34,6 +40,12 @@ class Occurrence extends Model
     protected static function booted(): void
     {
         static::updating(function (Occurrence $occurrence) {
+            if ($occurrence->isDirty('resident_id')) {
+                throw BusinessRuleException::conflict(
+                    'O chamado continua sendo do morador que o abriu: o morador não pode ser trocado.'
+                );
+            }
+
             if (! $occurrence->isDirty('status')) {
                 return;
             }
@@ -85,6 +97,15 @@ class Occurrence extends Model
     public function resident(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resident_id');
+    }
+
+    /**
+     * A unidade de quando o chamado foi aberto. Se o morador se mudar depois,
+     * o chamado continua apontando para onde o problema estava.
+     */
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
     }
 
     public function assignedEmployee(): BelongsTo
