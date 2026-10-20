@@ -72,7 +72,7 @@ Toda mudança deve registrar ocorrência, autor autenticado, data, estado anteri
 | **RF03** — morador reserva área disponível por data e horário | **Parcial** | Consulta, seleção de blocos, diária, criação e conflito funcionam. Horário permitido, status da área e duração máxima ainda precisam ser validados no service/repositório/backend, não apenas na interface. |
 | **RF04** — morador abre ocorrência com descrição textual | **Atendido no frontend/mock** | A criação exige título, categoria, descrição e morador responsável. O backend deverá derivar o morador da sessão. |
 | **RF05** — síndico/administrador publica comunicados | **Parcial** | A matriz de permissões inclui os dois papéis e existem contrato/service/adaptadores; falta tela de publicação e autorização no repositório/backend. |
-| **RF06** — síndico/administrador gera relatórios de reservas e manutenções | **Parcial** | Síndico e administrador possuem `generate-reports`, e o administrador também consulta auditoria. Relatórios de reservas ainda não foram implementados. |
+| **RF06** — administrador gera relatórios de reservas e manutenções | **Parcial** | O administrador possui `generate-reports` e também consulta auditoria. Relatórios de reservas ainda não foram implementados. |
 
 ## Requisitos não funcionais
 
@@ -103,7 +103,7 @@ As regras abaixo foram criadas durante a implementação e não vieram na especi
 | Regra adicional | Relação com os requisitos formais | Compatibilidade |
 | --- | --- | --- |
 | **RN09** — PDF sempre em modo claro | Detalha apresentação e acessibilidade dos relatórios relacionados ao RF06 e RNF03. | **Complementar, sem conflito.** |
-| **RN10** — relatórios operacionais do síndico e administrador | Define quem possui `generate-reports` e restringe auditoria ao administrador. | **Compatível após revisão pelo RF06.** |
+| **RN10** — relatórios operacionais do administrador | Define que somente o administrador possui `generate-reports` e restringe auditoria ao administrador. | **Compatível após revisão pelo RF06.** |
 | **RN11** — filtros e paginação de relatórios | Detalha a interface e o contrato de consulta do RF06. | **Complementar, sem conflito.** |
 | **RN12** — exportação consulta todos os registros | Garante que a paginação visual não corte PDF/Excel do RF06. | **Complementar, sem conflito.** |
 | **RN13** — seleção de datas com calendário | Detalha acessibilidade e formato dos filtros do RF06/RNF03. | **Complementar, sem conflito.** |
@@ -114,7 +114,7 @@ As regras abaixo foram criadas durante a implementação e não vieram na especi
 
 ## Divergências prioritárias
 
-1. **RF06:** acrescentar relatório de reservas; o acesso operacional de síndico e administrador já foi alinhado.
+1. **RF06:** acrescentar relatório de reservas; o acesso operacional do administrador já foi alinhado.
 2. **RN06/RN15:** implementar a análise e atribuição administrativa na interface.
 3. **RN04/RN07:** mover autorização efetiva para repositories mock e, posteriormente, policies do backend.
 4. **RF01/RN03:** concluir a autorização efetiva e o registro de auditoria; a pendência de RN03 permanece na remoção de avisos no mock.

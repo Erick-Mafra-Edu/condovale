@@ -10,10 +10,10 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Persistência:** a classe é removida após a exportação; o tema visual da aplicação não é alterado.
 - **Validação:** exportar um relatório com o sistema em tema escuro deve gerar PDF claro.
 
-## RN10 — Relatórios operacionais do síndico e administrador
+## RN10 — Relatórios operacionais do administrador
 
 - **Solicitação:** disponibilizar a opção de relatórios conforme o caso de uso do diagrama.
-- **Comportamento esperado:** os papéis `syndic` e `admin` possuem `generate-reports` e visualizam o módulo Relatórios, conforme o RF06 consolidado.
+- **Comportamento esperado:** somente o papel `admin` possui `generate-reports` e visualiza o módulo Relatórios, conforme o RF06 consolidado.
 - **Auditoria:** somente o administrador possui `view-audit-reports`; o síndico não recebe acesso automático aos eventos de auditoria.
 - **Validação:** a matriz de permissões e a navegação devem continuar testando esta restrição.
 
