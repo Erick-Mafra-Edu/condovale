@@ -24,7 +24,7 @@ const occurrenceAttachmentError = ref('')
 const uploadingOccurrenceAttachment = ref(false)
 const occurrenceAttachmentInput = ref<HTMLInputElement | null>(null)
 const reviewingReservation = ref(false)
-const reportView = ref<'operations' | 'audit'>('operations')
+const reportView = ref<'occurrences' | 'reservations' | 'audit'>('occurrences')
 const profileSaving = ref(false)
 const profileError = ref('')
 const profileSuccess = ref('')
@@ -43,8 +43,8 @@ const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadO
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
 const { occurrences, history: occurrenceHistory, assignableEmployees, attachments: occurrenceAttachments, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, loadAssignableEmployees, loadHistory, loadAttachments, uploadAttachment, attachmentUrl, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
 const { types: occurrenceTypes, activeTypes: activeOccurrenceTypes, loading: occurrenceTypesLoading, load: loadOccurrenceTypes, loadActive: loadActiveOccurrenceTypes, find: findOccurrenceType, create: createOccurrenceType, update: updateOccurrenceType, remove: removeOccurrenceType } = useOccurrenceTypes()
-const { reservations, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
-const { notices, loadNotices } = useNotices()
+const { reservations, loading: reservationsLoading, error: reservationsError, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
+const { notices, loading: noticesLoading, error: noticesError, loadNotices, createNotice } = useNotices()
 const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
@@ -165,7 +165,7 @@ const reloadReservations = () => resident.value ? loadMyReservations() : loadRes
 
 async function handleLogin(email: string, password: string) {
   await authenticate({ email, password })
-  reportView.value = 'operations'
+  reportView.value = 'occurrences'
   if (!authUser.value?.mustChangePassword) await loadDashboard()
 }
 
@@ -393,12 +393,12 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-residents')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
         <OccurrenceTypeAdminPage v-else-if="active === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')" :types="occurrenceTypes" :loading="occurrenceTypesLoading" :error="occurrenceTypesError" :on-find="findOccurrenceType" :on-create="createManagedOccurrenceType" :on-update="updateManagedOccurrenceType" :on-remove="removeManagedOccurrenceType" />
         <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
-        <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports') && hasAccess('view-audit-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'operations' }" @click="reportView = 'operations'">Operacional</button><button :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
+        <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'occurrences' }" @click="reportView = 'occurrences'">Ocorrências</button><button :class="{ selected: reportView === 'reservations' }" @click="reportView = 'reservations'">Reservas</button><button v-if="hasAccess('view-audit-reports')" :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReservationReportPage v-else-if="reportView === 'reservations' && hasAccess('generate-reports')" :reservations="reservations" :areas="areas" :loading="reservationsLoading" :error="reservationsError" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
         <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
         <OccupancyPage v-else-if="active === 'Moradores e unidades' && hasAccess('link-residents-to-units')" :occupancies="occupancies" :selected-occupancy="selectedOccupancy" :users="users" :units="units" :loading="occupanciesLoading" :error="occupanciesError" @refresh="loadOccupancies" @create="createOccupancy" @delete="finishOccupancy" @open-detail="openOccupancyDetail" @close-detail="closeOccupancyDetail" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && (canCreateOccurrence || canOpenForResident)" class="primary-button" @click="openOccurrenceForm">Nova ocorrência</button></section>
-          <article class="panel detail-panel" v-if="active === 'Comunicados'"><div v-if="!publishedNotices.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in publishedNotices" :key="item.id" class="detail-row interactive-row" @click="openDetail('notice', item.id)"><span class="row-icon large"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ noticeMeta(item.publishedAt, item.status) }}</small></span><em :class="noticeTone(item.status)">{{ noticeLabel(item.status) }}</em><span class="arrow"></span></button></article>
+          <NoticePage v-if="active === 'Comunicados'" :notices="notices" :loading="noticesLoading" :error="noticesError?.message" :can-publish="hasAccess('publish-notices')" :author-id="authUser.id" :on-create="createNotice" />
           <article class="panel detail-panel" v-else><div v-if="!sortedOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in sortedOccurrences" :key="item.id" class="detail-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="row-icon large"><SvgIcon name="alert" /></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em><span class="arrow"></span></button></article>
         </div>
       </div>
