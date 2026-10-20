@@ -10,10 +10,11 @@ Este arquivo registra regras solicitadas durante a evolução do produto. Altera
 - **Persistência:** a classe é removida após a exportação; o tema visual da aplicação não é alterado.
 - **Validação:** exportar um relatório com o sistema em tema escuro deve gerar PDF claro.
 
-## RN10 — Relatórios operacionais do administrador
+## RN10 — Relatórios operacionais da administração
 
 - **Solicitação:** disponibilizar a opção de relatórios conforme o caso de uso do diagrama.
-- **Comportamento esperado:** somente o papel `admin` possui `generate-reports` e visualiza o módulo Relatórios, conforme o RF06 consolidado.
+- **Diferença registrada:** o texto da US09 diz “administrador”, mas a matriz de casos de uso e o backend concedem relatórios operacionais (`generate-reports`) aos papéis `syndic` e `admin`. O frontend mantém essa mesma matriz para evitar divergência de autorização.
+- **Comportamento esperado:** `syndic` e `admin` visualizam o módulo Relatórios e podem consultar relatórios operacionais; somente `admin` possui `view-audit-reports` e acessa o relatório de auditoria.
 - **Auditoria:** somente o administrador possui `view-audit-reports`; o síndico não recebe acesso automático aos eventos de auditoria.
 - **Validação:** a matriz de permissões e a navegação devem continuar testando esta restrição.
 

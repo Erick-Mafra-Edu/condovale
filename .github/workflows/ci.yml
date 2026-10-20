@@ -72,6 +72,30 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
+      - name: Preparar PHP para o contrato de permissões frontend/backend
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3, intl, gd, exif, fileinfo
+          coverage: none
+          tools: composer:v2
+
+      - name: Preparar ambiente Laravel para o contrato de permissões frontend/backend
+        working-directory: laravel
+        run: cp .env.example .env
+
+      - name: Instalar dependências PHP para o contrato de permissões frontend/backend
+        working-directory: laravel
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Gerar chave Laravel para o contrato de permissões frontend/backend
+        working-directory: laravel
+        run: php artisan key:generate
+
+      - name: Validar contrato de permissões frontend/backend
+        working-directory: laravel
+        run: php artisan test --compact tests/Unit/FrontendPermissionParityTest.php tests/Unit/PermissionMatrixTest.php
+
       - name: Validar build
         working-directory: frontend
         run: npm run build
