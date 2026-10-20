@@ -325,7 +325,7 @@ describe('permissões do diagrama de casos de uso', () => {
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]
   const employeeCases: UseCase[] = ['login', 'update-own-profile', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence', 'hand-over-occurrence']
-  const syndicCases: UseCase[] = ['login', 'update-own-profile', 'manage-units', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices']
+  const syndicCases: UseCase[] = ['login', 'update-own-profile', 'manage-units', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'generate-reports']
   const adminCases: UseCase[] = [
     'login', 'update-own-profile', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',
@@ -355,7 +355,7 @@ describe('permissões do diagrama de casos de uso', () => {
   it.each([
     ['resident', ['Início', 'Meu cadastro', 'Ocorrências', 'Reservas', 'Comunicados']],
     ['employee', ['Início', 'Meu cadastro', 'Ocorrências']],
-    ['syndic', ['Início', 'Meu cadastro', 'Tipos de ocorrência', 'Ocorrências', 'Comunicados', 'Unidades']],
+    ['syndic', ['Início', 'Meu cadastro', 'Tipos de ocorrência', 'Ocorrências', 'Comunicados', 'Relatórios', 'Unidades']],
     ['admin', ['Início', 'Meu cadastro', 'Usuários', 'Tipos de ocorrência', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades']],
   ] as Array<[UserRole, string[]]>)('%s visualiza somente os módulos permitidos', (role, expected) => {
     const modules = ['Início', 'Meu cadastro', 'Usuários', 'Tipos de ocorrência', 'Ocorrências', 'Reservas', 'Comunicados', 'Relatórios', 'Unidades'] as const

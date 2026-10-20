@@ -35,7 +35,7 @@ export const rolePermissions: Readonly<Record<UserRole, ReadonlySet<UseCase>>> =
     'view-common-areas', 'request-reservation', 'view-own-reservations', 'cancel-own-reservation',
   ]),
   employee: new Set(['login', 'update-own-profile', 'view-assigned-occurrences', 'update-occurrence-progress', 'finish-occurrence', 'hand-over-occurrence']),
-  syndic: new Set(['login', 'update-own-profile', 'manage-units', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices']),
+  syndic: new Set(['login', 'update-own-profile', 'manage-units', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'generate-reports']),
   admin: new Set([
     'login', 'update-own-profile', 'manage-units', 'manage-residents', 'link-residents-to-units', 'analyze-occurrences',
     'assign-occurrence', 'open-occurrence-for-resident', 'manage-occurrence-types', 'close-any-occurrence', 'publish-notices', 'manage-reservations', 'approve-or-reject-reservation',

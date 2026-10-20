@@ -1,0 +1,61 @@
+@startuml
+title Diagrama de Sequência: Relatórios Operacionais
+
+actor AD as "Administrador"
+actor S as "Síndico"
+
+participant N as "Nuxt.js"
+participant A as "API Laravel"
+database P as "PostgreSQL"
+
+note over AD,A
+US09 / RF06: extrair relatórios de reservas e manutenções
+para controle gerencial.
+
+Decisão atual: o frontend segue a matriz/backend,
+com acesso para síndico e administrador.
+A US09 textual permanece mais restritiva (administrador)
+e precisa de formalização futura.
+end note
+
+AD -> N: Selecionar período e tipo de relatório
+S -> N: Selecionar período e tipo de relatório
+N -> A: HTTP/HTTPS: solicitar relatório
+activate A
+
+A -> A: Validar dados e permissão generate-reports
+
+alt Perfil autorizado
+    A -> P: SQL: consultar reservas e/ou manutenções
+    activate P
+    P --> A: Dados filtrados
+    deactivate P
+
+    A --> N: JSON: dados e indicadores do relatório
+    deactivate A
+    N --> AD: Exibir relatório
+    N --> S: Exibir relatório
+
+    opt Exportar relatório
+        AD -> N: Solicitar PDF ou Excel
+        S -> N: Solicitar PDF ou Excel
+        N -> A: HTTP/HTTPS: exportar dados filtrados
+        activate A
+        A --> N: Arquivo PDF ou Excel
+        deactivate A
+        N --> AD: Baixar arquivo
+        N --> S: Baixar arquivo
+    end
+else Perfil não autorizado
+    A --> N: JSON: acesso negado
+    deactivate A
+    N --> AD: Exibir erro de permissão
+    N --> S: Exibir erro de permissão
+end
+
+note over AD,A
+Auditoria não faz parte deste fluxo de RF06.
+Quando representada, deve ser exclusiva do administrador.
+end note
+
+@enduml
