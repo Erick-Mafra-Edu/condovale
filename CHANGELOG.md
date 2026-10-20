@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.0.0...v1.1.0) (2026-10-20)
+
+
+### Features
+
+* **frontend:** add Better Stack RUM tag ([b650f53](https://github.com/Erick-Mafra-Edu/condovale/commit/b650f538da464a699c301880e8b1741d8e8e826d))
+* **frontend:** implement sprint 4 communication and reports UI ([7e8a2d9](https://github.com/Erick-Mafra-Edu/condovale/commit/7e8a2d988a5d29583eac3c0a4b7d1f5093b119a2))
+* **frontend:** implementar comunicação e relatórios da Sprint 4 ([3419ea7](https://github.com/Erick-Mafra-Edu/condovale/commit/3419ea7e614023485b2b6ad8a030b8b902df3f93))
+
+
+### Bug Fixes
+
+* **frontend:** align report permissions with backend ([ea04e92](https://github.com/Erick-Mafra-Edu/condovale/commit/ea04e92e602dfe017bc4898a6253e27de2ba3748))
+* **frontend:** alinhar permissão de relatórios ao backend ([7f574d7](https://github.com/Erick-Mafra-Edu/condovale/commit/7f574d74877d1621d7233b48fdd43e242408ffc9))
+
 ## 1.0.0 (2026-10-18)
 
 
