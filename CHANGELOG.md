@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.1.0...v1.1.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **frontend:** adaptar detalhes de ocorrências à viewport ([12e7f2c](https://github.com/Erick-Mafra-Edu/condovale/commit/12e7f2c400ab78c936f6838abd21c1abba6aa446))
+
 ## [1.1.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.0.0...v1.1.0) (2026-10-20)
 
 
