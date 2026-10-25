@@ -144,6 +144,35 @@ describe('cliente API de ocorrências', () => {
     expect(options.headers).toBeUndefined()
   })
 
+  it('exclui anexo pelo DELETE do próprio chamado', async () => {
+    const fetch = vi.fn().mockResolvedValue({ status: true })
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
+    vi.stubGlobal('$fetch', fetch)
+    const repository = createApiOccurrenceRepository()
+
+    await repository.deleteAttachment('9', '3')
+
+    expect(fetch).toHaveBeenCalledWith('/occurrences/9/attachments/3', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('lista os moradores da abertura em todas as páginas, com a unidade', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({ data: [{ id: 5, name: 'Ana Silva', unit_id: 1, unit: { id: 1, code: 'A-101' } }], message: null, total: 2, amount: 1 })
+      .mockResolvedValueOnce({ data: [{ id: 6, name: 'Bruno Costa', unit_id: 2, unit: null }], message: null, total: 2, amount: 1 })
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
+    vi.stubGlobal('$fetch', fetch)
+    const repository = createApiOccurrenceRepository()
+
+    const result = await repository.listOpenableResidents({ search: 'a' })
+
+    expect(result.data).toEqual([
+      { id: '5', name: 'Ana Silva', unitCode: 'A-101' },
+      { id: '6', name: 'Bruno Costa', unitCode: undefined },
+    ])
+    expect(fetch).toHaveBeenNthCalledWith(1, '/occurrence-residents', expect.objectContaining({ query: { search: 'a' } }))
+    expect(fetch).toHaveBeenNthCalledWith(2, '/occurrence-residents', expect.objectContaining({ query: { search: 'a', page: 2 } }))
+  })
+
   it('monta a URL protegida do anexo', () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
     const repository = createApiOccurrenceRepository()

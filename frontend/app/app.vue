@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommonArea, Reservation } from '~/domain/reservation'
+import type { OccurrenceAttachment } from '~/domain/occurrence'
 import { can, canViewModule, type UseCase } from '~/domain/permissions'
 import { getPublishedNotices } from '~/domain/notice'
 import type { UpdateOwnProfileInput } from '~/domain/user'
@@ -22,6 +23,7 @@ const occurrenceTransferReason = ref('')
 const occurrenceEmployeeId = ref('')
 const occurrenceAttachmentError = ref('')
 const uploadingOccurrenceAttachment = ref(false)
+const deletingOccurrenceAttachmentId = ref('')
 const occurrenceAttachmentInput = ref<HTMLInputElement | null>(null)
 const reviewingReservation = ref(false)
 const reportView = ref<'occurrences' | 'reservations' | 'audit'>('occurrences')
@@ -41,7 +43,7 @@ const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, u
 const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
-const { occurrences, history: occurrenceHistory, assignableEmployees, attachments: occurrenceAttachments, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, loadAssignableEmployees, loadHistory, loadAttachments, uploadAttachment, attachmentUrl, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
+const { occurrences, history: occurrenceHistory, assignableEmployees, openableResidents, attachments: occurrenceAttachments, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, loadAssignableEmployees, loadOpenableResidents, loadHistory, loadAttachments, uploadAttachment, removeAttachment, attachmentUrl, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
 const { types: occurrenceTypes, activeTypes: activeOccurrenceTypes, loading: occurrenceTypesLoading, load: loadOccurrenceTypes, loadActive: loadActiveOccurrenceTypes, find: findOccurrenceType, create: createOccurrenceType, update: updateOccurrenceType, remove: removeOccurrenceType } = useOccurrenceTypes()
 const { reservations, loading: reservationsLoading, error: reservationsError, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
 const { notices, loading: noticesLoading, error: noticesError, loadNotices, createNotice } = useNotices()
@@ -67,7 +69,17 @@ const canAssignOccurrence = computed(() => authUser.value ? can(authUser.value.r
 const canAnalyzeOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'analyze-occurrences', authUser.value.permissions) : false)
 const canCommentOccurrence = computed(() => hasAccess('analyze-occurrences') || hasAccess('update-occurrence-progress'))
 const loadActiveOccurrenceTypesRequest = () => loadActiveOccurrenceTypes().catch((cause) => { occurrenceTypesError.value = cause instanceof Error ? cause.message : 'Não foi possível carregar os tipos de ocorrência.' })
-async function openOccurrenceForm() { showOccurrence.value = true; occurrenceSuccess.value = ''; occurrenceError.value = null; if (!activeOccurrenceTypes.value.length) await loadActiveOccurrenceTypesRequest() }
+async function openOccurrenceForm() {
+  showOccurrence.value = true
+  occurrenceSuccess.value = ''
+  occurrenceError.value = null
+  // A lista de usuários é só da administração; o síndico escolhe o morador
+  // pela rota própria da abertura, que já traz só quem pode receber o chamado.
+  await Promise.all([
+    activeOccurrenceTypes.value.length ? Promise.resolve() : loadActiveOccurrenceTypesRequest(),
+    canOpenForResident.value && !openableResidents.value.length ? loadOpenableResidents().catch(() => undefined) : Promise.resolve(),
+  ])
+}
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[authUser.value?.role ?? 'resident']))
 const areaById = computed(() => new Map(areas.value.map(area => [area.id, area])))
 const activeResidents = computed(() => users.value.filter(user => user.role === 'resident' && user.status === 'active'))
@@ -304,8 +316,26 @@ async function uploadSelectedOccurrenceAttachment(event: Event) {
   }
 }
 
-function removeMockOccurrenceAttachment(attachmentId: string) {
-  if (runtimeConfig.dataSource !== 'api') occurrenceAttachments.value = occurrenceAttachments.value.filter(item => item.id !== attachmentId)
+// Mesma regra da API: quem enviou tira a própria imagem; síndico e
+// administração, qualquer uma — e só enquanto o chamado está aberto.
+function canDeleteOccurrenceAttachment(attachment: OccurrenceAttachment) {
+  return canUploadSelectedOccurrence.value && (attachment.uploadedBy === authUser.value?.id || hasAccess('close-any-occurrence'))
+}
+
+async function deleteSelectedOccurrenceAttachment(attachment: OccurrenceAttachment) {
+  if (!selectedOccurrence.value || !canDeleteOccurrenceAttachment(attachment)) return
+  if (!window.confirm(`Excluir a imagem ${attachment.originalName}? Ela sai do chamado e não pode ser recuperada.`)) return
+  const occurrenceId = selectedOccurrence.value.id
+  occurrenceAttachmentError.value = ''
+  deletingOccurrenceAttachmentId.value = attachment.id
+  try {
+    await removeAttachment(occurrenceId, attachment.id)
+    await loadHistory(occurrenceId).catch(() => undefined)
+  } catch (cause) {
+    occurrenceAttachmentError.value = cause instanceof Error ? cause.message : 'Não foi possível excluir a imagem.'
+  } finally {
+    deletingOccurrenceAttachmentId.value = ''
+  }
 }
 
 function openOccurrenceAttachment(id: string, url?: string) {
@@ -409,12 +439,12 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
     </main>
 
     <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
-    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
+    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in openableResidents" :key="item.id" :value="item.id">{{ item.unitCode ? `${item.name} · ${item.unitCode}` : item.name }}</option></select><small v-if="!openableResidents.length" class="field-help">Nenhum morador ativo com unidade vinculada.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
           <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null">
             <dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.occurrenceTypeName ?? selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div v-if="selectedOccurrence.assignedEmployeeId" class="full"><dt>Responsável</dt><dd>{{ occurrenceEmployeeName(selectedOccurrence.assignedEmployeeId, selectedOccurrence.assignedEmployeeName) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl>
             <label v-if="canCommentOccurrence && selectedOccurrence.status !== 'completed' && selectedOccurrence.status !== 'cancelled'" class="occurrence-note">Atualização do atendimento<textarea v-model="occurrenceMessage" placeholder="Descreva uma atualização para o histórico"></textarea></label>
             <div v-if="canCommentOccurrence && selectedOccurrence.status !== 'completed' && selectedOccurrence.status !== 'cancelled'" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence || !occurrenceMessage.trim()" @click="addOccurrenceMessage">{{ updatingOccurrence ? 'Salvando...' : 'Adicionar atualização' }}</button></div>
-            <section class="occurrence-attachments full"><div class="occurrence-section-head"><strong>Anexos</strong><label v-if="canUploadSelectedOccurrence" class="outline-button occurrence-upload">{{ uploadingOccurrenceAttachment ? 'Enviando...' : 'Adicionar imagem' }}<input ref="occurrenceAttachmentInput" type="file" accept="image/jpeg,image/png,image/webp" :disabled="uploadingOccurrenceAttachment" @change="uploadSelectedOccurrenceAttachment"></label></div><p v-if="occurrenceAttachmentError" class="form-error">{{ occurrenceAttachmentError }}</p><div v-if="occurrenceAttachments.length" class="occurrence-attachment-grid"><div v-for="attachment in occurrenceAttachments" :key="attachment.id" class="occurrence-attachment"><button type="button" @click="openOccurrenceAttachment(attachment.id, attachment.url)"><img :src="attachment.url || attachmentUrl(selectedOccurrence.id, attachment.id)" :alt="attachment.originalName"><small>{{ attachment.originalName }}</small></button><button v-if="runtimeConfig.dataSource !== 'api'" class="occurrence-attachment-remove" type="button" aria-label="Remover imagem" @click="removeMockOccurrenceAttachment(attachment.id)">×</button></div></div><p v-else class="empty-row">Nenhum anexo.</p></section>
+            <section class="occurrence-attachments full"><div class="occurrence-section-head"><strong>Anexos</strong><label v-if="canUploadSelectedOccurrence" class="outline-button occurrence-upload">{{ uploadingOccurrenceAttachment ? 'Enviando...' : 'Adicionar imagem' }}<input ref="occurrenceAttachmentInput" type="file" accept="image/jpeg,image/png,image/webp" :disabled="uploadingOccurrenceAttachment" @change="uploadSelectedOccurrenceAttachment"></label></div><p v-if="occurrenceAttachmentError" class="form-error">{{ occurrenceAttachmentError }}</p><div v-if="occurrenceAttachments.length" class="occurrence-attachment-grid"><div v-for="attachment in occurrenceAttachments" :key="attachment.id" class="occurrence-attachment"><button type="button" @click="openOccurrenceAttachment(attachment.id, attachment.url)"><img :src="attachment.url || attachmentUrl(selectedOccurrence.id, attachment.id)" :alt="attachment.originalName"><small>{{ attachment.originalName }}</small></button><button v-if="canDeleteOccurrenceAttachment(attachment)" class="occurrence-attachment-remove" type="button" :aria-label="`Excluir a imagem ${attachment.originalName}`" :title="`Excluir ${attachment.originalName}`" :disabled="deletingOccurrenceAttachmentId === attachment.id" @click="deleteSelectedOccurrenceAttachment(attachment)">×</button></div></div><p v-else class="empty-row">Nenhum anexo.</p></section>
             <div v-if="canAnalyzeOccurrence && selectedOccurrence.status === 'open'" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="analyzeSelectedOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Iniciar análise' }}</button></div>
             <div v-if="canTransferOccurrence && ['analysis', 'assigned', 'in_progress'].includes(selectedOccurrence.status)" class="occurrence-transfer"><select v-model="occurrenceEmployeeId" aria-label="Responsável pela ocorrência"><option value="">Selecione o funcionário</option><option v-for="employee in activeEmployees" :key="employee.id" :value="employee.id">{{ employee.name }}</option></select><label v-if="selectedOccurrence.status !== 'analysis'" class="occurrence-note">Justificativa do repasse<textarea v-model="occurrenceTransferReason" maxlength="255" placeholder="Informe por que a ocorrência está sendo repassada"></textarea></label><button class="primary-button" :disabled="updatingOccurrence || !occurrenceEmployeeId || (selectedOccurrence.status !== 'analysis' && !occurrenceTransferReason.trim())" @click="assignSelectedOccurrence">{{ updatingOccurrence ? 'Encaminhando...' : selectedOccurrence.status === 'analysis' ? 'Encaminhar' : 'Repassar' }}</button></div>
             <label v-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="occurrence-note">Observação da conclusão<textarea v-model="occurrenceNote" placeholder="Descreva a conclusão do atendimento"></textarea></label><div v-if="selectedOccurrence.status === 'assigned' && hasAccess('update-occurrence-progress')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="startOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Atualizar para em andamento' }}</button></div><div v-else-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence || !occurrenceNote.trim()" @click="completeOccurrence">{{ updatingOccurrence ? 'Finalizando...' : 'Finalizar atendimento' }}</button></div>
