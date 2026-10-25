@@ -1,5 +1,5 @@
 import { AppError, toAppError } from '~/domain/app-error'
-import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceResident, OccurrenceStatus } from '~/domain/occurrence'
 import { useServices } from '~/services'
 
 export function useOccurrences() {
@@ -7,6 +7,7 @@ export function useOccurrences() {
   const occurrences = ref<Occurrence[]>([])
   const history = ref<OccurrenceHistory[]>([])
   const assignableEmployees = ref<OccurrenceEmployee[]>([])
+  const openableResidents = ref<OccurrenceResident[]>([])
   const attachments = ref<OccurrenceAttachment[]>([])
   const loading = ref(false)
   const error = ref<AppError | null>(null)
@@ -72,6 +73,12 @@ export function useOccurrences() {
     return result.data
   }
 
+  async function loadOpenableResidents(query?: { search?: string }) {
+    const result = await execute(() => occurrenceService.openableResidents(query))
+    openableResidents.value = result.data
+    return result.data
+  }
+
   async function loadAttachments(id: string) {
     const result = await execute(() => occurrenceService.listAttachments(id))
     attachments.value = result.data
@@ -84,9 +91,14 @@ export function useOccurrences() {
     return result.data
   }
 
+  async function removeAttachment(id: string, attachmentId: string) {
+    await execute(() => occurrenceService.deleteAttachment(id, attachmentId))
+    attachments.value = attachments.value.filter(item => item.id !== attachmentId)
+  }
+
   function attachmentUrl(id: string, attachmentId: string) {
     return occurrenceService.attachmentUrl(id, attachmentId)
   }
 
-  return { occurrences, history, assignableEmployees, attachments, loading, error, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, updateOccurrenceStatus, finishOccurrence, loadHistory, loadAssignableEmployees, loadAttachments, uploadAttachment, attachmentUrl }
+  return { occurrences, history, assignableEmployees, openableResidents, attachments, loading, error, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, updateOccurrenceStatus, finishOccurrence, loadHistory, loadAssignableEmployees, loadOpenableResidents, loadAttachments, uploadAttachment, removeAttachment, attachmentUrl }
 }

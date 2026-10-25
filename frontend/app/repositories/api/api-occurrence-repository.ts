@@ -1,4 +1,4 @@
-import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceResident, OccurrenceStatus } from '~/domain/occurrence'
 import type { ApiResponse } from '~/domain/common'
 import type { OccurrenceRepository } from '~/repositories/contracts/occurrence-repository'
 import { createApiRequest } from './request'
@@ -12,6 +12,12 @@ type ApiEmployee = OccurrenceEmployee & { id: string | number }
 type ApiEmployeePage = ApiResponse<ApiEmployee[]> & { total?: number; amount?: number }
 type ApiAttachment = OccurrenceAttachment & { occurrence_id?: string | number; uploaded_by?: string | number; original_name?: string; mime_type?: string; created_at?: string }
 type ApiAttachmentPage = ApiResponse<ApiAttachment[]> & { total?: number; amount?: number }
+type ApiResident = { id: string | number; name: string; unit?: { code?: string } | null }
+type ApiResidentPage = ApiResponse<ApiResident[]> & { total?: number; amount?: number }
+
+export function fromApiOccurrenceResident(value: ApiResident): OccurrenceResident {
+  return { id: String(value.id), name: value.name, unitCode: value.unit?.code ?? undefined }
+}
 
 export function fromApiOccurrence(value: ApiOccurrence): Occurrence {
   const { resident_id, unit_id, assigned_employee_id, occurrence_type_id, occurrence_type, resident, unit, assigned_employee, created_at, updated_at, completed_at, ...occurrence } = value
@@ -104,6 +110,15 @@ export function createApiOccurrenceRepository(): OccurrenceRepository {
       const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => api<ApiEmployee[]>('/assignable-employees', { query: { ...query, page: index + 2 } })) as Promise<ApiEmployeePage>[])
       return { ...first, data: [first, ...rest].flatMap(page => page.data).map(value => ({ id: String(value.id), name: value.name })) }
     },
+    async listOpenableResidents(query) {
+      const first = await api<ApiResident[]>('/occurrence-residents', { query }) as ApiResidentPage
+      const total = first.total ?? first.data.length
+      const pageSize = first.amount || first.data.length || 10
+      const pages = Math.ceil(total / pageSize)
+      if (pages <= 1) return { ...first, data: first.data.map(fromApiOccurrenceResident) }
+      const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => api<ApiResident[]>('/occurrence-residents', { query: { ...query, page: index + 2 } })) as Promise<ApiResidentPage>[])
+      return { ...first, data: [first, ...rest].flatMap(page => page.data).map(fromApiOccurrenceResident) }
+    },
     async listAttachments(id) {
       const path = `/occurrences/${encodeURIComponent(id)}/attachments`
       const first = await api<ApiAttachment[]>(path) as ApiAttachmentPage
@@ -113,6 +128,9 @@ export function createApiOccurrenceRepository(): OccurrenceRepository {
       const body = new FormData()
       body.append('image', file)
       return mapResponse(await api<ApiAttachment>(`/occurrences/${encodeURIComponent(id)}/attachments`, { method: 'POST', body }), fromApiOccurrenceAttachment)
+    },
+    async deleteAttachment(id, attachmentId) {
+      return await api<null>(`/occurrences/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`, { method: 'DELETE' })
     },
     attachmentUrl(id, attachmentId) {
       const { public: config } = useRuntimeConfig()
