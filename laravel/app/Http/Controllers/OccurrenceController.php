@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\OccurrenceStatus;
 use App\Enums\UseCase;
+use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Actions\AssignOccurrenceAction;
 use App\Http\Actions\CheckOccurrenceAccessAction;
@@ -311,5 +312,31 @@ class OccurrenceController extends Controller
             ->paginate($item->limit ?? 50);
 
         return MessageService::success('Funcionários disponíveis para encaminhamento.', $employees, true);
+    }
+
+    /**
+     * Para quem o síndico pode abrir um chamado.
+     *
+     * Sem ela, o síndico precisaria digitar o id do morador: a listagem de
+     * usuários é só da administração. Saem só os moradores que a abertura
+     * aceitaria — ativos e com unidade vigente —, para o seletor não oferecer
+     * alguém que a API recusaria. Do morador vão o nome e a unidade, que é o
+     * que distingue dois homônimos; e-mail e documento não entram.
+     */
+    public function openableResidents(DefaultPaginationRequest $request)
+    {
+        $item = (object) $request->validated();
+
+        $residents = User::where('role', UserRole::Resident->value)
+            ->where('status', UserStatus::Active->value)
+            ->whereHas('activeUnitOccupancies')
+            ->with('unit:id,code')
+            ->when($item->search ?? null, fn ($query, $search) => $query->where('name', 'like', "%{$search}%"))
+            ->orderBy('name')
+            ->orderBy('id')
+            ->select(['id', 'name', 'unit_id'])
+            ->paginate($item->limit ?? 50);
+
+        return MessageService::success('Moradores para quem o chamado pode ser aberto.', $residents, true);
     }
 }

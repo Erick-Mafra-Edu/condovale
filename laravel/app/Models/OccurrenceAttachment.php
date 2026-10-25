@@ -36,6 +36,9 @@ class OccurrenceAttachment extends Model
     protected function casts(): array
     {
         return [
+            // Comparado com o id de quem pede a exclusão: sem o cast, um
+            // driver que devolva a coluna como texto faria "5" !== 5.
+            'uploaded_by' => 'integer',
             'size' => 'integer',
             'width' => 'integer',
             'height' => 'integer',
