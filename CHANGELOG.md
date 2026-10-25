@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.1.1...v1.2.0) (2026-10-25)
+
+
+### Features
+
+* delete occurrence images, and list residents for opening on their behalf ([60fb928](https://github.com/Erick-Mafra-Edu/condovale/commit/60fb928c5393969be650a2f9018f175b17bfc04f))
+* **frontend:** delete occurrence images and pick the resident from a list ([57c9dc1](https://github.com/Erick-Mafra-Edu/condovale/commit/57c9dc1b38fed3398ecac21b1e52538e89127595))
+
 ## [1.1.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.1.0...v1.1.1) (2026-10-24)
 
 
