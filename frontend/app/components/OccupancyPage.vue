@@ -9,6 +9,8 @@ type Occupancy = {
   started_at: string
   ended_at?: string | null
   is_active: boolean
+  user?: User
+  unit?: Unit
 }
 
 const props = defineProps<{
@@ -48,8 +50,8 @@ const occupantTypeOptions = [
 const selectUi = { content: 'occupancy-select-menu', item: 'occupancy-select-option' }
 const activeOccupancies = computed(() => props.occupancies.filter(item => item.is_active))
 const selected = computed(() => props.selectedOccupancy ?? null)
-const userName = (id: string) => userById.value.get(id)?.name ?? `Morador #${id}`
-const unitName = (id: string) => { const unit = unitById.value.get(id); return unit ? `${unit.block ? `${unit.block} · ` : ''}${unit.number}` : `Unidade #${id}` }
+const userName = (id: string, nested?: User) => nested?.name ?? userById.value.get(id)?.name ?? `Morador #${id}`
+const unitName = (id: string, nested?: Unit) => { const unit = nested ?? unitById.value.get(id); return unit ? `${unit.block ? `${unit.block} · ` : ''}${unit.number}` : `Unidade #${id}` }
 const typeLabel = (type: string) => ({ owner: 'Proprietário', tenant: 'Inquilino', dependent: 'Dependente' }[type] ?? type)
 const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${value.slice(0, 10)}T12:00:00`)) : '—'
 
@@ -67,6 +69,11 @@ function submit() {
   showForm.value = false
 }
 function closeDetails() { emit('closeDetail') }
+function confirmEnd(item: Occupancy) {
+  if (!window.confirm('Encerrar este vínculo? Essa ação preserva o histórico, mas não pode ser desfeita.')) return
+  emit('delete', item.id)
+  closeDetails()
+}
 </script>
 
 <template>
@@ -74,9 +81,9 @@ function closeDetails() { emit('closeDetail') }
     <div class="occupancy-heading"><div><span class="eyebrow">Administração · acesso restrito</span><h2>Moradores e unidades</h2><p>Gerencie os vínculos atuais e preserve o histórico de ocupação.</p></div><div class="occupancy-actions"><button class="outline-button" :disabled="loading" @click="emit('refresh')">Atualizar</button><button class="primary-button" @click="openForm">＋ Novo vínculo</button></div></div>
     <p v-if="error" class="occupancy-feedback error" role="alert">{{ error.message ?? 'Não foi possível carregar os vínculos.' }}</p>
     <article v-if="!loading && !activeOccupancies.length" class="panel occupancy-empty"><div class="empty-icon">⌂</div><h3>Nenhum vínculo ativo</h3><p>Cadastre o primeiro vínculo entre um morador e uma unidade.</p><button class="primary-button" @click="openForm">Criar vínculo</button></article>
-    <div v-else class="occupancy-list" aria-live="polite"><article v-for="item in activeOccupancies" :key="item.id" class="panel occupancy-card"><div class="occupancy-icon"><SvgIcon name="users" /></div><div class="occupancy-main"><div class="occupancy-title"><h3>{{ userName(item.user_id) }}</h3><span class="occupancy-badge">{{ typeLabel(item.occupant_type) }}</span></div><p>{{ unitName(item.unit_id) }} · desde {{ formatDate(item.started_at) }}</p></div><div class="occupancy-card-actions"><button class="outline-button" @click="emit('openDetail', item.id)">Ver detalhes</button><button class="text-button danger" @click="emit('delete', item.id)">Encerrar</button></div></article><div v-if="loading" class="panel occupancy-empty"><p>Carregando vínculos…</p></div></div>
+    <div v-else class="occupancy-list" aria-live="polite"><article v-for="item in activeOccupancies" :key="item.id" class="panel occupancy-card"><div class="occupancy-icon"><SvgIcon name="users" /></div><div class="occupancy-main"><div class="occupancy-title"><h3>{{ userName(item.user_id, item.user) }}</h3><span class="occupancy-badge">{{ typeLabel(item.occupant_type) }}</span></div><p>{{ unitName(item.unit_id, item.unit) }} · desde {{ formatDate(item.started_at) }}</p></div><div class="occupancy-card-actions"><button class="outline-button" @click="emit('openDetail', item.id)">Ver detalhes</button><button class="text-button danger" @click="confirmEnd(item)">Encerrar</button></div></article><div v-if="loading" class="panel occupancy-empty"><p>Carregando vínculos…</p></div></div>
     <div v-if="showForm" class="modal-backdrop" @click.self="showForm = false"><form class="modal glass occupancy-modal" @submit.prevent="submit"><button type="button" class="modal-close" aria-label="Fechar" @click="showForm = false"></button><div class="section-icon"><SvgIcon name="users" /></div><h2>Novo vínculo</h2><p>Associe um morador ativo a uma unidade.</p><label for="occupancy-resident">Morador</label><USelect id="occupancy-resident" v-model="userId" class="occupancy-select" :items="residentOptions" :ui="selectUi" :placeholder="residentOptions.length ? 'Selecione um morador' : 'Nenhum morador disponível'" :disabled="!residentOptions.length" required /><label for="occupancy-unit">Unidade</label><USelect id="occupancy-unit" v-model="unitId" class="occupancy-select" :items="unitOptions" :ui="selectUi" :placeholder="unitOptions.length ? 'Selecione uma unidade' : 'Nenhuma unidade disponível'" :disabled="!unitOptions.length" required /><label for="occupancy-type">Tipo de ocupação</label><USelect id="occupancy-type" v-model="occupantType" class="occupancy-select" :items="occupantTypeOptions" :ui="selectUi" /><label>Início<input v-model="startedAt" type="date" required /></label><p v-if="feedback" class="occupancy-feedback error">{{ feedback }}</p><div class="modal-actions"><button type="button" class="outline-button" @click="showForm = false">Cancelar</button><button class="primary-button" type="submit">Criar vínculo</button></div></form></div>
-    <DetailModal v-if="selected" title="Detalhes do vínculo" icon="alert" @close="closeDetails"><dl class="detail-list"><div><dt>Morador</dt><dd>{{ userName(selected.user_id) }}</dd></div><div><dt>Unidade</dt><dd>{{ unitName(selected.unit_id) }}</dd></div><div><dt>Tipo</dt><dd>{{ typeLabel(selected.occupant_type) }}</dd></div><div><dt>Início</dt><dd>{{ formatDate(selected.started_at) }}</dd></div><div v-if="selected.ended_at"><dt>Encerramento</dt><dd>{{ formatDate(selected.ended_at) }}</dd></div><div><dt>Status</dt><dd><em class="green">{{ selected.is_active ? 'Ativo' : 'Encerrado' }}</em></dd></div></dl><div class="reservation-review-actions"><button class="outline-button danger-action" :disabled="!selected.is_active" @click="emit('delete', selected.id); closeDetails()">Encerrar vínculo</button></div></DetailModal>
+    <DetailModal v-if="selected" title="Detalhes do vínculo" icon="alert" @close="closeDetails"><dl class="detail-list"><div><dt>Morador</dt><dd>{{ userName(selected.user_id, selected.user) }}</dd></div><div><dt>Unidade</dt><dd>{{ unitName(selected.unit_id, selected.unit) }}</dd></div><div><dt>Tipo</dt><dd>{{ typeLabel(selected.occupant_type) }}</dd></div><div><dt>Início</dt><dd>{{ formatDate(selected.started_at) }}</dd></div><div v-if="selected.ended_at"><dt>Encerramento</dt><dd>{{ formatDate(selected.ended_at) }}</dd></div><div><dt>Status</dt><dd><em class="green">{{ selected.is_active ? 'Ativo' : 'Encerrado' }}</em></dd></div></dl><div class="reservation-review-actions"><button class="outline-button danger-action" :disabled="!selected.is_active" @click="confirmEnd(selected)">Encerrar vínculo</button></div></DetailModal>
   </section>
 </template>
 

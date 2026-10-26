@@ -186,6 +186,10 @@ async function handlePasswordChange(input: Parameters<typeof changePassword>[0])
   await loadDashboard()
 }
 
+async function handleOwnPasswordChange(input: Parameters<typeof changePassword>[0]) {
+  await changePassword(input)
+}
+
 async function handleLogout() {
   await logout()
   active.value = 'Início'
@@ -375,19 +379,24 @@ onMounted(() => {
   window.addEventListener('scroll', updateScrollMaterial, { passive: true })
 })
 onBeforeUnmount(() => window.removeEventListener('scroll', updateScrollMaterial))
-const selectNav = (label: string) => {
+async function selectNav(label: string) {
   active.value = label
   if (label === 'Relatórios' && hasAccess('view-audit-reports')) loadAuditLogs().catch(() => undefined)
+  if (label === 'Moradores e unidades' && hasAccess('link-residents-to-units')) {
+    await Promise.all([loadOccupancies(), loadUnits(), hasAccess('manage-residents') ? loadUsers() : Promise.resolve()])
+  }
 }
 
 async function createOccupancy(input: CreateUnitOccupancyInput) {
   if (!hasAccess('link-residents-to-units')) return
   await createOccupancyRequest(input)
+  await Promise.all([loadOccupancies(), loadUnits(), hasAccess('manage-residents') ? loadUsers() : Promise.resolve()])
 }
 
 async function finishOccupancy(id: string) {
   if (!hasAccess('link-residents-to-units')) return
   await removeOccupancy(id)
+  await Promise.all([loadOccupancies(), loadUnits(), hasAccess('manage-residents') ? loadUsers() : Promise.resolve()])
 }
 
 async function openOccupancyDetail(id: string) {
@@ -401,7 +410,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
   <LoginScreen v-if="!authUser" :loading="authLoading" :error="authError" :show-demo-access="runtimeConfig.dataSource !== 'api'" @submit="handleLogin" />
   <PasswordChangePage v-else-if="authUser.mustChangePassword" :loading="authLoading" :error="authError" :on-submit="handlePasswordChange" :on-logout="handleLogout" />
   <div v-else class="app-shell">
-    <AppSidebar :active="active" :items="visibleNavItems" @select="selectNav" />
+    <AppSidebar :active="active" :items="visibleNavItems" :user="authUser" :units="units" @select="selectNav" />
 
     <main class="main-content">
       <AppTopbar :name="residentName" :initials="residentInitials" :notification-count="publishedNotices.length" :compact="isScrolled" :can-open-profile="hasAccess('update-own-profile')" @notifications="showNotifications = !showNotifications" @profile="selectNav('Meu cadastro')" @logout="handleLogout" />
@@ -423,7 +432,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
           <section class="welcome-banner"><div><h2>Condomínio melhor <span>quando as pessoas se conectam.</span></h2><p>Participe, registre, reserve e acompanhe. Tudo em um só lugar.</p></div><div class="people-illustration"><SvgIcon name="users" /><SvgIcon name="users" /><SvgIcon name="users" /></div><div class="banner-logo"><SvgIcon name="building" /><small>CondoVale</small></div></section>
         </div>
 
-        <ProfilePage v-else-if="active === 'Meu cadastro' && authUser && hasAccess('update-own-profile')" :user="authUser" :saving="profileSaving" :error="profileError" :success="profileSuccess" @save="saveOwnProfile" />
+        <ProfilePage v-else-if="active === 'Meu cadastro' && authUser && hasAccess('update-own-profile')" :user="authUser" :saving="profileSaving" :error="profileError" :success="profileSuccess" :on-change-password="handleOwnPasswordChange" @save="saveOwnProfile" />
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-residents')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
         <OccurrenceTypeAdminPage v-else-if="active === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')" :types="occurrenceTypes" :loading="occurrenceTypesLoading" :error="occurrenceTypesError" :on-find="findOccurrenceType" :on-create="createManagedOccurrenceType" :on-update="updateManagedOccurrenceType" :on-remove="removeManagedOccurrenceType" />
         <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
