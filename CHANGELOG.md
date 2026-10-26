@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.2...v1.2.3) (2026-10-26)
+
+
+### Bug Fixes
+
+* **frontend:** lazy loading skeleton em modais durante fetch da API ([c10ab04](https://github.com/Erick-Mafra-Edu/condovale/commit/c10ab04e4ec26f8d8d1b6c79f325dfc670800036))
+
 ## [1.2.2](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.1...v1.2.2) (2026-10-26)
 
 
