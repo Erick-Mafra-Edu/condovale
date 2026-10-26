@@ -28,4 +28,8 @@ describe('contratos API Laravel', () => {
   it('normaliza usuário Laravel com ID numérico e unidade nula', () => {
     expect(fromApiUser({ id: 9, name: 'Ana', email: 'ana@example.com', role: 'resident', status: 'active', unit_id: null })).toMatchObject({ id: '9', unitId: undefined })
   })
+
+  it('normaliza a relação de unidade retornada pela sessão', () => {
+    expect(fromApiUser({ id: 9, name: 'Ana', email: 'ana@example.com', role: 'resident', status: 'active', unit_id: 7, unit: { id: 7, code: 'B-204', number: '204', block: 'B', status: 'active' } })).toMatchObject({ unitId: '7', unit: { id: '7', code: 'B-204', number: '204', block: 'B' } })
+  })
 })

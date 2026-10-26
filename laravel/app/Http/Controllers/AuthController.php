@@ -25,7 +25,7 @@ class AuthController extends Controller
 
             DB::commit();
 
-            return MessageService::success('Autenticado com sucesso.', ['user' => $user]);
+            return MessageService::success('Autenticado com sucesso.', ['user' => $user->load('unit:id,code,number,block')]);
         } catch (\Throwable $th) {
             DB::rollBack();
 
@@ -48,7 +48,7 @@ class AuthController extends Controller
             return MessageService::success('Nenhuma sessão ativa.');
         }
 
-        return MessageService::success('Sessão ativa.', ['user' => $user]);
+        return MessageService::success('Sessão ativa.', ['user' => $user->load('unit:id,code,number,block')]);
     }
 
     /**
