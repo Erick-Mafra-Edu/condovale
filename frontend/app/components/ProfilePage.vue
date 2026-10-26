@@ -11,7 +11,7 @@ const passwordSaving = ref(false)
 const passwordError = ref('')
 const passwordSuccess = ref('')
 const roleLabel = computed(() => ({ resident: 'Morador', employee: 'Funcionário', syndic: 'Síndico', admin: 'Administrador' }[props.user.role] ?? props.user.role))
-const unitLabel = computed(() => props.user.unit ? `${props.user.unit.block ? `${props.user.unit.block} · ` : ''}Unidade ${props.user.unit.number}` : props.user.unitId ? `Unidade ${props.user.unitId}` : 'Não informada')
+const unitLabel = computed(() => props.user.unitId ? `Unidade ${props.user.unitId}` : 'Não informada')
 const isDirty = computed(() => name.value.trim() !== props.user.name || email.value.trim().toLowerCase() !== props.user.email)
 
 watch(() => props.user, user => { name.value = user.name; email.value = user.email })

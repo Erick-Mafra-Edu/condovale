@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\TypeLogEnum;
 use App\Enums\UserStatus;
 use App\Models\User;
-use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -59,25 +58,6 @@ class AuthenticationTest extends TestCase
             ->assertJsonPath('data.user.status', 'active');
 
         $this->assertAuthenticatedAs($user);
-    }
-
-    public function test_login_e_sessao_devolvem_apenas_a_unidade_do_proprio_usuario(): void
-    {
-        $unit = Unit::factory()->create(['block' => 'B', 'number' => '204', 'code' => 'B-204']);
-        $this->criarUsuario(['unit_id' => $unit->id]);
-
-        $this->postJson('/api/auth/login', [
-            'email' => $this->email(),
-            'password' => self::SENHA,
-        ])->assertJsonPath('data.user.unit.id', $unit->id)
-            ->assertJsonPath('data.user.unit.code', 'B-204')
-            ->assertJsonPath('data.user.unit.number', '204')
-            ->assertJsonPath('data.user.unit.block', 'B')
-            ->assertJsonMissingPath('data.user.units');
-
-        $this->getJson('/api/auth/session')
-            ->assertJsonPath('data.user.unit.id', $unit->id)
-            ->assertJsonMissingPath('data.user.units');
     }
 
     public function test_nunca_devolve_a_senha_nem_o_remember_token(): void

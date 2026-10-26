@@ -10,7 +10,6 @@ export interface User {
   status: UserStatus
   mustChangePassword?: boolean
   unitId?: string
-  unit?: Unit
   avatarUrl?: string
   /** Effective permissions when the session endpoint exposes them. */
   permissions?: UseCase[]

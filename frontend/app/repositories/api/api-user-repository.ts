@@ -1,5 +1,4 @@
 import type { User, UserCreationResult } from '~/domain/user'
-import { fromApiUnit } from './api-unit-repository'
 import type { UserRepository } from '~/repositories/contracts/user-repository'
 import { createApiRequest } from './request'
 import type { ApiResponse } from '~/domain/common'
@@ -9,9 +8,9 @@ export function toApiUser(input: Partial<User>) {
   return { ...rest, ...(unitId !== undefined ? { unit_id: unitId } : {}), ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}) }
 }
 
-export function fromApiUser(value: Omit<User, 'id' | 'unit'> & { id: string | number; unit_id?: string | number | null; avatar_url?: string; must_change_password?: boolean; unit?: Parameters<typeof fromApiUnit>[0] | null }): User {
-  const { unit_id, avatar_url, must_change_password, unit, ...user } = value
-  return { ...user, id: String(user.id), unitId: unit_id != null ? String(unit_id) : value.unitId ?? undefined, unit: unit ? fromApiUnit(unit) : undefined, avatarUrl: avatar_url ?? value.avatarUrl, mustChangePassword: must_change_password ?? value.mustChangePassword }
+export function fromApiUser(value: Omit<User, 'id'> & { id: string | number; unit_id?: string | number | null; avatar_url?: string; must_change_password?: boolean }): User {
+  const { unit_id, avatar_url, must_change_password, ...user } = value
+  return { ...user, id: String(user.id), unitId: unit_id != null ? String(unit_id) : value.unitId ?? undefined, avatarUrl: avatar_url ?? value.avatarUrl, mustChangePassword: must_change_password ?? value.mustChangePassword }
 }
 
 type ApiUserListResponse = ApiResponse<Array<User & { id: string | number; unit_id?: string | number | null; avatar_url?: string }>> & { total?: number; amount?: number }
