@@ -5,7 +5,7 @@
 Backend (Laravel):
 
 ```bash
-cd laravel && composer setup && composer run dev
+cd laravel && composer setup && php artisan serve
 ```
 
 Frontend (Nuxt):
