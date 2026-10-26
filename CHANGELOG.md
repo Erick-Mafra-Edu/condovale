@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.1...v1.2.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **frontend:** make permission modal responsive with scroll ([5f14c14](https://github.com/Erick-Mafra-Edu/condovale/commit/5f14c148f91612b455c768c7eee06f3df160a3c7))
+* **frontend:** permission modal responsive + scroll ([57e5e79](https://github.com/Erick-Mafra-Edu/condovale/commit/57e5e7906b915bc1bcdabf40b00eef5d23ec20e6))
+
 ## [1.2.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.0...v1.2.1) (2026-10-26)
 
 
