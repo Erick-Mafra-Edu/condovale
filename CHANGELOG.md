@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.0...v1.2.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **frontend:** atualizar vínculos e perfil ([3e182cb](https://github.com/Erick-Mafra-Edu/condovale/commit/3e182cb9a27f09b118c0e15b1d7978c8dab89691))
+* **frontend:** detect InfinityFree host challenge ([1e70ca4](https://github.com/Erick-Mafra-Edu/condovale/commit/1e70ca435f561cfb1f529d3779c9ccac4e905e80))
+* **frontend:** detect InfinityFree host challenge ([8478600](https://github.com/Erick-Mafra-Edu/condovale/commit/84786002ee47ae5017228f21d48317773020627c))
+
 ## [1.2.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.1.1...v1.2.0) (2026-10-25)
 
 
