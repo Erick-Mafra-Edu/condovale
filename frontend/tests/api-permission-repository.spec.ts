@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApiPermissionRepository } from '~/repositories/api/api-permission-repository'
+import { stubApiFetch } from './api-fetch-mock'
 
 describe('contratos API de permissões', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('mapeia snake_case das concessões individuais', async () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: {
+    stubApiFetch(vi.fn().mockResolvedValue({ data: {
       user_id: 7,
       role: 'syndic',
       role_label: 'Síndico',
@@ -23,7 +24,7 @@ describe('contratos API de permissões', () => {
   it('envia concessão e revogação para as rotas reais', async () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
     const fetch = vi.fn().mockResolvedValue({ data: { user_id: 7, direct: [] }, message: null })
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiPermissionRepository()
 
     await repository.grant('7', 'close-any-occurrence')

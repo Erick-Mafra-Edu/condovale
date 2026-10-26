@@ -9,7 +9,16 @@ export function createApiRequest() {
   const { public: config } = useRuntimeConfig()
   return async <T>(path: string, options?: Parameters<typeof $fetch>[1]): Promise<ApiResponse<T>> => {
     try {
-      return await $fetch<ApiResponse<T>>(path, { baseURL: config.apiBase, credentials: 'include', ...options })
+      const response = await $fetch.raw<ApiResponse<T>>(path, { baseURL: config.apiBase, credentials: 'include', ...options })
+      const responseData: unknown = response._data
+
+      if (response.headers.get('content-type')?.includes('text/html')
+        && typeof responseData === 'string'
+        && responseData.includes('/aes.js')) {
+        throw new AppError('HOST_CHALLENGE', 'A sessão da hospedagem expirou. Recarregue a página, entre novamente e selecione a imagem outra vez.')
+      }
+
+      return responseData as ApiResponse<T>
     } catch (cause) {
       if (cause instanceof AppError) throw cause
       const error = isRecord(cause) ? cause : {}

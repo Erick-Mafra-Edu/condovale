@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApiAuthRepository } from '~/repositories/api/api-auth-repository'
 import { createApiUserRepository } from '~/repositories/api/api-user-repository'
+import { stubApiFetch } from './api-fetch-mock'
 
 describe('contratos API de autenticação e usuários', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('normaliza o usuário retornado no login', async () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: { user: { id: 4, name: 'Ana', email: 'ana@example.com', role: 'resident', status: 'active', unit_id: null, must_change_password: true } }, message: null }))
+    stubApiFetch(vi.fn().mockResolvedValue({ data: { user: { id: 4, name: 'Ana', email: 'ana@example.com', role: 'resident', status: 'active', unit_id: null, must_change_password: true } }, message: null }))
 
     const result = await createApiAuthRepository().authenticate({ email: 'ana@example.com', password: 'secret' })
     expect(result.data.user).toMatchObject({ id: '4', unitId: undefined, mustChangePassword: true })
@@ -16,7 +17,7 @@ describe('contratos API de autenticação e usuários', () => {
   it('envia a troca de senha e normaliza o usuário retornado', async () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
     const fetch = vi.fn().mockResolvedValue({ data: { id: 4, name: 'Ana', email: 'ana@example.com', role: 'resident', status: 'active', must_change_password: false }, message: 'Senha alterada.' })
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
 
     const result = await createApiAuthRepository().changePassword({ current_password: 'temporary', password: 'new-password', password_confirmation: 'new-password' })
     expect(result.data).toMatchObject({ id: '4', mustChangePassword: false })
@@ -29,7 +30,7 @@ describe('contratos API de autenticação e usuários', () => {
       .mockResolvedValueOnce({ data: [{ id: 2, name: 'B', email: 'b@example.com', role: 'resident', status: 'active' }], message: null, total: 2, amount: 1 })
       .mockResolvedValueOnce({ data: { user: { id: 3, name: 'C', email: 'c@example.com', role: 'resident', status: 'active' }, temporary_password: 'temp' }, message: null })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
 
     const repository = createApiUserRepository()
     expect((await repository.list()).data.map(user => user.id)).toEqual(['1', '2'])
@@ -44,7 +45,7 @@ describe('contratos API de autenticação e usuários', () => {
       message: 'Usuário 4 editado.',
     })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
 
     await createApiUserRepository().update('4', { unitId: '12', avatarUrl: '/avatar.png' })
 
