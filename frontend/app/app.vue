@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import type { CommonArea, Reservation } from '~/domain/reservation'
 import { can, canViewModule, type UseCase } from '~/domain/permissions'
 import { getPublishedNotices } from '~/domain/notice'
@@ -22,6 +22,7 @@ const occurrenceTransferReason = ref('')
 const occurrenceEmployeeId = ref('')
 const occurrenceAttachmentError = ref('')
 const uploadingOccurrenceAttachment = ref(false)
+const occurrenceDetailLoading = ref(false)
 const occurrenceAttachmentInput = ref<HTMLInputElement | null>(null)
 const reviewingReservation = ref(false)
 const reportView = ref<'occurrences' | 'reservations' | 'audit'>('occurrences')
@@ -128,16 +129,21 @@ async function openOccurrenceDetail(id: string) {
   occurrenceAttachmentError.value = ''
   occurrenceEmployeeId.value = ''
   detailTarget.value = { type: 'occurrence', id }
-  if (apiMode.value) {
-    const detail = await findOccurrence(id).catch(() => undefined)
-    if (detail) {
-      const index = occurrences.value.findIndex(item => item.id === detail.id)
-      if (index >= 0) occurrences.value[index] = detail
-      else occurrences.value.push(detail)
+  occurrenceDetailLoading.value = true
+  try {
+    if (apiMode.value) {
+      const detail = await findOccurrence(id).catch(() => undefined)
+      if (detail) {
+        const index = occurrences.value.findIndex(item => item.id === detail.id)
+        if (index >= 0) occurrences.value[index] = detail
+        else occurrences.value.push(detail)
+      }
     }
+    await loadHistory(id).catch(() => undefined)
+    await loadAttachments(id).catch(() => undefined)
+  } finally {
+    occurrenceDetailLoading.value = false
   }
-  await loadHistory(id).catch(() => undefined)
-  await loadAttachments(id).catch(() => undefined)
 }
 
 async function loadDashboard() {
@@ -405,9 +411,15 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
     </main>
 
     <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
-    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
+    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select><small v-if="occurrenceTypesLoading" class="field-help">Carregando tipos...</small></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
           <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null">
-            <dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.occurrenceTypeName ?? selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div v-if="selectedOccurrence.assignedEmployeeId" class="full"><dt>Responsável</dt><dd>{{ occurrenceEmployeeName(selectedOccurrence.assignedEmployeeId, selectedOccurrence.assignedEmployeeName) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl>
+            <div v-if="occurrenceDetailLoading" class="modal-detail-skeleton" aria-busy="true" aria-label="Carregando detalhes">
+              <div class="mds-block mds-title"></div>
+              <div class="mds-row"><div class="mds-block mds-cell"></div><div class="mds-block mds-cell"></div></div>
+              <div class="mds-row"><div class="mds-block mds-cell"></div><div class="mds-block mds-cell"></div></div>
+              <div class="mds-row full"><div class="mds-block mds-full"></div></div>
+            </div>
+            <dl v-else class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.occurrenceTypeName ?? selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div v-if="selectedOccurrence.assignedEmployeeId" class="full"><dt>Responsável</dt><dd>{{ occurrenceEmployeeName(selectedOccurrence.assignedEmployeeId, selectedOccurrence.assignedEmployeeName) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl>
             <label v-if="canCommentOccurrence && selectedOccurrence.status !== 'completed' && selectedOccurrence.status !== 'cancelled'" class="occurrence-note">Atualização do atendimento<textarea v-model="occurrenceMessage" placeholder="Descreva uma atualização para o histórico"></textarea></label>
             <div v-if="canCommentOccurrence && selectedOccurrence.status !== 'completed' && selectedOccurrence.status !== 'cancelled'" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence || !occurrenceMessage.trim()" @click="addOccurrenceMessage">{{ updatingOccurrence ? 'Salvando...' : 'Adicionar atualização' }}</button></div>
             <section class="occurrence-attachments full"><div class="occurrence-section-head"><strong>Anexos</strong><label v-if="canUploadSelectedOccurrence" class="outline-button occurrence-upload">{{ uploadingOccurrenceAttachment ? 'Enviando...' : 'Adicionar imagem' }}<input ref="occurrenceAttachmentInput" type="file" accept="image/jpeg,image/png,image/webp" :disabled="uploadingOccurrenceAttachment" @change="uploadSelectedOccurrenceAttachment"></label></div><p v-if="occurrenceAttachmentError" class="form-error">{{ occurrenceAttachmentError }}</p><div v-if="occurrenceAttachments.length" class="occurrence-attachment-grid"><button v-for="attachment in occurrenceAttachments" :key="attachment.id" class="occurrence-attachment" type="button" @click="openOccurrenceAttachment(attachment.id, attachment.url)"><img :src="attachment.url || attachmentUrl(selectedOccurrence.id, attachment.id)" :alt="attachment.originalName"><small>{{ attachment.originalName }}</small></button></div><p v-else class="empty-row">Nenhum anexo.</p></section>
@@ -589,5 +601,27 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
   .stat-head i.red,.stat-card small.red,.red{color:#ffabb2}
   .stat-head i.blue,.stat-card small.blue,.blue{color:#93caff}
   .stat-head i.orange,.stat-card small.orange{color:#ffd879}
+}
+/* Modal detail skeleton */
+@keyframes mds-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+.mds-block {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e8f2f4 25%, #d0e8ec 50%, #e8f2f4 75%);
+  background-size: 200% 100%;
+  animation: mds-shimmer 1.4s ease-in-out infinite;
+}
+.modal-detail-skeleton { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+.mds-title { height: 14px; width: 55%; border-radius: 6px; }
+.mds-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; border-radius: 11px; background: rgba(221,246,247,.52); }
+.mds-row.full { grid-template-columns: 1fr; }
+.mds-cell { height: 32px; }
+.mds-full { height: 48px; }
+.field-help { display: block; font-size: 9px; color: var(--neutral); margin-top: 4px; }
+@media (prefers-color-scheme: dark) {
+  .mds-block { background: linear-gradient(90deg, #0d2535 25%, #163545 50%, #0d2535 75%); background-size: 200% 100%; }
+  .mds-row { background: rgba(15,45,58,.52); }
 }
 </style>
