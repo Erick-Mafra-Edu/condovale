@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.2.2](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.1...v1.2.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **frontend:** make permission modal responsive with scroll ([5f14c14](https://github.com/Erick-Mafra-Edu/condovale/commit/5f14c148f91612b455c768c7eee06f3df160a3c7))
+* **frontend:** permission modal responsive + scroll ([57e5e79](https://github.com/Erick-Mafra-Edu/condovale/commit/57e5e7906b915bc1bcdabf40b00eef5d23ec20e6))
+
+## [1.2.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.0...v1.2.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **frontend:** atualizar vínculos e perfil ([3e182cb](https://github.com/Erick-Mafra-Edu/condovale/commit/3e182cb9a27f09b118c0e15b1d7978c8dab89691))
+* **frontend:** detect InfinityFree host challenge ([1e70ca4](https://github.com/Erick-Mafra-Edu/condovale/commit/1e70ca435f561cfb1f529d3779c9ccac4e905e80))
+* **frontend:** detect InfinityFree host challenge ([8478600](https://github.com/Erick-Mafra-Edu/condovale/commit/84786002ee47ae5017228f21d48317773020627c))
+
+## [1.2.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.1.1...v1.2.0) (2026-10-25)
+
+
+### Features
+
+* delete occurrence images, and list residents for opening on their behalf ([60fb928](https://github.com/Erick-Mafra-Edu/condovale/commit/60fb928c5393969be650a2f9018f175b17bfc04f))
+* **frontend:** delete occurrence images and pick the resident from a list ([57c9dc1](https://github.com/Erick-Mafra-Edu/condovale/commit/57c9dc1b38fed3398ecac21b1e52538e89127595))
+
+## [1.1.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.1.0...v1.1.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **frontend:** adaptar detalhes de ocorrências à viewport ([12e7f2c](https://github.com/Erick-Mafra-Edu/condovale/commit/12e7f2c400ab78c936f6838abd21c1abba6aa446))
+
+## [1.1.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.0.0...v1.1.0) (2026-10-20)
+
+
+### Features
+
+* **frontend:** add Better Stack RUM tag ([b650f53](https://github.com/Erick-Mafra-Edu/condovale/commit/b650f538da464a699c301880e8b1741d8e8e826d))
+* **frontend:** implement sprint 4 communication and reports UI ([7e8a2d9](https://github.com/Erick-Mafra-Edu/condovale/commit/7e8a2d988a5d29583eac3c0a4b7d1f5093b119a2))
+* **frontend:** implementar comunicação e relatórios da Sprint 4 ([3419ea7](https://github.com/Erick-Mafra-Edu/condovale/commit/3419ea7e614023485b2b6ad8a030b8b902df3f93))
+
+
+### Bug Fixes
+
+* **frontend:** align report permissions with backend ([ea04e92](https://github.com/Erick-Mafra-Edu/condovale/commit/ea04e92e602dfe017bc4898a6253e27de2ba3748))
+* **frontend:** alinhar permissão de relatórios ao backend ([7f574d7](https://github.com/Erick-Mafra-Edu/condovale/commit/7f574d74877d1621d7233b48fdd43e242408ffc9))
+
 ## 1.0.0 (2026-10-18)
 
 

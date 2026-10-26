@@ -172,7 +172,7 @@ async function requestDeactivate(user: User) {
   </div>
 
   <div v-if="permissionUser" class="modal-backdrop" @click.self="permissionUser = null">
-    <section class="modal glass" role="dialog" aria-modal="true" aria-labelledby="permissions-title">
+    <section class="modal glass permissions-modal" role="dialog" aria-modal="true" aria-labelledby="permissions-title">
       <button type="button" class="modal-close" aria-label="Fechar permissões" @click="permissionUser = null"></button>
       <div class="section-icon"><SvgIcon name="users" /></div>
       <h2 id="permissions-title">Permissões de {{ permissionUser.name }}</h2>
@@ -246,6 +246,56 @@ async function requestDeactivate(user: User) {
   .skeleton-block {
     background: linear-gradient(90deg, #112535 25%, #1a3545 50%, #112535 75%);
     background-size: 200% 100%;
+  }
+}
+
+.permissions-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.permissions-list {
+  min-width: 0;
+}
+
+.permission-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.permission-row > span:first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.permission-row > span:first-child strong,
+.permission-row > span:first-child small {
+  overflow-wrap: anywhere;
+}
+
+.permission-row > .outline-button,
+.permission-row > .gray {
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+@media (max-width: 520px) {
+  .permissions-modal {
+    padding: 22px 16px;
+  }
+
+  .permission-row > .outline-button,
+  .permission-row > .gray {
+    margin-left: 0;
+  }
+
+  .permission-row > .outline-button {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

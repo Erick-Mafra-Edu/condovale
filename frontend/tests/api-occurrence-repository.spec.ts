@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { createApiOccurrenceRepository, fromApiOccurrence, fromApiOccurrenceHistory } from '../app/repositories/api/api-occurrence-repository'
+import { stubApiFetch } from './api-fetch-mock'
 
 describe('cliente API de ocorrências', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -12,7 +13,7 @@ describe('cliente API de ocorrências', () => {
   it('envia apenas o contrato Laravel e usa a sessão como identidade', async () => {
     const fetch = vi.fn().mockResolvedValue({ data: {}, message: null })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     await repository.create({ title: 'Falha', description: 'Detalhes', occurrenceTypeId: 1 })
@@ -29,7 +30,7 @@ describe('cliente API de ocorrências', () => {
       .mockResolvedValueOnce({ data: [{ id: 1, title: 'Falha', description: 'Detalhes', status: 'open', resident_id: 7, occurrence_type: { id: 3, name: 'Manutenção' }, created_at: '2026-10-05', updated_at: '2026-10-05' }], message: null, total: 2, amount: 1 })
       .mockResolvedValueOnce({ data: [{ id: 2, title: 'Ruído', description: 'Detalhes', status: 'analysis', resident_id: 8, occurrence_type: { id: 4, name: 'Barulho' }, created_at: '2026-10-06', updated_at: '2026-10-06' }], message: null, total: 2, amount: 1 })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     const result = await repository.list()
@@ -44,7 +45,7 @@ describe('cliente API de ocorrências', () => {
   it('consulta detalhe com id codificado', async () => {
     const fetch = vi.fn().mockResolvedValue({ data: { id: 'oc/1', title: 'Falha', description: 'Detalhes', status: 'open', resident_id: 7, created_at: '2026-10-05', updated_at: '2026-10-05' }, message: null })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     await repository.findById('oc/1')
@@ -57,7 +58,7 @@ describe('cliente API de ocorrências', () => {
       .mockResolvedValueOnce({ data: [{ id: 1, occurrence_id: 9, type: 'created', user_id: 7, user: { id: 7, name: 'Ana' }, new_status: 'open', created_at: '2026-10-05' }], message: null, total: 2, amount: 1 })
       .mockResolvedValueOnce({ data: [{ id: 2, occurrence_id: 9, type: 'status_changed', user_id: 8, user: { id: 8, name: 'Pedro' }, previous_status: 'open', new_status: 'analysis', created_at: '2026-10-06' }], message: null, total: 2, amount: 1 })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     const result = await repository.history('9')
@@ -72,7 +73,7 @@ describe('cliente API de ocorrências', () => {
   it('atribui por PATCH somente com employee_id', async () => {
     const fetch = vi.fn().mockResolvedValue({ data: { id: 9, title: 'Falha', description: 'Detalhes', status: 'assigned', assigned_employee_id: 8, resident_id: 7, created_at: '2026-10-05', updated_at: '2026-10-06' }, message: null })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     await repository.assign('9', '8')
@@ -85,7 +86,7 @@ describe('cliente API de ocorrências', () => {
       .mockResolvedValueOnce({ data: [{ id: 8, name: 'Pedro', email: 'pedro@example.com', role: 'employee', status: 'active' }], message: null, total: 2, amount: 1 })
       .mockResolvedValueOnce({ data: [{ id: 9, name: 'Ana', email: 'ana@example.com', role: 'employee', status: 'active' }], message: null, total: 2, amount: 1 })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     const result = await repository.listAssignableEmployees()
@@ -100,7 +101,7 @@ describe('cliente API de ocorrências', () => {
   it('atualiza o atendimento com status e mensagem pelo endpoint de attendance', async () => {
     const fetch = vi.fn().mockResolvedValue({ data: { id: 9, title: 'Falha', description: 'Detalhes', status: 'in_progress', resident_id: 7, created_at: '2026-10-05', updated_at: '2026-10-06' }, message: 'Andamento registrado.' })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     const result = await repository.updateAttendance('9', { status: 'in_progress', message: 'Equipe no local.' })
@@ -115,7 +116,7 @@ describe('cliente API de ocorrências', () => {
       .mockResolvedValueOnce({ data: [{ id: 1, occurrence_id: 9, uploaded_by: 7, original_name: 'foto.jpg', mime_type: 'image/jpeg', size: 1200, width: 640, height: 480, url: '/download/1' }], message: null, total: 2, amount: 1 })
       .mockResolvedValueOnce({ data: [{ id: 2, occurrence_id: 9, uploaded_by: 8, original_name: 'video.png', mime_type: 'image/png', size: 800, url: '/download/2' }], message: null, total: 2, amount: 1 })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
 
     const result = await repository.listAttachments('9')
@@ -130,7 +131,7 @@ describe('cliente API de ocorrências', () => {
   it('envia anexo como multipart image sem fixar Content-Type', async () => {
     const fetch = vi.fn().mockResolvedValue({ data: { id: 1, occurrence_id: 9, uploaded_by: 7, original_name: 'foto.jpg', mime_type: 'image/jpeg', size: 1200, url: '/download/1' }, message: 'Imagem anexada.' })
     vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
-    vi.stubGlobal('$fetch', fetch)
+    stubApiFetch(fetch)
     const repository = createApiOccurrenceRepository()
     const file = new File(['imagem'], 'foto.jpg', { type: 'image/jpeg' })
 
@@ -142,6 +143,35 @@ describe('cliente API de ocorrências', () => {
     expect(body).toBeInstanceOf(FormData)
     expect(body.get('image')).toBe(file)
     expect(options.headers).toBeUndefined()
+  })
+
+  it('exclui anexo pelo DELETE do próprio chamado', async () => {
+    const fetch = vi.fn().mockResolvedValue({ status: true })
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
+    stubApiFetch(fetch)
+    const repository = createApiOccurrenceRepository()
+
+    await repository.deleteAttachment('9', '3')
+
+    expect(fetch).toHaveBeenCalledWith('/occurrences/9/attachments/3', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('lista os moradores da abertura em todas as páginas, com a unidade', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({ data: [{ id: 5, name: 'Ana Silva', unit_id: 1, unit: { id: 1, code: 'A-101' } }], message: null, total: 2, amount: 1 })
+      .mockResolvedValueOnce({ data: [{ id: 6, name: 'Bruno Costa', unit_id: 2, unit: null }], message: null, total: 2, amount: 1 })
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: '/api' } }))
+    stubApiFetch(fetch)
+    const repository = createApiOccurrenceRepository()
+
+    const result = await repository.listOpenableResidents({ search: 'a' })
+
+    expect(result.data).toEqual([
+      { id: '5', name: 'Ana Silva', unitCode: 'A-101' },
+      { id: '6', name: 'Bruno Costa', unitCode: undefined },
+    ])
+    expect(fetch).toHaveBeenNthCalledWith(1, '/occurrence-residents', expect.objectContaining({ query: { search: 'a' } }))
+    expect(fetch).toHaveBeenNthCalledWith(2, '/occurrence-residents', expect.objectContaining({ query: { search: 'a', page: 2 } }))
   })
 
   it('monta a URL protegida do anexo', () => {

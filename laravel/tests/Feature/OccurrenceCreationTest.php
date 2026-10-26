@@ -329,4 +329,47 @@ class OccurrenceCreationTest extends TestCase
                 ->assertStatus($status);
         }
     }
+
+    public function test_lista_para_quem_o_sindico_pode_abrir_chamado(): void
+    {
+        // Só quem a abertura aceitaria: morador ativo e com unidade vigente.
+        $ana = $this->morador(['name' => 'Ana Silva']);
+        $this->morador(['name' => 'Bruno Costa']);
+        User::factory()->resident()->create(['name' => 'Carla Sem Unidade']);
+        $this->morador(['name' => 'Joana Desligada', 'status' => 'inactive']);
+        User::factory()->employee()->create(['name' => 'Pedro Manutenção']);
+
+        $this->actingAs(User::factory()->syndic()->create())
+            ->getJson('/api/occurrence-residents')
+            ->assertStatus(201)
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('data.0.id', $ana->id)
+            ->assertJsonPath('data.0.name', 'Ana Silva')
+            ->assertJsonPath('data.0.unit.code', $ana->unit->code)
+            ->assertJsonPath('data.1.name', 'Bruno Costa')
+            ->assertJsonMissingPath('data.0.email');
+    }
+
+    public function test_a_lista_de_moradores_aceita_busca_pelo_nome(): void
+    {
+        $this->morador(['name' => 'Ana Silva']);
+        $this->morador(['name' => 'Bruno Costa']);
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->getJson('/api/occurrence-residents?search=bruno')
+            ->assertStatus(201)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.name', 'Bruno Costa');
+    }
+
+    public function test_so_quem_abre_chamado_para_outro_lista_os_moradores(): void
+    {
+        $this->getJson('/api/occurrence-residents')->assertStatus(401);
+
+        foreach ([$this->morador(), User::factory()->employee()->create()] as $usuario) {
+            $this->actingAs($usuario)
+                ->getJson('/api/occurrence-residents')
+                ->assertStatus(403);
+        }
+    }
 }
