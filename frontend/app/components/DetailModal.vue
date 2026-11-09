@@ -6,7 +6,7 @@ defineEmits<{ close: [] }>()
 <template>
   <div class="modal-backdrop" @click.self="$emit('close')">
     <section class="modal detail-modal glass" role="dialog" aria-modal="true" :aria-label="title">
-      <button class="modal-close" aria-label="Fechar detalhes" @click="$emit('close')"></button>
+      <button type="button" class="modal-close" aria-label="Fechar detalhes" @click="$emit('close')"></button>
       <div class="section-icon"><SvgIcon :name="icon" /></div>
       <h2>{{ title }}</h2>
       <slot />

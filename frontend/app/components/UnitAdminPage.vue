@@ -93,7 +93,7 @@ async function requestDeactivate(unit: ManagedUnit) {
     <div v-for="unit in filteredUnits" v-else :key="unit.id" class="detail-row user-row unit-row">
       <span class="avatar user-avatar" aria-hidden="true"><SvgIcon name="building" /></span>
       <span><strong>{{ unit.number }}<span v-if="unit.block"> · Bloco {{ unit.block }}</span></strong><small>Código: {{ unit.code }}</small></span>
-      <em :class="unit.status === 'active' ? 'green' : 'gray'">{{ unit.status === 'active' ? 'Ativa' : 'Inativa' }}</em>
+      <StatusBadge :tone="unit.status === 'active' ? 'green' : 'gray'" :label="unit.status === 'active' ? 'Ativa' : 'Inativa'" />
       <button class="outline-button" type="button" @click="openEdit(unit)">{{ unit.status === 'inactive' ? 'Reativar' : 'Editar' }}</button>
       <button v-if="unit.status === 'active'" class="outline-button danger-action" type="button" @click="requestDeactivate(unit)">Inativar</button>
     </div>

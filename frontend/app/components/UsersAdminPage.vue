@@ -135,10 +135,10 @@ async function requestDeactivate(user: User) {
     <div v-for="user in filteredUsers" v-else :key="user.id" class="detail-row user-row">
       <span class="avatar user-avatar">{{ user.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase() }}</span>
       <span><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span>
-      <em :class="user.status === 'active' ? 'green' : 'gray'">{{ roleLabels[user.role] }} · {{ user.status === 'active' ? 'Ativo' : 'Inativo' }}</em>
-      <button class="outline-button" @click="openPermissions(user)">Permissões</button>
-      <button class="outline-button" @click="openEdit(user)">Editar</button>
-      <button v-if="user.status === 'active'" class="outline-button danger-action" :disabled="user.id === currentUserId" @click="requestDeactivate(user)">Inativar</button>
+      <StatusBadge :tone="user.status === 'active' ? 'green' : 'gray'" :label="`${roleLabels[user.role]} · ${user.status === 'active' ? 'Ativo' : 'Inativo'}`" />
+      <button type="button" class="outline-button" @click="openPermissions(user)">Permissões</button>
+      <button type="button" class="outline-button" @click="openEdit(user)">Editar</button>
+      <button v-if="user.status === 'active'" type="button" class="outline-button danger-action" :disabled="user.id === currentUserId" @click="requestDeactivate(user)">Inativar</button>
     </div>
   </article>
 
@@ -187,8 +187,8 @@ async function requestDeactivate(user: User) {
       <div v-else class="permissions-list">
         <div v-for="permission in permissionCatalog" :key="permission.name" class="detail-row permission-row">
           <span><strong>{{ permissionLabel(permission.name) }}</strong><small v-if="hasRolePermission(permission.name)">Concedida pelo papel</small><small v-else-if="hasDirectPermission(permission.name)">Concessão individual</small></span>
-          <button v-if="hasDirectPermission(permission.name)" class="outline-button danger-action" :disabled="permissionSaving" @click="revokePermission(permission.name)">Revogar</button>
-          <button v-else-if="!hasRolePermission(permission.name)" class="outline-button" :disabled="permissionSaving" @click="grantPermission(permission.name)">Conceder</button>
+          <button v-if="hasDirectPermission(permission.name)" type="button" class="outline-button danger-action" :disabled="permissionSaving" @click="revokePermission(permission.name)">Revogar</button>
+          <button v-else-if="!hasRolePermission(permission.name)" type="button" class="outline-button" :disabled="permissionSaving" @click="grantPermission(permission.name)">Conceder</button>
           <span v-else class="gray">Herdada</span>
         </div>
       </div>

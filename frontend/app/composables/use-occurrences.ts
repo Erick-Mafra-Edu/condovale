@@ -1,4 +1,4 @@
-import { AppError, toAppError } from '~/domain/app-error'
+import { toAppError } from '~/domain/app-error'
 import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceResident, OccurrenceStatus } from '~/domain/occurrence'
 import { useServices } from '~/services'
 
@@ -10,7 +10,7 @@ export function useOccurrences() {
   const openableResidents = ref<OccurrenceResident[]>([])
   const attachments = ref<OccurrenceAttachment[]>([])
   const loading = ref(false)
-  const error = ref<AppError | null>(null)
+  const error = ref<Error | null>(null)
 
   async function execute<T>(action: () => Promise<T>): Promise<T> {
     loading.value = true
