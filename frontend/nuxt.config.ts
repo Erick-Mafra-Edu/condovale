@@ -4,6 +4,12 @@ export default defineNuxtConfig({
     head: {
       title: 'CondoVale',
       htmlAttrs: { lang: 'pt-BR' },
+      meta: [
+        {
+          name: 'description',
+          content: 'CondoVale simplifica a convivência, reservas e comunicação do seu condomínio.',
+        },
+      ],
       script: [
         {
           innerHTML: `!function(b,e,t,r){

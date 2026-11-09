@@ -4,7 +4,7 @@ withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 
 <template>
   <div :class="['condo-brand', { compact }]">
-    <span class="brand-mark"><SvgIcon name="building" /></span>
+    <span class="brand-mark"><SvgIcon name="brand" /></span>
     <span v-if="!compact" class="brand-name">Condo<span>Vale</span></span>
     <small v-if="!compact">PESSOAS EM PRIMEIRO LUGAR</small>
   </div>
