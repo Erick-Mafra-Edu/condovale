@@ -11,9 +11,9 @@ withDefaults(defineProps<{
 
 <style scoped>
 .status-badge{display:inline-flex;align-items:center;white-space:nowrap;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:700;line-height:1.2}
-:global(html[data-theme='dark']) .status-badge.green{background:#164433;color:#83e5bb}
-:global(html[data-theme='dark']) .status-badge.gray{background:#27383d;color:#b9d1d8}
-:global(html[data-theme='dark']) .status-badge.yellow{background:#493a1e;color:#f7ca70}
-:global(html[data-theme='dark']) .status-badge.red{background:#492b30;color:#ffadb3}
-:global(html[data-theme='dark']) .status-badge.blue{background:#123e4a;color:#a9e8ee}
+.status-badge.green{background:var(--success-bg);color:var(--success-text)}
+.status-badge.gray{background:var(--surface-raised);color:var(--neutral)}
+.status-badge.yellow{background:var(--warning-bg);color:var(--warning-text)}
+.status-badge.red{background:var(--danger-bg);color:var(--danger-text)}
+.status-badge.blue{background:var(--selected);color:var(--deep)}
 </style>

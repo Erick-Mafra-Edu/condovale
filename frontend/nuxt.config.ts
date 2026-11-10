@@ -1,5 +1,11 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
+  ui: {
+    colors: {
+      primary: 'cyan',
+      neutral: 'slate',
+    },
+  },
   app: {
     head: {
       title: 'CondoVale',
@@ -11,6 +17,15 @@ export default defineNuxtConfig({
         },
       ],
       script: [
+        {
+          innerHTML: `try {
+  const savedTheme = localStorage.getItem('condovale-theme')
+  const theme = savedTheme === 'dark' || savedTheme === 'light'
+    ? savedTheme
+    : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  document.documentElement.dataset.theme = theme
+} catch {}`,
+        },
         {
           innerHTML: `!function(b,e,t,r){
   b[t]=b[t]||function(...args){(b[t].q=b[t].q||[]).push(args)};

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const appSource = readFileSync(resolve(process.cwd(), 'app/app.vue'), 'utf8')
 const topbarSource = readFileSync(resolve(process.cwd(), 'app/components/AppTopbar.vue'), 'utf8')
+const nuxtConfigSource = readFileSync(resolve(process.cwd(), 'nuxt.config.ts'), 'utf8')
 
 describe('alternância de tema', () => {
   it('propaga o tema do botão até o elemento raiz e persiste a escolha', () => {
@@ -15,5 +16,10 @@ describe('alternância de tema', () => {
 
   it('não deixa o tema do sistema sobrescrever a escolha explícita', () => {
     expect(appSource).not.toMatch(/@media\s*\(\s*prefers-color-scheme\s*:/)
+  })
+  it('aplica a preferência persistida antes da hidratação', () => {
+    expect(nuxtConfigSource).toMatch(/localStorage\.getItem\('condovale-theme'\)/)
+    expect(nuxtConfigSource).toMatch(/document\.documentElement\.dataset\.theme = theme/)
+    expect(appSource).toMatch(/document\.documentElement\.dataset\.theme === 'dark'/)
   })
 })
