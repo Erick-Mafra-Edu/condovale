@@ -78,6 +78,10 @@ watch(() => [query.filters.from, query.filters.to, query.filters.status], () => 
 .reservation-report{color:#0F172A}
 .reservation-report .report-tabs button.selected{border-color:#06B6B4;color:#0A7B7B}
 .reservation-report .status-pill{background:#E6FFFA;color:#0A7B7B}
+:global(html[data-theme='dark']) .reservation-report{color:#f1f7f8}
+:global(html[data-theme='dark']) .reservation-report .report-summary article,:global(html[data-theme='dark']) .reservation-report .report-card{background:#122936;border-color:rgba(230,255,250,.16)}
+:global(html[data-theme='dark']) .reservation-report .report-filters label,:global(html[data-theme='dark']) .reservation-report .report-toolbar p,:global(html[data-theme='dark']) .reservation-report th,:global(html[data-theme='dark']) .reservation-report .empty-row,:global(html[data-theme='dark']) .reservation-report .report-pagination{color:#a8bec9}
+:global(html[data-theme='dark']) .reservation-report .report-filters select,:global(html[data-theme='dark']) .reservation-report .report-pagination button{background:#0d2934;color:#f1f7f8;border-color:#285263}
 .reservation-report .report-actions .primary-button{background:#0A7B7B}
 .reservation-report button:focus-visible{outline:3px solid rgba(6,182,180,.35);outline-offset:2px}
 .reservation-report button:disabled{cursor:not-allowed}
