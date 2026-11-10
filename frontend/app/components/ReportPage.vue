@@ -87,9 +87,9 @@ async function renderChart() {
   })
 }
 
-watch(() => [query.filters.from, query.filters.to, query.filters.category, query.filters.status], () => { query.pagination.page = 1; renderChart() })
+watch(() => [query.filters.from, query.filters.to, query.filters.category, query.filters.status], () => { query.pagination.page = 1; void renderChart() })
 onMounted(() => {
-  renderChart()
+  void renderChart()
   window.addEventListener('condovale-theme-change', renderChart)
 })
 onBeforeUnmount(() => {
