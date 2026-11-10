@@ -94,4 +94,7 @@ async function exportExcelReport() {
 .audit-filters select:focus-visible,.report-pagination button:focus-visible{outline:3px solid rgba(6,182,180,.35);outline-offset:2px}
 :global(html[data-theme='dark']) .report-page{color:#F1F7F8}
 :global(html[data-theme='dark']) .audit-summary article,:global(html[data-theme='dark']) .audit-card{background:#122936;border-color:rgba(230,255,250,.16)}
+:global(html[data-theme='dark']) .audit-filters label,:global(html[data-theme='dark']) .audit-card-head p,:global(html[data-theme='dark']) th,:global(html[data-theme='dark']) td small,:global(html[data-theme='dark']) .metadata,:global(html[data-theme='dark']) .report-pagination{color:#a8bec9}
+:global(html[data-theme='dark']) .audit-filters select,:global(html[data-theme='dark']) .report-pagination button{background:#0d2934;color:#f1f7f8;border-color:#285263}
+:global(html[data-theme='dark']) th,:global(html[data-theme='dark']) td{border-color:rgba(230,255,250,.14)}
 </style>

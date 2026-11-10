@@ -44,4 +44,7 @@ function submit() {
 :global(html[data-theme='dark']) .profile-page{color:#F1F7F8}
 :global(html[data-theme='dark']) .profile-summary,:global(html[data-theme='dark']) .profile-form{background:#122936}
 :global(html[data-theme='dark']) .profile-form input{background:#0F2731;color:#F1F7F8}
+:global(html[data-theme='dark']) .profile-heading p,:global(html[data-theme='dark']) .form-heading p,:global(html[data-theme='dark']) .profile-summary>p,:global(html[data-theme='dark']) .profile-summary dt,:global(html[data-theme='dark']) .protected-data p{color:#a8bec9}
+:global(html[data-theme='dark']) .profile-form label{color:#d6e8eb}
+:global(html[data-theme='dark']) .protected-data{background:#123b4a;border-color:#285261}
 </style>

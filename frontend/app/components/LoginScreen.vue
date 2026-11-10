@@ -63,6 +63,10 @@ function submit() {
 :global(html[data-theme='dark']) .login-shell{background:#0F172A;color:#E6FFFA}
 :global(html[data-theme='dark']) .login-card{background:#122936;color:#F1F7F8;border-color:rgba(230,255,250,.16)}
 :global(html[data-theme='dark']) .login-card input{background:#0F2731;color:#F1F7F8;border-color:#285263}
+:global(html[data-theme='dark']) .login-art{background:#12343e;color:#f1f7f8;border-color:rgba(230,255,250,.16)}
+:global(html[data-theme='dark']) .login-brand small,:global(html[data-theme='dark']) .login-message p,:global(html[data-theme='dark']) .login-intro,:global(html[data-theme='dark']) .login-note small,:global(html[data-theme='dark']) .demo-access{color:#a8bec9}
+:global(html[data-theme='dark']) .login-note{background:rgba(13,41,52,.82);border-color:rgba(230,255,250,.16)}
+:global(html[data-theme='dark']) .role-chip{background:#0d2934;color:#d6e8eb;border-color:#285263}
 /* Solid surfaces keep hierarchy calm; Mica is reserved for the floating note. */
 .login-art{background:#E6FFFA}
 .login-card{background:#fff}

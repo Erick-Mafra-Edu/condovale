@@ -113,4 +113,7 @@ onBeforeUnmount(() => chart?.dispose())
 .report-pagination button:focus-visible,.report-tabs button:focus-visible{outline:3px solid rgba(6,182,180,.35);outline-offset:2px}
 :global(html[data-theme='dark']) .report-page{color:#F1F7F8}
 :global(html[data-theme='dark']) .report-summary article,:global(html[data-theme='dark']) .report-card{background:#122936;border-color:rgba(230,255,250,.16)}
+:global(html[data-theme='dark']) .report-filters label,:global(html[data-theme='dark']) .report-toolbar p,:global(html[data-theme='dark']) .report-card-head p,:global(html[data-theme='dark']) th,:global(html[data-theme='dark']) td small,:global(html[data-theme='dark']) .empty-row,:global(html[data-theme='dark']) .report-pagination{color:#a8bec9}
+:global(html[data-theme='dark']) .report-filters select,:global(html[data-theme='dark']) .report-filters input,:global(html[data-theme='dark']) .report-pagination button{background:#0d2934;color:#f1f7f8;border-color:#285263}
+:global(html[data-theme='dark']) th,:global(html[data-theme='dark']) td{border-color:rgba(230,255,250,.14)}
 </style>
