@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.3...v1.3.0) (2026-11-10)
+
+
+### Features
+
+* **frontend:** refresh themes, icons and form feedback ([4fd1772](https://github.com/Erick-Mafra-Edu/condovale/commit/4fd17720e2a86bf51f4c989764ae3b9f3fa45291))
+* **frontend:** renovar temas, ícones e feedback de formulários ([a17326e](https://github.com/Erick-Mafra-Edu/condovale/commit/a17326ed5aaa02379e9d3fa257c2426c5ab5f7ea))
+
 ## [1.2.3](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.2.2...v1.2.3) (2026-10-26)
 
 
