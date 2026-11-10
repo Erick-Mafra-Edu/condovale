@@ -12,6 +12,7 @@ describe('alternância de tema', () => {
     expect(appSource).toMatch(/:theme="theme"[\s\S]*@theme-change="setTheme"/)
     expect(appSource).toMatch(/document\.documentElement\.dataset\.theme = nextTheme/)
     expect(appSource).toMatch(/localStorage\.setItem\('condovale-theme', nextTheme\)/)
+    expect(appSource).toMatch(/dispatchEvent\(new Event\('condovale-theme-change'\)\)/)
   })
 
   it('não deixa o tema do sistema sobrescrever a escolha explícita', () => {

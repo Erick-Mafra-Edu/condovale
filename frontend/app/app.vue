@@ -41,6 +41,7 @@ function applyTheme(nextTheme: 'light' | 'dark') {
   if (import.meta.client) {
     document.documentElement.dataset.theme = nextTheme
     localStorage.setItem('condovale-theme', nextTheme)
+    window.dispatchEvent(new Event('condovale-theme-change'))
   }
 }
 
