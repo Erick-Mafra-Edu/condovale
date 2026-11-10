@@ -1,11 +1,5 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
-  ui: {
-    colors: {
-      primary: 'cyan',
-      neutral: 'slate',
-    },
-  },
   app: {
     head: {
       title: 'CondoVale',
