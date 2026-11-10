@@ -139,6 +139,15 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
       .map(({ id, name }) => ({ id, name }))
     return response(employees)
   },
+  async listOpenableResidents(query) {
+    await simulateRequest()
+    // Mesma régua da abertura: só morador ativo e com unidade.
+    const residents = mockUsers
+      .filter(user => user.role === 'resident' && user.status === 'active' && user.unitId)
+      .filter(user => !query?.search || user.name.toLowerCase().includes(query.search.toLowerCase()))
+      .map(({ id, name }) => ({ id, name }))
+    return response(residents)
+  },
   async listAttachments(id) {
     await simulateRequest()
     ensureOccurrence(id)
@@ -156,6 +165,19 @@ export const mockOccurrenceRepository: OccurrenceRepository = {
     attachments.push(attachment)
     record(occurrence, 'comment', user.id, undefined, `Imagem anexada: ${file.name}.`)
     return response(attachment)
+  },
+  async deleteAttachment(id, attachmentId) {
+    await simulateRequest()
+    const user = authenticatedUser()
+    const occurrence = ensureOccurrence(id)
+    const index = attachments.findIndex(item => item.id === attachmentId && item.occurrenceId === id)
+    if (index < 0) throw new AppError('NOT_FOUND', 'Imagem não encontrada nesta ocorrência')
+    if (['completed', 'cancelled'].includes(occurrence.status)) throw new AppError('CONFLICT', 'As imagens de um chamado encerrado não mudam mais')
+    const attachment = attachments[index]!
+    if (attachment.uploadedBy !== user.id && !can(user.role, 'close-any-occurrence', user.permissions)) throw new AppError('FORBIDDEN', 'Você só pode excluir as imagens que você enviou.')
+    attachments.splice(index, 1)
+    record(occurrence, 'comment', user.id, undefined, `Imagem removida: ${attachment.originalName}.`)
+    return response(null)
   },
   attachmentUrl(id, attachmentId) {
     return `/api/occurrences/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`

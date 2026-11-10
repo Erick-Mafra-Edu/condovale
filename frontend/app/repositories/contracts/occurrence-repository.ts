@@ -1,5 +1,5 @@
 import type { ApiResponse } from '~/domain/common'
-import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceStatus } from '~/domain/occurrence'
+import type { CreateOccurrenceInput, FinishOccurrenceInput, Occurrence, OccurrenceAttendanceInput, OccurrenceAttachment, OccurrenceEmployee, OccurrenceHistory, OccurrenceResident, OccurrenceStatus } from '~/domain/occurrence'
 
 export interface OccurrenceRepository {
   list(): Promise<ApiResponse<Occurrence[]>>
@@ -11,7 +11,9 @@ export interface OccurrenceRepository {
   finish(id: string, input: FinishOccurrenceInput | string): Promise<ApiResponse<Occurrence>>
   history(id: string): Promise<ApiResponse<OccurrenceHistory[]>>
   listAssignableEmployees(query?: { search?: string }): Promise<ApiResponse<OccurrenceEmployee[]>>
+  listOpenableResidents(query?: { search?: string }): Promise<ApiResponse<OccurrenceResident[]>>
   listAttachments(id: string): Promise<ApiResponse<OccurrenceAttachment[]>>
   uploadAttachment(id: string, file: File): Promise<ApiResponse<OccurrenceAttachment>>
+  deleteAttachment(id: string, attachmentId: string): Promise<ApiResponse<null>>
   attachmentUrl(id: string, attachmentId: string): string
 }

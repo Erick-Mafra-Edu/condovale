@@ -14,3 +14,7 @@ defineEmits<{ close: [] }>()
     </section>
   </div>
 </template>
+
+<style scoped>
+.detail-modal{max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain}
+</style>

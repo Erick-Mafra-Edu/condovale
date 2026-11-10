@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Actions\CheckOccurrenceAccessAction;
+use App\Http\Actions\DeleteOccurrenceAttachmentAction;
 use App\Http\Actions\HandlePaginationAction;
 use App\Http\Actions\StoreOccurrenceAttachmentAction;
 use App\Http\Requests\DefaultPaginationRequest;
@@ -62,6 +63,31 @@ class OccurrenceAttachmentController extends Controller
             DB::commit();
 
             return MessageService::success("Imagem anexada à ocorrência {$occurrence->id}.", $attachment);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+
+            return MessageService::throwable($th);
+        }
+    }
+
+    public function destroy(int $id, int $attachment)
+    {
+        $id = SanitizeUtil::sanitizeInt($id);
+        $attachmentId = SanitizeUtil::sanitizeInt($attachment);
+        $occurrence = Occurrence::find($id);
+
+        if (! $occurrence) {
+            return MessageService::error("Ocorrência {$id} não encontrada.", 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $removed = DeleteOccurrenceAttachmentAction::execute($occurrence, AuthUtil::user(), $attachmentId);
+
+            DB::commit();
+
+            return MessageService::success("Imagem {$removed->id} removida da ocorrência {$occurrence->id}.");
         } catch (\Throwable $th) {
             DB::rollBack();
 

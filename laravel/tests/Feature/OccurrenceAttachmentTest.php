@@ -453,10 +453,154 @@ class OccurrenceAttachmentTest extends TestCase
             ->assertJsonPath('message', 'Ocorrência 999 não encontrada.');
     }
 
+    private function excluir(User $autor, Occurrence $chamado, int $attachmentId)
+    {
+        return $this->actingAs($autor)->deleteJson("/api/occurrences/{$chamado->id}/attachments/{$attachmentId}");
+    }
+
+    public function test_quem_enviou_exclui_a_propria_imagem(): void
+    {
+        $morador = User::factory()->resident()->create(['name' => 'Ana Silva']);
+        $chamado = $this->chamadoDe($morador, ['title' => 'Vazamento no corredor']);
+        $id = $this->enviar($morador, $chamado, UploadedFile::fake()->image('errada.jpg', 100, 100))->json('data.id');
+        $path = OccurrenceAttachment::findOrFail($id)->path;
+
+        $this->excluir($morador, $chamado, $id)
+            ->assertStatus(201)
+            ->assertJsonPath('status', true);
+
+        $this->assertDatabaseMissing('occurrence_attachments', ['id' => $id]);
+        Storage::disk(self::DISCO)->assertMissing($path);
+
+        $this->assertDatabaseHas('occurrence_histories', [
+            'occurrence_id' => $chamado->id,
+            'user_id' => $morador->id,
+            'type' => OccurrenceHistoryType::Comment->value,
+            'message' => 'Imagem removida: errada.jpg.',
+        ]);
+
+        $this->assertDatabaseHas('logs', [
+            'type_log_id' => TypeLogEnum::OCCURRENCE->value,
+            'description' => "Imagem {$id} removida da ocorrência {$chamado->id} Vazamento no corredor por Ana Silva.",
+        ]);
+    }
+
+    public function test_sindico_e_administracao_excluem_a_imagem_de_qualquer_pessoa(): void
+    {
+        // Respondem pelo que fica exposto no chamado: a foto que mostra o
+        // vizinho, o documento fotografado sem querer.
+        $morador = User::factory()->resident()->create();
+        $chamado = $this->chamadoDe($morador);
+
+        foreach ([User::factory()->syndic()->create(), User::factory()->admin()->create()] as $gestor) {
+            $id = $this->enviar($morador, $chamado, UploadedFile::fake()->image('vizinho.jpg', 100, 100))->json('data.id');
+
+            $this->excluir($gestor, $chamado, $id)->assertStatus(201);
+            $this->assertDatabaseMissing('occurrence_attachments', ['id' => $id]);
+        }
+    }
+
+    public function test_ninguem_mais_exclui_a_imagem_de_outra_pessoa(): void
+    {
+        $morador = User::factory()->resident()->create();
+        $funcionario = User::factory()->employee()->create();
+        $chamado = Occurrence::factory()->inProgressWith($funcionario)->create(['resident_id' => $morador->id]);
+
+        $doMorador = $this->enviar($morador, $chamado, UploadedFile::fake()->image('problema.jpg', 100, 100))->json('data.id');
+        $doFuncionario = $this->enviar($funcionario, $chamado, UploadedFile::fake()->image('conserto.jpg', 100, 100))->json('data.id');
+
+        $this->excluir($funcionario, $chamado, $doMorador)
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'Você só pode excluir as imagens que você enviou.');
+
+        $this->excluir($morador, $chamado, $doFuncionario)->assertStatus(403);
+
+        $this->assertSame(2, OccurrenceAttachment::count());
+    }
+
+    public function test_chamado_encerrado_nao_perde_imagem(): void
+    {
+        // A imagem é parte da evidência do que foi decidido: nem a
+        // administração a tira depois do encerramento.
+        $morador = User::factory()->resident()->create();
+
+        foreach ([OccurrenceStatus::Completed, OccurrenceStatus::Cancelled] as $final) {
+            $chamado = $this->chamadoDe($morador);
+            $id = $this->enviar($morador, $chamado, UploadedFile::fake()->image('evidencia.jpg', 100, 100))->json('data.id');
+
+            Occurrence::whereKey($chamado->id)->update(['status' => $final->value]);
+
+            foreach ([$morador, User::factory()->admin()->create()] as $autor) {
+                $this->excluir($autor, $chamado, $id)
+                    ->assertStatus(409)
+                    ->assertJsonPath('message', "Este chamado está {$final->label()}: as imagens dele não mudam mais.");
+            }
+
+            $this->assertDatabaseHas('occurrence_attachments', ['id' => $id]);
+        }
+    }
+
+    public function test_quem_nao_ve_o_chamado_nao_exclui_nem_descobre_a_imagem(): void
+    {
+        $morador = User::factory()->resident()->create();
+        $chamado = $this->chamadoDe($morador);
+        $id = $this->enviar($morador, $chamado, UploadedFile::fake()->image('vazamento.jpg', 100, 100))->json('data.id');
+        $estranho = User::factory()->resident()->create();
+
+        // A mesma resposta para a imagem que existe e para a que não existe.
+        $this->excluir($estranho, $chamado, $id)->assertStatus(403);
+        $this->excluir($estranho, $chamado, 999)->assertStatus(403);
+
+        $this->assertDatabaseHas('occurrence_attachments', ['id' => $id]);
+    }
+
+    public function test_a_exclusao_so_vale_dentro_do_proprio_chamado(): void
+    {
+        $morador = User::factory()->resident()->create();
+        $meu = $this->chamadoDe($morador);
+        $alheio = $this->chamadoDe(User::factory()->resident()->create());
+        $idAlheio = $this->enviar($alheio->resident, $alheio, UploadedFile::fake()->image('alheia.jpg', 100, 100))->json('data.id');
+
+        $this->excluir(User::factory()->admin()->create(), $meu, $idAlheio)
+            ->assertStatus(404)
+            ->assertJsonPath('message', "Imagem {$idAlheio} não encontrada nesta ocorrência.");
+
+        $this->assertDatabaseHas('occurrence_attachments', ['id' => $idAlheio]);
+    }
+
+    public function test_excluir_libera_a_vaga_no_limite_por_chamado(): void
+    {
+        $morador = User::factory()->resident()->create();
+        $chamado = $this->chamadoDe($morador);
+
+        $ids = array_map(
+            fn (int $i) => $this->enviar($morador, $chamado, UploadedFile::fake()->image("foto{$i}.jpg", 100, 100))->json('data.id'),
+            range(1, 3)
+        );
+
+        $this->excluir($morador, $chamado, $ids[0])->assertStatus(201);
+
+        $this->enviar($morador, $chamado, UploadedFile::fake()->image('certa.jpg', 100, 100))->assertStatus(201);
+    }
+
+    public function test_exclui_mesmo_quando_o_arquivo_ja_sumiu_do_disco(): void
+    {
+        // Sem isto, a linha órfã ocuparia para sempre uma das vagas do chamado.
+        $morador = User::factory()->resident()->create();
+        $chamado = $this->chamadoDe($morador);
+        $id = $this->enviar($morador, $chamado, UploadedFile::fake()->image('vazamento.jpg', 100, 100))->json('data.id');
+
+        Storage::disk(self::DISCO)->delete(OccurrenceAttachment::find($id)->path);
+
+        $this->excluir($morador, $chamado, $id)->assertStatus(201);
+        $this->assertDatabaseMissing('occurrence_attachments', ['id' => $id]);
+    }
+
     public function test_exige_autenticacao(): void
     {
         $this->getJson('/api/occurrences/1/attachments')->assertStatus(401);
         $this->postJson('/api/occurrences/1/attachments')->assertStatus(401);
         $this->getJson('/api/occurrences/1/attachments/1')->assertStatus(401);
+        $this->deleteJson('/api/occurrences/1/attachments/1')->assertStatus(401);
     }
 }

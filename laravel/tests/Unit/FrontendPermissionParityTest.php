@@ -39,14 +39,14 @@ class FrontendPermissionParityTest extends TestCase
      */
     private const DIVERGENCIAS_POR_PAPEL = [
         // O card de encaminhamento deu ao síndico a análise e o encaminhamento,
-        // e ao funcionário o repasse do próprio chamado. O frontend ainda não
-        // os conhece.
+        // e o frontend ainda não os deu a ele.
         //
         // As divergências anteriores — update-own-profile nos quatro perfis,
         // manage-users e os casos de uso de abertura, tipos e baixa — foram
-        // fechadas pelo frontend no PR #25 e saíram desta lista.
+        // fechadas pelo frontend no PR #25, e o repasse do funcionário
+        // (hand-over-occurrence) no PR #26. Todas saíram desta lista.
         'syndic' => ['analyze-occurrences', 'assign-occurrence'],
-        'employee' => ['hand-over-occurrence'],
+        'employee' => [],
         'admin' => [],
         'resident' => [],
     ];
@@ -60,11 +60,7 @@ class FrontendPermissionParityTest extends TestCase
      *
      * @var list<string>
      */
-    private const CASOS_SO_DE_UM_LADO = [
-        // Só existe no backend até o frontend oferecer ao funcionário o
-        // repasse do próprio chamado.
-        'hand-over-occurrence',
-    ];
+    private const CASOS_SO_DE_UM_LADO = [];
 
     private function fonte(): string
     {

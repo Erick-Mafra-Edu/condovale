@@ -298,6 +298,11 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
     // a listagem de usuários — saberia para quem encaminhar.
     Route::get('assignable-employees', [OccurrenceController::class, 'assignableEmployees'])
         ->middleware('use.case:assign-occurrence,hand-over-occurrence');
+
+    // Para o seletor de morador da abertura em nome de outro: pelo mesmo
+    // motivo, sem ela o síndico teria de saber o id de cor.
+    Route::get('occurrence-residents', [OccurrenceController::class, 'openableResidents'])
+        ->middleware('use.case:open-occurrence-for-resident');
 });
 
 /*
@@ -347,6 +352,9 @@ Route::middleware([
     Route::post('occurrences/{id}/attachments', [OccurrenceAttachmentController::class, 'store']);
     Route::get('occurrences/{id}/attachments/{attachment}', [OccurrenceAttachmentController::class, 'show'])
         ->name('occurrences.attachments.show');
+    // Quem enviou tira a própria imagem; síndico e administração, qualquer
+    // uma. A regra mora na DeleteOccurrenceAttachmentAction.
+    Route::delete('occurrences/{id}/attachments/{attachment}', [OccurrenceAttachmentController::class, 'destroy']);
 });
 
 /*

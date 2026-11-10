@@ -72,4 +72,40 @@ describe('fluxo Sprint 3 de ocorrências', () => {
       expect(item).toMatchObject({ status: 'assigned', assignedEmployeeId: 'user-employee-security' })
     }
   })
+
+  it('exclui a própria imagem e deixa a gestão excluir qualquer uma', async () => {
+    const item = occurrence('in_progress')
+    item.assignedEmployeeId = 'user-employee'
+    const file = new File(['imagem'], 'errada.jpg', { type: 'image/jpeg' })
+
+    setMockAuthenticatedUserId('user-01')
+    const doMorador = (await mockOccurrenceRepository.uploadAttachment(item.id, file)).data
+    setMockAuthenticatedUserId('user-employee')
+    const doFuncionario = (await mockOccurrenceRepository.uploadAttachment(item.id, file)).data
+
+    await expect(mockOccurrenceRepository.deleteAttachment(item.id, doMorador.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await mockOccurrenceRepository.deleteAttachment(item.id, doFuncionario.id)
+
+    setMockAuthenticatedUserId('user-syndic')
+    await mockOccurrenceRepository.deleteAttachment(item.id, doMorador.id)
+
+    expect((await mockOccurrenceRepository.listAttachments(item.id)).data).toEqual([])
+    expect((await mockOccurrenceRepository.history(item.id)).data.map(entry => entry.message)).toContain('Imagem removida: errada.jpg.')
+  })
+
+  it('não exclui imagem de chamado encerrado', async () => {
+    const item = occurrence()
+    setMockAuthenticatedUserId('user-01')
+    const attachment = (await mockOccurrenceRepository.uploadAttachment(item.id, new File(['imagem'], 'evidencia.jpg', { type: 'image/jpeg' }))).data
+    item.status = 'completed'
+
+    setMockAuthenticatedUserId('user-admin')
+    await expect(mockOccurrenceRepository.deleteAttachment(item.id, attachment.id)).rejects.toMatchObject({ code: 'CONFLICT' })
+  })
+
+  it('lista para abertura só moradores ativos com unidade', async () => {
+    const result = await mockOccurrenceRepository.listOpenableResidents()
+
+    expect(result.data).toEqual([{ id: 'user-01', name: 'Morador exemplo' }])
+  })
 })

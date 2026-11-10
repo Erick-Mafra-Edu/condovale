@@ -42,6 +42,13 @@ export interface OccurrenceEmployee {
   name: string
 }
 
+/** Morador para quem o síndico ou a administração pode abrir um chamado. */
+export interface OccurrenceResident {
+  id: string
+  name: string
+  unitCode?: string
+}
+
 export interface OccurrenceHistory {
   id: string
   occurrenceId: string

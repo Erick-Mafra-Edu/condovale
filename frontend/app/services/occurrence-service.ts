@@ -39,8 +39,10 @@ export function createOccurrenceService(repository: OccurrenceRepository) {
     },
     history: (id: string) => repository.history(id),
     assignableEmployees: (query?: { search?: string }) => repository.listAssignableEmployees(query),
+    openableResidents: (query?: { search?: string }) => repository.listOpenableResidents(query),
     listAttachments: (id: string) => repository.listAttachments(id),
     uploadAttachment: (id: string, file: File) => repository.uploadAttachment(id, file),
+    deleteAttachment: (id: string, attachmentId: string) => repository.deleteAttachment(id, attachmentId),
     attachmentUrl: (id: string, attachmentId: string) => repository.attachmentUrl(id, attachmentId),
   }
 }
