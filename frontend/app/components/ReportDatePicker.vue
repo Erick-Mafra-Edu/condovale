@@ -48,4 +48,9 @@ function formatCalendarHeading(date: DateValue) {
 .date-modal-close:focus-visible,.date-modal-cancel:focus-visible,.report-date-input:focus-visible{outline-color:rgba(6,182,180,.35)}
 .date-modal{background:rgba(255,255,255,.88);backdrop-filter:blur(8px);border-color:rgba(10,123,123,.16);box-shadow:0 24px 64px rgba(15,23,42,.18)}
 :global(html[data-theme='dark']) .date-modal{background:rgba(18,41,54,.92);backdrop-filter:blur(8px);border-color:rgba(230,255,250,.16);box-shadow:0 24px 64px rgba(0,0,0,.34)}
+:global(html[data-theme='dark']) .report-date-field{color:#d6e8eb}
+:global(html[data-theme='dark']) .report-date-input,:global(html[data-theme='dark']) .date-modal-close{background:#0d2934;color:#f1f7f8;border-color:#285263}
+:global(html[data-theme='dark']) .report-date-input:hover{background:#123e4a}
+:global(html[data-theme='dark']) .calendar-heading,:global(html[data-theme='dark']) .date-modal :deep([data-slot="cellTrigger"]){color:#f1f7f8}
+:global(html[data-theme='dark']) .date-modal-hint,:global(html[data-theme='dark']) .date-modal :deep([data-slot="headCell"]){color:#a8bec9}
 </style>

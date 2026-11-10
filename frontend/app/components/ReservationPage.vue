@@ -183,4 +183,9 @@ onBeforeUnmount(() => window.removeEventListener('pointerup', stopSlotDrag))
 :global(html[data-theme='dark']) .reservation-page{color:#F1F7F8}
 :global(html[data-theme='dark']) .reservation-calendar,:global(html[data-theme='dark']) .reservation-card,:global(html[data-theme='dark']) .reservation-empty{background:#122936;border-color:rgba(230,255,250,.16)}
 :global(html[data-theme='dark']) .day-cell{background:#15343d;color:#F1F7F8}
+:global(html[data-theme='dark']) .area-picker select,:global(html[data-theme='dark']) .calendar-nav,:global(html[data-theme='dark']) .booking-mode button,:global(html[data-theme='dark']) .slot-picker-head>button{background:#0d2934;color:#f1f7f8;border-color:#285263}
+:global(html[data-theme='dark']) .day-detail-table td{color:#f1f7f8}
+:global(html[data-theme='dark']) .time-slot{background:#0d2934;color:#bde9eb;border-color:#285263}
+:global(html[data-theme='dark']) .time-slot:hover,:global(html[data-theme='dark']) .time-slot.selected,:global(html[data-theme='dark']) .booking-mode button.selected{background:#123e4a;border-color:#06b6b4;color:#d8fffc}
+:global(html[data-theme='dark']) .time-slot.occupied{background:#3e242a;color:#ffb6bc;border-color:#8c3d45}
 </style>
