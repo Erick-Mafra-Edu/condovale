@@ -43,4 +43,9 @@ async function submit() {
 .password-change-card h1{margin:12px 0 8px;font-size:30px;letter-spacing:-.04em}.password-change-card p{color:var(--neutral);line-height:1.5}
 .password-change-card label{display:block;margin-top:18px;font-size:12px;font-weight:700}.password-change-card input{display:block;width:100%;margin-top:7px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--navy);font:inherit}
 .password-change-card .primary-button{width:100%;justify-content:center;margin-top:24px}.password-change-card .outline-button{width:100%;justify-content:center;margin-top:12px}.form-error{color:#b4232c!important;font-size:12px}
+.password-page input:focus{outline-color:rgba(6,182,180,.35);border-color:#06B6B4}
+.password-page .primary-button{background:#0A7B7B}
+.password-feedback.success{background:#E6FFFA;color:#0A7B7B}
+:global(html[data-theme='dark']) .password-page{color:#F1F7F8}
+:global(html[data-theme='dark']) .password-page input{background:#0F2731;color:#F1F7F8;border-color:#285263}
 </style>

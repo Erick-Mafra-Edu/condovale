@@ -102,6 +102,6 @@ async function publish() {
 </template>
 
 <style scoped>
-.notice-row{align-items:flex-start}.notice-row p{margin:7px 0 0;color:#36566d;line-height:1.5}.notice-row small{display:block;margin-top:4px}
-@media(prefers-color-scheme:dark){.notice-row p{color:#b9d1d8}}
+.notice-row{align-items:flex-start}.notice-row p{margin:7px 0 0;color:var(--text-secondary, #64748b);line-height:1.5}.notice-row small{display:block;margin-top:4px}
+:global(html[data-theme='dark']) .notice-row p{color:#b9d1d8}
 </style>

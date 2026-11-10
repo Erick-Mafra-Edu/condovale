@@ -8,6 +8,7 @@ import type { CreateUnitOccupancyInput } from '~/domain/unit-occupancy'
 import OccupancyPage from '~/components/OccupancyPage.vue'
 
 const active = ref('Início')
+const theme = ref<'light' | 'dark'>('light')
 const showOccurrence = ref(false)
 const occurrenceTitle = ref('')
 const occurrenceCategory = ref('')
@@ -36,6 +37,18 @@ const selectedAreaId = ref<string | null>(null)
 const showNotifications = ref(false)
 const detailTarget = ref<{ type: 'occurrence' | 'reservation' | 'notice'; id: string } | null>(null)
 const isScrolled = ref(false)
+
+function applyTheme(nextTheme: 'light' | 'dark') {
+  theme.value = nextTheme
+  if (import.meta.client) {
+    document.documentElement.dataset.theme = nextTheme
+    localStorage.setItem('condovale-theme', nextTheme)
+  }
+}
+
+function setTheme(nextTheme: 'light' | 'dark') {
+  applyTheme(nextTheme)
+}
 
 const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, changePassword, logout } = useAuth()
 const { public: runtimeConfig } = useRuntimeConfig()
@@ -378,6 +391,9 @@ function updateScrollMaterial() {
 }
 
 onMounted(() => {
+  const savedTheme = localStorage.getItem('condovale-theme')
+  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : systemTheme)
   restoreSession().then(user => {
     if (user && !user.mustChangePassword) return loadDashboard()
   }).catch(() => undefined)
@@ -419,7 +435,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
     <AppSidebar :active="active" :items="visibleNavItems" :user="authUser" :units="units" @select="selectNav" />
 
     <main class="main-content">
-      <AppTopbar :name="residentName" :initials="residentInitials" :notification-count="publishedNotices.length" :compact="isScrolled" :can-open-profile="hasAccess('update-own-profile')" @notifications="showNotifications = !showNotifications" @profile="selectNav('Meu cadastro')" @logout="handleLogout" />
+      <AppTopbar :name="residentName" :initials="residentInitials" :notification-count="publishedNotices.length" :compact="isScrolled" :can-open-profile="hasAccess('update-own-profile')" :theme="theme" @theme-change="setTheme" @notifications="showNotifications = !showNotifications" @profile="selectNav('Meu cadastro')" @logout="handleLogout" />
       <aside v-if="showNotifications" class="notifications-popover glass"><div class="popover-head"><strong>Comunicados</strong><button aria-label="Fechar notificações" @click="showNotifications = false">×</button></div><div class="notifications-list"><div v-if="!publishedNotices.length" class="empty-row">Nenhum comunicado novo.</div><button v-for="notice in publishedNotices" :key="notice.id" class="notification-item" @click="active = 'Comunicados'; showNotifications = false"><SvgIcon name="message" /><span><strong>{{ notice.title }}</strong><small>{{ noticeMeta(notice.publishedAt, notice.status) }}</small></span></button></div></aside>
 
       <div class="page-wrap">
@@ -667,4 +683,15 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
   .mds-block { background: linear-gradient(90deg, #0d2535 25%, #163545 50%, #0d2535 75%); background-size: 200% 100%; }
   .mds-row { background: rgba(15,45,58,.52); }
 }
+[data-theme="light"]{color-scheme:light;--primary:#0a7b7b;--secondary:#06b6b4;--soft:#e6fffa;--navy:#0f172a;--neutral:#64748b;--line:#d8e7e6;--bg:#f4fbfa}
+[data-theme="dark"]{color-scheme:dark;--primary:#06b6b4;--secondary:#38d9d4;--soft:#123b4a;--navy:#edfafa;--neutral:#a8bec9;--line:#285261;--bg:#071f2a}
+.theme-toggle{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;color:var(--neutral);background:transparent;font-size:18px;line-height:1}
+.theme-toggle:focus-visible{outline:3px solid rgba(245,158,11,.48);outline-offset:3px}
+[data-theme="light"] .main-content{background:var(--bg)!important}[data-theme="dark"] .main-content{background:#071f2a!important}
+[data-theme="dark"] .modal{opacity:1;filter:none;background:rgba(16,47,59,.94);color:#f1fafa;border:1px solid #3b6772}
+[data-theme="dark"] .modal h2,[data-theme="dark"] .modal label{color:#f1fafa}[data-theme="dark"] .modal p{color:#b8d5d8}
+[data-theme="dark"] .modal input,[data-theme="dark"] .modal select,[data-theme="dark"] .modal textarea{color:#f1fafa;background:#0d2934;border-color:#3b6772}
+[data-theme="dark"] .modal-backdrop{background:rgba(0,10,16,.72)}
+[data-theme="dark"] .welcome-banner{background:#103944;color:#f1fafa}[data-theme="dark"] .welcome-banner p{color:#b8d5d8}[data-theme="dark"] .people-illustration,[data-theme="dark"] .banner-logo{color:#56d8df}
+[data-theme="light"] .modal{background:rgba(255,255,255,.96);color:var(--navy)}
 </style>
