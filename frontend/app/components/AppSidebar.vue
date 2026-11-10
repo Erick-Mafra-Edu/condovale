@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Unit, User } from '~/domain/user'
-const props = defineProps<{ active: string; items: ReadonlyArray<{ label: string; icon: 'home' | 'alert' | 'calendar' | 'message' | 'building' | 'users' | 'profile' | 'occurrences' | 'documents' }>; user: User; units: Unit[] }>()
-const unit = computed(() => props.user.unitId ? props.units.find(item => item.id === props.user.unitId) : undefined)
-const unitLabel = computed(() => unit.value ? `${unit.value.block ? `Bloco ${unit.value.block} · ` : ''}Unidade ${unit.value.number}` : props.user.unitId ? `Unidade vinculada #${props.user.unitId}` : 'Sem unidade vinculada')
+
+const props = defineProps<{ active: string; items: ReadonlyArray<{ label: string; icon: 'home' | 'alert' | 'calendar' | 'message' | 'building' | 'users' | 'profile' | 'occurrences' | 'documents' }>; user?: User; units?: Unit[] }>()
+const unit = computed(() => props.user?.unitId ? props.units?.find(item => item.id === props.user?.unitId) : undefined)
+const unitLabel = computed(() => unit.value ? `${unit.value.block ? `Bloco ${unit.value.block} · ` : ''}Unidade ${unit.value.number}` : props.user?.unitId ? `Unidade vinculada #${props.user.unitId}` : 'Sem unidade vinculada')
 defineEmits<{ select: [label: string] }>()
 </script>
 

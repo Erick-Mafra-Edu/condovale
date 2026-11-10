@@ -73,21 +73,29 @@ function changePage(page: number) {
 async function renderChart() {
   if (!import.meta.client || !chartRef.value) return
   const { init } = await import('echarts')
+  const styles = getComputedStyle(document.documentElement)
+  const color = (token: string) => styles.getPropertyValue(token).trim()
   chart?.dispose()
   chart = init(chartRef.value)
   chart.setOption({
     animation: false,
-    color: ['#008c9e'],
+    color: [color('--primary')],
     grid: { left: 38, right: 20, top: 24, bottom: 34 },
-    xAxis: { type: 'category', data: chartData.value.map(item => item.name), axisLabel: { color: '#64748b' } },
-    yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#64748b' }, splitLine: { lineStyle: { color: '#e4ecee' } } },
+    xAxis: { type: 'category', data: chartData.value.map(item => item.name), axisLabel: { color: color('--neutral') } },
+    yAxis: { type: 'value', minInterval: 1, axisLabel: { color: color('--neutral') }, splitLine: { lineStyle: { color: color('--line') } } },
     series: [{ type: 'bar', barMaxWidth: 42, data: chartData.value.map(item => item.value), itemStyle: { borderRadius: [8, 8, 0, 0] } }],
   })
 }
 
-watch(() => [query.filters.from, query.filters.to, query.filters.category, query.filters.status], () => { query.pagination.page = 1; renderChart() })
-onMounted(renderChart)
-onBeforeUnmount(() => chart?.dispose())
+watch(() => [query.filters.from, query.filters.to, query.filters.category, query.filters.status], () => { query.pagination.page = 1; void renderChart() })
+onMounted(() => {
+  void renderChart()
+  window.addEventListener('condovale-theme-change', renderChart)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('condovale-theme-change', renderChart)
+  chart?.dispose()
+})
 </script>
 
 <template>
@@ -106,14 +114,5 @@ onBeforeUnmount(() => chart?.dispose())
 .report-page{max-width:1180px;margin:0 auto;padding-bottom:40px;color:#102a43}.report-toolbar{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;margin-bottom:22px}.report-toolbar h2{margin:8px 0 5px;font-size:30px;letter-spacing:-.04em}.report-toolbar p,.report-card-head p{margin:0;color:#64748b;font-size:13px}.report-actions{display:flex;gap:9px}.report-actions button{min-height:40px}.report-filters{display:flex;gap:12px;margin-bottom:14px}.report-filters label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#36566d}.report-filters select,.report-filters input{min-width:155px;border:1px solid #d8e6e8;border-radius:10px;padding:10px 12px;background:#fff;color:#102a43}.report-tabs{display:flex;gap:22px;border-bottom:1px solid #e4ecee;margin-bottom:26px}.report-tabs button{padding:10px 2px 12px;border:0;border-bottom:2px solid transparent;background:none;color:#64748b;font:inherit;cursor:pointer}.report-tabs button.selected{border-color:#008c9e;color:#008c9e;font-weight:800}.report-print-header{display:none}.report-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.report-summary article,.report-card{background:#fff;border:1px solid #e4ecee;border-radius:18px;box-shadow:0 4px 16px rgba(16,42,67,.05)}.report-summary article{padding:18px}.report-summary small,.report-summary span{display:block;color:#64748b;font-size:12px}.report-summary strong{display:block;font-size:28px;margin:9px 0 3px;letter-spacing:-.05em}.report-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:16px;margin-bottom:16px}.report-card{padding:20px}.report-card-head{display:flex;justify-content:space-between;align-items:flex-start}.report-card h3{margin:0 0 5px;font-size:16px}.report-chart{height:220px;margin-top:12px}.status-list{display:grid;gap:20px;margin-top:30px}.status-list div{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:10px;color:#36566d;font-size:13px}.status-list strong{color:#102a43}.status-dot{width:8px;height:8px;border-radius:50%;background:#008c9e}.status-dot.done{background:#48b58d}.status-dot.muted{background:#a8b8c0}.report-table-card{padding:0;overflow:hidden}.report-table-card .report-card-head{padding:20px 20px 16px}.report-table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:13px 20px;border-top:1px solid #e4ecee;white-space:nowrap}th{color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em}td small{display:block;max-width:350px;overflow:hidden;text-overflow:ellipsis;color:#64748b;margin-top:4px}.status-pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:#e7f8f9;color:#006a78;font-size:11px;font-weight:800}.mobile-report-list{display:none}.empty-row{text-align:center;color:#64748b;padding:30px}.report-pagination{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:14px 20px;border-top:1px solid #e4ecee;color:#64748b;font-size:12px}.report-pagination button{border:1px solid #d8e6e8;border-radius:8px;background:#fff;padding:7px 10px;color:#36566d;cursor:pointer}.report-pagination button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:800px){.report-toolbar{display:block}.report-actions{margin-top:18px}.report-summary{grid-template-columns:1fr 1fr}.report-grid{grid-template-columns:1fr}.report-filters{display:grid;grid-template-columns:1fr 1fr}.report-filters select,.report-filters input{min-width:0;width:100%}.report-table-wrap{display:none}.mobile-report-list{display:grid}.mobile-report-list>div{display:grid;gap:5px;padding:14px 20px;border-top:1px solid #e4ecee}.mobile-report-list small{color:#64748b}.mobile-report-list .status-pill{width:max-content}}@media print{.no-print{display:none!important}.report-page{max-width:none;padding:0}.report-print-header{display:block;margin-bottom:18px}.report-summary{grid-template-columns:repeat(4,1fr)}.report-card,.report-summary article{box-shadow:none;break-inside:avoid}.report-grid{grid-template-columns:1.35fr .65fr}.report-table-card{margin-top:16px}.report-table-wrap{display:block}.mobile-report-list{display:none}}
 
 
-.report-page{color:#0F172A}
-.report-tabs button.selected{border-color:#06B6B4;color:#0A7B7B}
-.status-dot{background:#0A7B7B}
-.status-pill{background:#E6FFFA;color:#0A7B7B}
-.report-pagination button:focus-visible,.report-tabs button:focus-visible{outline:3px solid rgba(6,182,180,.35);outline-offset:2px}
-:global(html[data-theme='dark']) .report-page{color:#F1F7F8}
-:global(html[data-theme='dark']) .report-summary article,:global(html[data-theme='dark']) .report-card{background:#122936;border-color:rgba(230,255,250,.16)}
-:global(html[data-theme='dark']) .report-filters label,:global(html[data-theme='dark']) .report-toolbar p,:global(html[data-theme='dark']) .report-card-head p,:global(html[data-theme='dark']) th,:global(html[data-theme='dark']) td small,:global(html[data-theme='dark']) .empty-row,:global(html[data-theme='dark']) .report-pagination{color:#a8bec9}
-:global(html[data-theme='dark']) .report-filters select,:global(html[data-theme='dark']) .report-filters input,:global(html[data-theme='dark']) .report-pagination button{background:#0d2934;color:#f1f7f8;border-color:#285263}
-:global(html[data-theme='dark']) th,:global(html[data-theme='dark']) td{border-color:rgba(230,255,250,.14)}
+.report-page{color:var(--navy)}.report-toolbar p,.report-card-head p,.report-summary small,.report-summary span,th,td small,.empty-row,.report-pagination{color:var(--neutral)}.report-filters label,.status-list div,.report-pagination button{color:var(--navy)}.report-filters select,.report-filters input,.report-pagination button{background:var(--input);border-color:var(--line);color:var(--navy)}.report-tabs{border-color:var(--line)}.report-tabs button{color:var(--neutral)}.report-tabs button.selected{border-color:var(--primary);color:var(--deep)}.report-summary article,.report-card{background:var(--surface);border-color:var(--line)}.status-list strong{color:var(--navy)}th,td,.report-pagination,.mobile-report-list>div{border-color:var(--line)}.status-dot{background:var(--primary)}.status-dot.done{background:var(--success-text)}.status-dot.muted{background:var(--neutral)}.status-pill{background:var(--soft);color:var(--deep)}.report-pagination button:focus-visible,.report-tabs button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 </style>

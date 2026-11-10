@@ -1,9 +1,13 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const appSource = readFileSync(resolve(process.cwd(), 'app/app.vue'), 'utf8')
 const topbarSource = readFileSync(resolve(process.cwd(), 'app/components/AppTopbar.vue'), 'utf8')
+const nuxtConfigSource = readFileSync(resolve(process.cwd(), 'nuxt.config.ts'), 'utf8')
+const componentSources = readdirSync(resolve(process.cwd(), 'app/components'))
+  .filter(file => file.endsWith('.vue') && file !== 'SvgIcon.vue')
+  .map(file => readFileSync(resolve(process.cwd(), 'app/components', file), 'utf8'))
 
 describe('alternância de tema', () => {
   it('propaga o tema do botão até o elemento raiz e persiste a escolha', () => {
@@ -11,9 +15,19 @@ describe('alternância de tema', () => {
     expect(appSource).toMatch(/:theme="theme"[\s\S]*@theme-change="setTheme"/)
     expect(appSource).toMatch(/document\.documentElement\.dataset\.theme = nextTheme/)
     expect(appSource).toMatch(/localStorage\.setItem\('condovale-theme', nextTheme\)/)
+    expect(appSource).toMatch(/dispatchEvent\(new Event\('condovale-theme-change'\)\)/)
   })
 
   it('não deixa o tema do sistema sobrescrever a escolha explícita', () => {
     expect(appSource).not.toMatch(/@media\s*\(\s*prefers-color-scheme\s*:/)
+  })
+  it('aplica a preferência persistida antes da hidratação', () => {
+    expect(nuxtConfigSource).toMatch(/localStorage\.getItem\('condovale-theme'\)/)
+    expect(nuxtConfigSource).toMatch(/document\.documentElement\.dataset\.theme = theme/)
+    expect(appSource).toMatch(/document\.documentElement\.dataset\.theme === 'dark'/)
+  })
+
+  it('mantém a decisão de tema centralizada fora de componentes de interface', () => {
+    expect(componentSources.join('\n')).not.toMatch(/data-theme/)
   })
 })
