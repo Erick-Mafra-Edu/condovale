@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.3.1...v1.3.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* **frontend:** padroniza temas claro e escuro ([6b72d4a](https://github.com/Erick-Mafra-Edu/condovale/commit/6b72d4a63536a8e0021708446247c4fc80759aff))
+* **frontend:** sinaliza renderização assíncrona do gráfico ([bdb328a](https://github.com/Erick-Mafra-Edu/condovale/commit/bdb328a761a7006afcebb319daae78dea294eff2))
+
 ## [1.3.1](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.3.0...v1.3.1) (2026-11-10)
 
 
