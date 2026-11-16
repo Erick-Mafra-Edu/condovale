@@ -286,7 +286,7 @@ class OccurrenceReportTest extends TestCase
 
         $this->relatorio(['export' => 'true'])
             ->assertStatus(422)
-            ->assertJsonPath('message', 'O período tem 4 ocorrências, acima do máximo de 3 por exportação. Reduza o período ou filtre por tipo ou status.');
+            ->assertJsonPath('message', 'O período tem 4 ocorrências, acima do máximo de 3 por exportação. Reduza o período ou use os filtros.');
 
         // A página comum continua funcionando com o mesmo período.
         $this->relatorio([])->assertStatus(201)->assertJsonPath('data.occurrences.total', 4);
