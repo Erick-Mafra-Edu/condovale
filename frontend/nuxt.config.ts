@@ -4,7 +4,22 @@ export default defineNuxtConfig({
     head: {
       title: 'CondoVale',
       htmlAttrs: { lang: 'pt-BR' },
+      meta: [
+        {
+          name: 'description',
+          content: 'CondoVale simplifica a convivência, reservas e comunicação do seu condomínio.',
+        },
+      ],
       script: [
+        {
+          innerHTML: `try {
+  const savedTheme = localStorage.getItem('condovale-theme')
+  const theme = savedTheme === 'dark' || savedTheme === 'light'
+    ? savedTheme
+    : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  document.documentElement.dataset.theme = theme
+} catch {}`,
+        },
         {
           innerHTML: `!function(b,e,t,r){
   b[t]=b[t]||function(...args){(b[t].q=b[t].q||[]).push(args)};

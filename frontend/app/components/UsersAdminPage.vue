@@ -135,10 +135,10 @@ async function requestDeactivate(user: User) {
     <div v-for="user in filteredUsers" v-else :key="user.id" class="detail-row user-row">
       <span class="avatar user-avatar">{{ user.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase() }}</span>
       <span><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span>
-      <em :class="user.status === 'active' ? 'green' : 'gray'">{{ roleLabels[user.role] }} · {{ user.status === 'active' ? 'Ativo' : 'Inativo' }}</em>
-      <button class="outline-button" @click="openPermissions(user)">Permissões</button>
-      <button class="outline-button" @click="openEdit(user)">Editar</button>
-      <button v-if="user.status === 'active'" class="outline-button danger-action" :disabled="user.id === currentUserId" @click="requestDeactivate(user)">Inativar</button>
+      <StatusBadge :tone="user.status === 'active' ? 'green' : 'gray'" :label="`${roleLabels[user.role]} · ${user.status === 'active' ? 'Ativo' : 'Inativo'}`" />
+      <button type="button" class="outline-button" @click="openPermissions(user)">Permissões</button>
+      <button type="button" class="outline-button" @click="openEdit(user)">Editar</button>
+      <button v-if="user.status === 'active'" type="button" class="outline-button danger-action" :disabled="user.id === currentUserId" @click="requestDeactivate(user)">Inativar</button>
     </div>
   </article>
 
@@ -172,18 +172,23 @@ async function requestDeactivate(user: User) {
   </div>
 
   <div v-if="permissionUser" class="modal-backdrop" @click.self="permissionUser = null">
-    <section class="modal glass" role="dialog" aria-modal="true" aria-labelledby="permissions-title">
+    <section class="modal glass permissions-modal" role="dialog" aria-modal="true" aria-labelledby="permissions-title">
       <button type="button" class="modal-close" aria-label="Fechar permissões" @click="permissionUser = null"></button>
       <div class="section-icon"><SvgIcon name="users" /></div>
       <h2 id="permissions-title">Permissões de {{ permissionUser.name }}</h2>
       <p>As permissões herdadas do papel não podem ser revogadas aqui.</p>
-      <div v-if="permissionsLoading" class="empty-row">Carregando permissões...</div>
+      <div v-if="permissionsLoading" class="permissions-skeleton" aria-busy="true" aria-label="Carregando permissões">
+        <div v-for="n in 4" :key="n" class="permission-skeleton-row">
+          <div class="skeleton-block skeleton-label"></div>
+          <div class="skeleton-block skeleton-btn"></div>
+        </div>
+      </div>
       <p v-else-if="permissionsError" class="form-error" role="alert">{{ permissionsError.message }}</p>
       <div v-else class="permissions-list">
         <div v-for="permission in permissionCatalog" :key="permission.name" class="detail-row permission-row">
           <span><strong>{{ permissionLabel(permission.name) }}</strong><small v-if="hasRolePermission(permission.name)">Concedida pelo papel</small><small v-else-if="hasDirectPermission(permission.name)">Concessão individual</small></span>
-          <button v-if="hasDirectPermission(permission.name)" class="outline-button danger-action" :disabled="permissionSaving" @click="revokePermission(permission.name)">Revogar</button>
-          <button v-else-if="!hasRolePermission(permission.name)" class="outline-button" :disabled="permissionSaving" @click="grantPermission(permission.name)">Conceder</button>
+          <button v-if="hasDirectPermission(permission.name)" type="button" class="outline-button danger-action" :disabled="permissionSaving" @click="revokePermission(permission.name)">Revogar</button>
+          <button v-else-if="!hasRolePermission(permission.name)" type="button" class="outline-button" :disabled="permissionSaving" @click="grantPermission(permission.name)">Conceder</button>
           <span v-else class="gray">Herdada</span>
         </div>
       </div>
@@ -192,3 +197,105 @@ async function requestDeactivate(user: User) {
     </section>
   </div>
 </template>
+
+<style scoped>
+/* ── Skeleton loader ── */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+.skeleton-block {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e8f2f4 25%, #d0e8ec 50%, #e8f2f4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.permissions-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.permission-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.permission-skeleton-row:last-child {
+  border-bottom: 0;
+}
+
+.skeleton-label {
+  flex: 1;
+  height: 12px;
+}
+
+.skeleton-btn {
+  width: 64px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .skeleton-block {
+    background: linear-gradient(90deg, #112535 25%, #1a3545 50%, #112535 75%);
+    background-size: 200% 100%;
+  }
+}
+
+.permissions-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.permissions-list {
+  min-width: 0;
+}
+
+.permission-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.permission-row > span:first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.permission-row > span:first-child strong,
+.permission-row > span:first-child small {
+  overflow-wrap: anywhere;
+}
+
+.permission-row > .outline-button,
+.permission-row > .gray {
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+@media (max-width: 520px) {
+  .permissions-modal {
+    padding: 22px 16px;
+  }
+
+  .permission-row > .outline-button,
+  .permission-row > .gray {
+    margin-left: 0;
+  }
+
+  .permission-row > .outline-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>

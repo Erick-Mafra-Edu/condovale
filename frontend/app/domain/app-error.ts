@@ -5,6 +5,19 @@ export class AppError extends Error {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 export function toAppError(cause: unknown): AppError {
-  return cause instanceof AppError ? cause : new AppError('SERVER_ERROR', 'Não foi possível concluir a operação')
+  if (cause instanceof AppError) return cause
+
+  const root = isRecord(cause) ? cause : {}
+  const response = isRecord(root.response) ? root.response : {}
+  const data = isRecord(root.data) ? root.data : isRecord(response._data) ? response._data : {}
+  const message = typeof data.message === 'string' && data.message.trim().length > 0 && data.message.trim().length <= 240
+    ? data.message.trim()
+    : 'Não foi possível concluir a operação'
+  const code = typeof data.code === 'string' ? data.code : 'SERVER_ERROR'
+  return new AppError(code, message)
 }

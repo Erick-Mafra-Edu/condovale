@@ -41,6 +41,8 @@ async function submit() {
 .password-change-shell{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--bg)}
 .password-change-card{width:min(100%,440px);padding:clamp(28px,5vw,48px);border-radius:24px}
 .password-change-card h1{margin:12px 0 8px;font-size:30px;letter-spacing:-.04em}.password-change-card p{color:var(--neutral);line-height:1.5}
-.password-change-card label{display:block;margin-top:18px;font-size:12px;font-weight:700}.password-change-card input{display:block;width:100%;margin-top:7px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--navy);font:inherit}
-.password-change-card .primary-button{width:100%;justify-content:center;margin-top:24px}.password-change-card .outline-button{width:100%;justify-content:center;margin-top:12px}.form-error{color:#b4232c!important;font-size:12px}
+.password-change-card label{display:block;margin-top:18px;font-size:12px;font-weight:700}.password-change-card input{display:block;width:100%;margin-top:7px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--navy);font:inherit}
+.password-change-card .primary-button{width:100%;justify-content:center;margin-top:24px}.password-change-card .outline-button{width:100%;justify-content:center;margin-top:12px}.form-error{color:var(--danger-text)!important;font-size:12px}
+.password-page input:focus{outline-color:var(--focus);border-color:var(--primary)}
+.password-feedback.success{background:var(--success-bg);color:var(--success-text)}
 </style>
