@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\OccurrenceAttachmentController;
@@ -382,6 +383,19 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
         Route::patch('occurrence-types/{id}', [OccurrenceTypeController::class, 'update']);
         Route::delete('occurrence-types/{id}', [OccurrenceTypeController::class, 'destroy']);
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Painel inicial
+|--------------------------------------------------------------------------
+|
+| Todo perfil tem painel. O que entra nele é decidido pela
+| BuildDashboardAction, seção por seção, pelos casos de uso de quem pede —
+| por isso a rota não pede caso de uso, só sessão válida.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index']);
 });
 
 /*

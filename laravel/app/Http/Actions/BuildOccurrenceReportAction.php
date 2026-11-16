@@ -59,11 +59,7 @@ class BuildOccurrenceReportAction
         $to = CarbonImmutable::parse($filters['to'])->endOfDay();
 
         // Uma consulta só alimenta o resumo e a contagem por status.
-        $contagens = self::inPeriod($from, $to)
-            ->toBase()
-            ->selectRaw('status, resolved, count(*) as total')
-            ->groupBy('status', 'resolved')
-            ->get();
+        $contagens = self::countsByStatus($from, $to);
 
         return [
             'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
@@ -72,6 +68,26 @@ class BuildOccurrenceReportAction
             'by_type' => self::byType($from, $to),
             'occurrences' => self::rows($from, $to, $filters),
         ];
+    }
+
+    /**
+     * O resumo de um período, sem lista nem gráficos — é o que o painel mostra
+     * do mês, com a mesma conta do relatório.
+     *
+     * @return array{total: int, open: int, completed: int, cancelled: int, resolved: int, unresolved: int, average_resolution_hours: float|null}
+     */
+    public static function periodSummary(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return self::summary(self::countsByStatus($from, $to), $from, $to);
+    }
+
+    private static function countsByStatus(CarbonImmutable $from, CarbonImmutable $to): Collection
+    {
+        return self::inPeriod($from, $to)
+            ->toBase()
+            ->selectRaw('status, resolved, count(*) as total')
+            ->groupBy('status', 'resolved')
+            ->get();
     }
 
     /**

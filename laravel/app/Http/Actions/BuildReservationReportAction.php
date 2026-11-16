@@ -55,11 +55,7 @@ class BuildReservationReportAction
         $from = CarbonImmutable::parse($filters['from'])->toDateString();
         $to = CarbonImmutable::parse($filters['to'])->toDateString();
 
-        $totais = self::inPeriod($from, $to)
-            ->toBase()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        $totais = self::totalsByStatus($from, $to);
 
         return [
             'period' => ['from' => $from, 'to' => $to],
@@ -68,6 +64,26 @@ class BuildReservationReportAction
             'by_area' => self::byArea($from, $to),
             'reservations' => self::rows($from, $to, $filters),
         ];
+    }
+
+    /**
+     * O resumo de um período, sem lista — é o que o painel mostra do mês, com
+     * a mesma conta do relatório.
+     *
+     * @return array{total: int, pending: int, approved: int, rejected: int, cancelled: int}
+     */
+    public static function periodSummary(string $from, string $to): array
+    {
+        return self::summary(self::totalsByStatus($from, $to));
+    }
+
+    private static function totalsByStatus(string $from, string $to): Collection
+    {
+        return self::inPeriod($from, $to)
+            ->toBase()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
     }
 
     /**
