@@ -19,4 +19,8 @@ return [
         'max_export_rows' => 5000,
     ],
 
+    'reservations' => [
+        'max_export_rows' => 5000,
+    ],
+
 ];

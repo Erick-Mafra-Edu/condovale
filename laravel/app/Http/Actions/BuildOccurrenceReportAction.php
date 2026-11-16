@@ -3,7 +3,6 @@
 namespace App\Http\Actions;
 
 use App\Enums\OccurrenceStatus;
-use App\Exceptions\BusinessRuleException;
 use App\Models\Occurrence;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -180,7 +179,6 @@ class BuildOccurrenceReportAction
     /**
      * A lista, com tipo e status aplicados.
      *
-     * Na exportação vem tudo (RN12), até o teto de `reports.occurrences.max_export_rows`.
      * A ordem é sempre a mesma — mais recente primeiro, com o id desempatando —
      * para que paginar não repita nem pule chamado.
      *
@@ -197,56 +195,12 @@ class BuildOccurrenceReportAction
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
-        if ($filters['export'] ?? false) {
-            return self::exportRows($query);
-        }
-
-        $pagina = $query->paginate($filters['limit'] ?? 10, ['*'], 'page', $filters['page'] ?? 1);
-
-        return [
-            'data' => self::serialize($pagina->getCollection()),
-            'total' => $pagina->total(),
-            'page' => $pagina->currentPage(),
-            'per_page' => $pagina->perPage(),
-            'last_page' => $pagina->lastPage(),
-        ];
-    }
-
-    /**
-     * @return array{data: list<array<string, mixed>>, total: int, page: int, per_page: int, last_page: int}
-     */
-    private static function exportRows(Builder $query): array
-    {
-        $teto = (int) config('reports.occurrences.max_export_rows');
-        $total = (clone $query)->count();
-
-        if ($total > $teto) {
-            throw BusinessRuleException::unprocessable(
-                "O período tem {$total} ocorrências, acima do máximo de {$teto} por exportação. Reduza o período ou filtre por tipo ou status."
-            );
-        }
-
-        return [
-            'data' => self::serialize($query->get()),
-            'total' => $total,
-            'page' => 1,
-            'per_page' => $total,
-            'last_page' => 1,
-        ];
-    }
-
-    /**
-     * @param  iterable<Occurrence>  $occurrences
-     * @return list<array<string, mixed>>
-     */
-    private static function serialize(iterable $occurrences): array
-    {
-        $linhas = [];
-
-        foreach ($occurrences as $occurrence) {
-            $linhas[] = $occurrence->toArray() + ['status_label' => $occurrence->status->label()];
-        }
-
-        return $linhas;
+        return PaginateReportAction::execute(
+            $query,
+            $filters,
+            (int) config('reports.occurrences.max_export_rows'),
+            fn (Occurrence $occurrence) => $occurrence->toArray() + ['status_label' => $occurrence->status->label()],
+            'ocorrências',
+        );
     }
 }

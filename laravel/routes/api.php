@@ -394,4 +394,5 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
 */
 Route::middleware(['auth', 'user.active', 'password.change', 'use.case:generate-reports'])->group(function () {
     Route::get('reports/occurrences', [ReportController::class, 'occurrences']);
+    Route::get('reports/reservations', [ReportController::class, 'reservations']);
 });

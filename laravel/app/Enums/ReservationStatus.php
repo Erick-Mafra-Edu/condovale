@@ -23,4 +23,18 @@ enum ReservationStatus: string
     {
         return [self::Pending->value, self::Approved->value];
     }
+
+    /**
+     * Os mesmos nomes da tela de reservas, para relatório e interface não
+     * chamarem a mesma situação de jeitos diferentes.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Pending => 'Pendente',
+            self::Approved => 'Aprovada',
+            self::Rejected => 'Recusada',
+            self::Cancelled => 'Cancelada',
+        };
+    }
 }

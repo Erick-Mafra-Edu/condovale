@@ -958,9 +958,15 @@ para isso nos comentários.
 
 ## Relatórios — RF06 / UC20
 
-`GET /api/reports/occurrences`, no grupo `use.case:generate-reports` (síndico e
-administração). Lê o condomínio inteiro, sem o recorte por pessoa das telas de
-acompanhamento.
+Dois relatórios, no grupo `use.case:generate-reports` (síndico e
+administração). Leem o condomínio inteiro, sem o recorte por pessoa das telas
+de acompanhamento, e dividem o mesmo contrato: período, paginação e exportação
+vêm de `ReportRequest`, e a lista sai pelo `PaginateReportAction`, com o mesmo
+formato e o mesmo teto de exportação nos dois.
+
+### Ocorrências e manutenções
+
+`GET /api/reports/occurrences`
 
 | Parâmetro | Obrigatório | Efeito |
 | --- | --- | --- |
@@ -1005,6 +1011,45 @@ Desempenho (RNF01), fixado no `OccurrenceReportPerformanceTest` com 10 mil
 chamados em mil dias: o pior caso, a exportação de três meses, fica perto de
 100 ms no SQLite, e são sempre 9 consultas, com 50 linhas, com 100 ou
 exportando. O índice em `occurrences.created_at` é o que o período usa.
+
+### Reservas das áreas comuns
+
+`GET /api/reports/reservations`
+
+| Parâmetro | Obrigatório | Efeito |
+| --- | --- | --- |
+| `from`, `to` | sim | período pela **data da reserva**, `AAAA-MM-DD`, os dois dias inclusos |
+| `common_area_id` | não | filtra a lista por área |
+| `status` | não | filtra a lista por status |
+| `page`, `limit`, `export` | não | iguais aos do relatório de ocorrências |
+
+```jsonc
+{
+  "status": true,
+  "message": "Relatório de reservas de 01/10/2026 a 31/10/2026.",
+  "data": {
+    "period": { "from": "2026-10-01", "to": "2026-10-31" },
+    "summary": { "total": 12, "pending": 2, "approved": 8, "rejected": 1, "cancelled": 1 },
+    "by_status": [{ "status": "approved", "label": "Aprovada", "total": 8 }],
+    "by_area": [{ "common_area_id": 1, "name": "Churrasqueira", "total": 7,
+                  "pending": 1, "approved": 5, "rejected": 0, "cancelled": 1 }],
+    "reservations": { "data": [], "total": 12, "page": 1, "per_page": 10, "last_page": 2 }
+  }
+}
+```
+
+- **O período é o da data da reserva**, não o de quando foi pedida: uma
+  reserva para dezembro pedida em outubro é uso de dezembro.
+- **`by_area` traz todas as áreas, inclusive as sem reserva.** Diferente dos
+  tipos de ocorrência, a área parada é informação: é o salão que ninguém usou
+  no mês.
+- Cada linha traz a área, o morador com nome e unidade, o motivo da recusa e
+  `full_day`, que marca a diária — a reserva sem horário, que ocupa o dia
+  inteiro.
+
+Com a carga da UC-T01 (10 mil reservas em mil dias), o pior caso também é a
+exportação de três meses, perto de 100 ms, com 7 consultas fixas. Não foi
+preciso índice novo: `reservations.date` já tinha.
 
 ## Autorização
 
