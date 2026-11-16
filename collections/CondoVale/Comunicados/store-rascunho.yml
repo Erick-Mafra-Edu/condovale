@@ -1,0 +1,26 @@
+info:
+  name: store-rascunho
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{API_URL}}/notices"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Regulamento da piscina",
+        "content": "Minuta em revisão pelo conselho.",
+        "status": "draft"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

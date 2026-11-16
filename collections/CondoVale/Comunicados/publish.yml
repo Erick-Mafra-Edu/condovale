@@ -1,0 +1,18 @@
+info:
+  name: publish
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{API_URL}}/notices/3/publish"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

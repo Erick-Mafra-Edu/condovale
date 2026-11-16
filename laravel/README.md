@@ -956,6 +956,31 @@ A migration publicada usa `string('name')` sem tamanho, o que com o
 fixados em 125 e 25, que dão 600 bytes. A própria migration do Spatie alerta
 para isso nos comentários.
 
+## Comunicados — RF05 / RN07 / RN03
+
+| Rota | Autorização | Efeito |
+| --- | --- | --- |
+| `GET /api/notices` | `view-notices` ou `publish-notices` | mural, paginado, do mais recente para o mais antigo |
+| `GET /api/notices/{id}` | `view-notices` ou `publish-notices` | um comunicado |
+| `POST /api/notices` | `publish-notices` | publica, ou guarda como rascunho com `status: draft` |
+| `POST /api/notices/{id}/publish` | `publish-notices` | publica um rascunho (`Comunicado.publicar()`) |
+| `DELETE /api/notices/{id}` | `publish-notices` | exclui (RN03) |
+
+`publish-notices` é do síndico e da administração; `view-notices`, do morador
+(o funcionário só lê o mural por concessão individual).
+
+- **Quem só lê vê só o publicado (RN18).** O rascunho aparece para quem
+  publica e responde 404 para os demais, a mesma resposta de um comunicado
+  que não existe — a diferença revelaria que há um aviso em preparação.
+- **Autor e data de publicação são do servidor.** O corpo traz só título,
+  conteúdo e, opcionalmente, `status`; `author_id` e `published_at` enviados
+  são ignorados, para ninguém assinar em nome do síndico nem antedatar aviso.
+- **Excluir apaga a linha, não o registro.** Título, texto, autor e datas vão
+  para o `data_log` da auditoria: aviso oficial que some sem rastro vira
+  disputa de "ninguém avisou".
+- Do autor saem só id e nome, e o parâmetro `relations` é descartado na
+  listagem, porque por ele sairia o cadastro inteiro.
+
 ## Relatórios — RF06 / UC20
 
 Dois relatórios, no grupo `use.case:generate-reports` (síndico e

@@ -19,6 +19,14 @@ class Notice extends Model
         'published_at',
     ];
 
+    /**
+     * Nenhuma coluna sensível. A declaração é explícita porque o
+     * HandlePaginationAction só protege o que o model informar aqui.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [];
+
     protected function casts(): array
     {
         return [
