@@ -7,6 +7,7 @@ use App\Http\Controllers\OccurrenceController;
 use App\Http\Controllers\OccurrenceTypeController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UnitOccupancyController;
 use App\Http\Controllers\UserController;
@@ -380,4 +381,17 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
         Route::patch('occurrence-types/{id}', [OccurrenceTypeController::class, 'update']);
         Route::delete('occurrence-types/{id}', [OccurrenceTypeController::class, 'destroy']);
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Relatórios operacionais — RF06 / UC20
+|--------------------------------------------------------------------------
+|
+| Síndico e administração, pelo caso de uso generate-reports. O relatório lê
+| o condomínio inteiro, sem o recorte por pessoa das telas de acompanhamento.
+| A auditoria não entra aqui: ela é da administração, por view-audit-reports.
+*/
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:generate-reports'])->group(function () {
+    Route::get('reports/occurrences', [ReportController::class, 'occurrences']);
 });

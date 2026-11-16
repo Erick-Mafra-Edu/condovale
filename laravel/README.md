@@ -550,13 +550,14 @@ query string — `attributes`, `search`, `filters`, `filtersOr`, `filtersIn`,
 `sort` + `direction`, `relations`, `limit` e `page`:
 
 ```
-/api/reports/occurrences?filters=created_at:>=:2026-09-01;status:=:completed&sort=created_at&direction=desc
-/api/logs?filters=type_log_id:=:6&relations=user;typeLog&limit=50
+/api/occurrences?filters=created_at:>=:2026-09-01;status:=:completed&sort=created_at&direction=desc
+/api/users?filters=status:=:active&search=silva&limit=50
 ```
 
 Os nomes de coluna vindos do cliente são validados contra o schema real da
-tabela, menos os `$hidden` do model. Para exportar tudo o que passou pelos
-filtros (RN12), envie um `limit` maior que o `total` devolvido.
+tabela, menos os `$hidden` do model. Uma página traz no máximo 100 linhas
+(RNF01); quem precisa de tudo pagina. O relatório de ocorrências tem contrato
+próprio, com exportação completa — ver "Relatórios — RF06".
 
 ## Autenticação — UC02 / RF02
 
@@ -954,6 +955,56 @@ A migration publicada usa `string('name')` sem tamanho, o que com o
 2 x 191 x 4 = 1528 bytes — acima do limite de 1000 do MySQL do host. Foram
 fixados em 125 e 25, que dão 600 bytes. A própria migration do Spatie alerta
 para isso nos comentários.
+
+## Relatórios — RF06 / UC20
+
+`GET /api/reports/occurrences`, no grupo `use.case:generate-reports` (síndico e
+administração). Lê o condomínio inteiro, sem o recorte por pessoa das telas de
+acompanhamento.
+
+| Parâmetro | Obrigatório | Efeito |
+| --- | --- | --- |
+| `from`, `to` | sim | período de **abertura**, `AAAA-MM-DD`, os dois dias inteiros |
+| `occurrence_type_id` | não | filtra a lista por tipo |
+| `status` | não | filtra a lista por status |
+| `page`, `limit` | não | paginação da lista; `limit` até 100 |
+| `export` | não | `true` traz a lista inteira numa resposta (RN12) |
+
+A resposta segue o `ReportQuery` do frontend:
+
+```jsonc
+{
+  "status": true,
+  "message": "Relatório de ocorrências de 01/10/2026 a 31/10/2026.",
+  "data": {
+    "period": { "from": "2026-10-01", "to": "2026-10-31" },
+    "summary": { "total": 7, "open": 4, "completed": 2, "cancelled": 1,
+                 "resolved": 1, "unresolved": 1, "average_resolution_hours": 26.5 },
+    "by_status": [{ "status": "open", "label": "Aberto", "total": 2 }],
+    "by_type": [{ "occurrence_type_id": 1, "name": "Manutenção predial", "total": 3 }],
+    "occurrences": { "data": [], "total": 7, "page": 1, "per_page": 10, "last_page": 1 }
+  }
+}
+```
+
+Três decisões que valem registrar:
+
+- **Os indicadores olham o período inteiro; tipo e status filtram só a
+  lista.** É o comportamento da tela: trocar a aba de status muda a tabela,
+  não o painel de cima. `by_status` traz todos os status, mesmo os zerados;
+  `by_type`, só os tipos usados no período, e é ela que alimenta o filtro.
+- **Encerrar não é resolver.** `resolved` e `unresolved` separam o problema
+  que acabou do que só foi fechado; concluída sem o campo conta como
+  resolvida, que é o padrão da finalização. O tempo médio vai da abertura à
+  conclusão, só das concluídas.
+- **A exportação tem teto** (`reports.occurrences.max_export_rows`, 5000).
+  Acima dele a API responde 422 pedindo um período menor, pela contagem, antes
+  de montar as linhas: a hospedagem corta o script em 60 segundos.
+
+Desempenho (RNF01), fixado no `OccurrenceReportPerformanceTest` com 10 mil
+chamados em mil dias: o pior caso, a exportação de três meses, fica perto de
+100 ms no SQLite, e são sempre 9 consultas, com 50 linhas, com 100 ou
+exportando. O índice em `occurrences.created_at` é o que o período usa.
 
 ## Autorização
 
