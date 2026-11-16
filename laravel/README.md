@@ -956,6 +956,35 @@ A migration publicada usa `string('name')` sem tamanho, o que com o
 fixados em 125 e 25, que dão 600 bytes. A própria migration do Spatie alerta
 para isso nos comentários.
 
+## Painel inicial
+
+`GET /api/dashboard`, para qualquer pessoa logada. O painel é montado pelos
+casos de uso de quem pede — não pelo perfil —, então uma concessão individual
+traz a seção junto. Seção que a pessoa não pode ver não vem na resposta, nem
+vazia.
+
+| Seção | Aparece para quem tem | Conteúdo |
+| --- | --- | --- |
+| `my_occurrences` | `create-occurrence` ou `track-own-occurrences` | chamados próprios abertos, por status, os 5 mais recentes |
+| `my_reservations` | `view-own-reservations` | próximas reservas próprias, pendentes |
+| `my_assignments` | `view-assigned-occurrences` | para iniciar, em andamento, concluídos no mês, fila do mais antigo |
+| `occurrence_queue` | `analyze-occurrences`, `assign-occurrence` ou `close-any-occurrence` | chamados por etapa e os 5 que esperam há mais tempo |
+| `reservations` | `manage-reservations` ou `approve-or-reject-reservation` | a aprovar, de hoje, dos próximos 7 dias, próximas 5 |
+| `units` | `manage-units` | total, ativas, inativas, ocupadas, vagas |
+| `people` | `manage-residents` | ativos por perfil, contas inativas, primeiro acesso pendente |
+| `month` | `generate-reports` | o mês corrente, com o resumo dos dois relatórios |
+| `notices` | `view-notices` ou `publish-notices` | publicados, os 3 mais recentes; rascunhos só para quem publica |
+| `recent_activity` | `view-audit-reports` | as 5 últimas ações da auditoria, sem os dados gravados nem o IP |
+
+Toda resposta traz também `user` (nome, perfil e unidade) e `cards`: os
+indicadores da fileira do topo, prontos (`key`, `label`, `value`, `note`), na
+ordem de importância para quem está olhando — primeiro o que é da pessoa,
+depois o que ela precisa resolver, por último o panorama.
+
+Com dez mil chamados e dez mil reservas, o painel do administrador, o mais
+pesado, abre em cerca de 10 ms no SQLite, com 21 consultas — as mesmas com o
+dobro de dados (`DashboardPerformanceTest`).
+
 ## Comunicados — RF05 / RN07 / RN03
 
 | Rota | Autorização | Efeito |
