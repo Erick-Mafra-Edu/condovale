@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\OccurrenceAttachmentController;
 use App\Http\Controllers\OccurrenceController;
 use App\Http\Controllers\OccurrenceTypeController;
@@ -380,6 +381,30 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
         Route::post('occurrence-types', [OccurrenceTypeController::class, 'store']);
         Route::patch('occurrence-types/{id}', [OccurrenceTypeController::class, 'update']);
         Route::delete('occurrence-types/{id}', [OccurrenceTypeController::class, 'destroy']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Comunicados oficiais — RF05 / RN07 / RN03
+|--------------------------------------------------------------------------
+|
+| Ler é de quem tem view-notices (morador) ou publish-notices (síndico e
+| administração). Publicar e excluir, só de publish-notices: RN07 reserva a
+| publicação e RN03 a exclusão ao síndico e à administração. Quem lê só vê o
+| que foi publicado; o rascunho é de quem publica — ver ScopeNoticesAction.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::middleware('use.case:view-notices,publish-notices')->group(function () {
+        Route::get('notices', [NoticeController::class, 'index']);
+        Route::get('notices/{id}', [NoticeController::class, 'show']);
+    });
+
+    Route::middleware('use.case:publish-notices')->group(function () {
+        Route::post('notices', [NoticeController::class, 'store']);
+        // Comunicado.publicar(): leva um rascunho ao mural.
+        Route::post('notices/{id}/publish', [NoticeController::class, 'publish']);
+        Route::delete('notices/{id}', [NoticeController::class, 'destroy']);
     });
 });
 

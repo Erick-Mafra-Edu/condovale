@@ -1,0 +1,25 @@
+info:
+  name: store
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{API_URL}}/notices"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Manutenção dos elevadores",
+        "content": "Os elevadores do Bloco A param das 8h às 12h na próxima terça-feira."
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
