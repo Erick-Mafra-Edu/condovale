@@ -25,8 +25,6 @@ use Illuminate\Support\Collection;
  */
 class ListAvailabilityAction
 {
-    public const SLOT_MINUTES = 30;
-
     private const SLOT_AVAILABLE = 'available';
 
     private const SLOT_OCCUPIED = 'occupied';
@@ -72,12 +70,12 @@ class ListAvailabilityAction
                 'status' => $commonArea->status?->value,
                 'opening_time' => TimeUtil::format($commonArea->opening_time),
                 'closing_time' => TimeUtil::format($commonArea->closing_time),
-                'max_reservation_minutes' => $commonArea->max_reservation_minutes,
+                'max_reservation_minutes' => $commonArea->maxReservationMinutes(),
                 'requires_approval' => $commonArea->requires_approval,
             ],
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'slot_minutes' => self::SLOT_MINUTES,
+            'slot_minutes' => CommonArea::SLOT_MINUTES,
             'days' => $days,
         ];
     }
@@ -99,8 +97,8 @@ class ListAvailabilityAction
 
         $grid = [];
 
-        for ($from = $opening; $from < $closing; $from += self::SLOT_MINUTES) {
-            $grid[] = [$from, min($from + self::SLOT_MINUTES, $closing)];
+        for ($from = $opening; $from < $closing; $from += CommonArea::SLOT_MINUTES) {
+            $grid[] = [$from, min($from + CommonArea::SLOT_MINUTES, $closing)];
         }
 
         return $grid;

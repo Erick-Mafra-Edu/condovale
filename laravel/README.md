@@ -1168,6 +1168,38 @@ Desempenho (RNF01), fixado no `CommonAreaAvailabilityPerformanceTest`: com 10
 mil reservas em cinco áreas, a janela máxima de 62 dias responde em cerca de
 10 ms, com 2 consultas — as mesmas com o dobro de reservas.
 
+## Solicitação de reserva — UC03 / RF03 / RN01 / RN02
+
+`POST /api/reservations`, só para quem tem `request-reservation` (o morador) e
+está vinculado a uma unidade (`unit.linked`).
+
+```json
+{ "common_area_id": 3, "date": "2026-11-30", "start_time": "10:00", "end_time": "12:00" }
+```
+
+Sem `start_time` e `end_time` (ou com os dois nulos), é diária. A resposta
+traz a reserva com `common_area` (id e nome) e uma mensagem que já diz o
+desfecho: `"Reserva 12 da área 3 Quadra Poliesportiva para 30/11/2026, das
+10:00 às 12:00, aprovada."` — ou `solicitada`, quando a área exige aprovação e
+a reserva nasce pendente.
+
+- **Quem reserva é a sessão.** Um `resident_id` no corpo é ignorado.
+- **RN01** — sobreposição com reserva pendente ou aprovada responde **409**; a
+  diária conflita com qualquer reserva do dia, nos dois sentidos. Reservas
+  encostadas (10h–12h e 12h–14h) não conflitam. A área é travada
+  (`lockForUpdate`) durante a checagem, para dois pedidos simultâneos não
+  passarem juntos.
+- **RN02** — respondem **422**: área indisponível; área sem horário de
+  funcionamento cadastrado; data passada; horário de hoje que já começou;
+  início antes da abertura ou fim depois do fechamento; horário fora da grade
+  de 30 minutos contada a partir da abertura (terminar exatamente no
+  fechamento vale, mesmo fora da grade); duração acima de
+  `max_reservation_minutes`. Área sem limite usa **2 horas**, o mesmo padrão
+  da tela de reservas — e a disponibilidade informa esse valor efetivo.
+- A diária não tem limite de duração: ela é o dia.
+- A criação e o log de auditoria (`TypeLogEnum::RESERVATION`) acontecem na
+  mesma transação.
+
 ## Autorização
 
 O grupo da rota é o modelo de autorização: o middleware `use.case` recebe os
