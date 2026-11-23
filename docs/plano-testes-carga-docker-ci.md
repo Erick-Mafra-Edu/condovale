@@ -196,6 +196,20 @@ Localmente, os mesmos arquivos ficam em `load-tests/results/` após o comando do
 5. Definir thresholds oficiais após baseline repetido e aprovação do responsável.
 6. Migrar de SQLite para o motor do ambiente-alvo se a capacidade do banco fizer parte do objetivo.
 
+## Resultado CI validado
+
+Execucao: [GitHub Actions run 45231566706](https://github.com/Erick-Mafra-Edu/condovale/actions/runs/45231566706), com 2 VUs por 10 segundos e duracao aproximada de 1m04s.
+
+| Metrica | Resultado CI |
+| --- | ---: |
+| Throughput | 74,94 req/s |
+| Tempo HTTP medio | 25,21 ms |
+| Tempo HTTP p95 | 29,79 ms |
+| Taxa de erro | 0% |
+| Checks aprovados | 100% |
+
+O Job Summary foi concluido e o artifact `load-test-results-45231566706` foi conferido com `summary.md`, `summary.json`, `performance.svg`, `compose.log` e `compose-ps.txt`. O artifact expira em 26/11/2026; o workflow Testes de carga e seu caminho de execucao sao a referencia estavel.
+
 ## Resultado local validado
 
 Execucao local em **23/11/2026**, com Docker Compose, SQLite descartavel e **2 VUs por 10 segundos**:

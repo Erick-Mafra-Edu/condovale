@@ -90,6 +90,10 @@ Localmente, os mesmos arquivos ficam em `load-tests/results/` após a execução
 - Não aponte `DB_DATABASE` para produção. `migrate:fresh` remove todas as tabelas do banco configurado.
 - O teste usa os cookies de sessão retornados no `setup` do k6 e os compartilha apenas para leituras; o nome do cookie não é fixado, pois deriva da configuração da aplicação.
 
+## Exemplo CI validado
+
+[GitHub Actions run 45231566706](https://github.com/Erick-Mafra-Edu/condovale/actions/runs/45231566706) executou 2 VUs por 10 segundos com throughput de 74,94 req/s, media de 25,21 ms, p95 de 29,79 ms, erro 0% e checks 100%. O artifact `load-test-results-45231566706` foi conferido e expira em 26/11/2026; use o workflow Testes de carga como caminho estavel para novas execucoes.
+
 ## Escopo atual
 
 Este é o primeiro smoke de carga da API real. Ele não mede frontend, upload, escrita concorrente, banco de produção ou limites do provedor de hospedagem. Novos cenários devem ser adicionados em `scenarios/` com thresholds próprios.
