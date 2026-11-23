@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use Illuminate\Support\Collection;
 
@@ -20,11 +21,13 @@ class ListOccupancyAction
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date')
             ->orderBy('start_time')
-            ->get()
+            ->get(['date', 'start_time', 'end_time'])
+            // "HH:MM" whatever the database returns, so MySQL and SQLite give
+            // the front-end the same contract.
             ->map(fn ($reservation) => [
                 'date' => $reservation->date->format('Y-m-d'),
-                'start_time' => $reservation->start_time,
-                'end_time' => $reservation->end_time,
+                'start_time' => TimeUtil::format($reservation->start_time),
+                'end_time' => TimeUtil::format($reservation->end_time),
             ])
             ->values();
     }

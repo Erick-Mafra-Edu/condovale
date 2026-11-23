@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\NoticeController;
@@ -434,4 +435,22 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
 Route::middleware(['auth', 'user.active', 'password.change', 'use.case:generate-reports'])->group(function () {
     Route::get('reports/occurrences', [ReportController::class, 'occurrences']);
     Route::get('reports/reservations', [ReportController::class, 'reservations']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Disponibilidade das áreas comuns — UC03 / RF03 / RN01 / RN02
+|--------------------------------------------------------------------------
+|
+| O morador consulta antes de reservar (view-common-areas e
+| request-reservation) e a administração, que gerencia as reservas
+| (manage-reservations), consulta a mesma agenda. As duas respostas são
+| anônimas (RN14): dizem quando a área está ocupada, nunca por quem.
+*/
+Route::middleware([
+    'auth', 'user.active', 'password.change',
+    'use.case:view-common-areas,request-reservation,manage-reservations',
+])->group(function () {
+    Route::get('common-areas/{id}/availability', [CommonAreaController::class, 'availability']);
+    Route::get('common-areas/{id}/occupancy', [CommonAreaController::class, 'occupancy']);
 });

@@ -1105,6 +1105,69 @@ Com a carga da UC-T01 (10 mil reservas em mil dias), o pior caso também é a
 exportação de três meses, perto de 100 ms, com 7 consultas fixas. Não foi
 preciso índice novo: `reservations.date` já tinha.
 
+## Disponibilidade das áreas comuns — UC03 / RF03 / RN01 / RN02
+
+Duas consultas, as duas anônimas (RN14): dizem quando a área está ocupada,
+nunca por quem. Alcançam `view-common-areas` e `request-reservation` (morador)
+e `manage-reservations` (administração).
+
+| Rota | Devolve |
+| --- | --- |
+| `GET /api/common-areas/{id}/availability` | o calendário já calculado: status do dia, blocos de 30 minutos, períodos livres e se cabe diária |
+| `GET /api/common-areas/{id}/occupancy` | só os períodos tomados (`date`, `start_time`, `end_time`), para quem monta o calendário sozinho — é a que o front chama hoje |
+
+As duas recebem `start_date` e `end_date` (`AAAA-MM-DD`, ambos inclusos), com
+no máximo 62 dias por consulta.
+
+```jsonc
+{
+  "status": true,
+  "message": "Disponibilidade da área 3 Quadra Poliesportiva retornada.",
+  "data": {
+    "common_area": { "id": 3, "name": "Quadra Poliesportiva", "status": "available",
+                     "opening_time": "08:00", "closing_time": "22:00",
+                     "max_reservation_minutes": 120, "requires_approval": false },
+    "start_date": "2026-11-24", "end_date": "2026-11-30",
+    "slot_minutes": 30,
+    "days": [{
+      "date": "2026-11-24",
+      "status": "partial",             // available | partial | occupied | unavailable
+      "label": "Parcialmente ocupado",
+      "reason": null,                   // past_date | area_unavailable | no_opening_hours | closed_for_today
+      "reason_label": null,
+      "full_day_available": false,
+      "occupied_periods": [{ "start_time": "10:00", "end_time": "12:00" }],
+      "free_periods": [{ "start_time": "08:00", "end_time": "10:00", "minutes": 120 },
+                       { "start_time": "12:00", "end_time": "22:00", "minutes": 600 }],
+      "slots": [{ "start_time": "08:00", "end_time": "08:30", "status": "available" }]
+    }]
+  }
+}
+```
+
+As regras são as mesmas que a criação da reserva aplica, para que o livre
+possa de fato ser reservado:
+
+- **Ocupa a agenda** a reserva pendente ou aprovada; cancelada e recusada
+  liberam o período (RN08). A diária (`start_time` e `end_time` nulos) ocupa o
+  dia inteiro, e só cabe diária no dia sem nenhuma reserva.
+- **A grade** vai da abertura ao fechamento em blocos de 30 minutos; se o
+  fechamento não cair na grade, o último bloco é mais curto. Uma reserva fora
+  da grade ocupa todo bloco que tocar.
+- **Fica indisponível** o dia passado, o dia de área marcada como
+  indisponível, a área sem horário de funcionamento cadastrado e o dia de hoje
+  depois do último bloco. Hoje, os blocos que já começaram saem como `past` e
+  não contam para o status do dia; a criação recusa o horário que já passou.
+- **Os horários são comparados em minutos.** O MySQL devolve `TIME` como
+  `HH:MM:SS` e a API recebe `HH:MM`; como texto, `"12:00" < "12:00:00"`, o
+  que acusava conflito entre reservas encostadas (10h–12h e 12h–14h) e
+  recusava reservar a partir da abertura. `App\Http\Utils\TimeUtil` resolve as
+  duas pontas, e as respostas saem sempre em `HH:MM`.
+
+Desempenho (RNF01), fixado no `CommonAreaAvailabilityPerformanceTest`: com 10
+mil reservas em cinco áreas, a janela máxima de 62 dias responde em cerca de
+10 ms, com 2 consultas — as mesmas com o dobro de reservas.
+
 ## Autorização
 
 O grupo da rota é o modelo de autorização: o middleware `use.case` recebe os
@@ -1149,6 +1212,11 @@ php artisan test --compact --filter=PermissionMatrixTest
 Hoje existe a cobertura da matriz de permissões e dos quatro caminhos da rota
 de implantação; os testes de regra de negócio de cada módulo vêm com a task
 correspondente.
+
+A suíte roda num processo só, e `tests/TestCase.php` recolhe o lixo de
+memória ao fim de cada teste. Sem isso, o envio de imagem — que mede a memória
+livre antes de redimensionar — passava a recusar as fotos dependendo de
+quantos testes tinham rodado antes.
 
 ## O que mudou em relação ao import do InfinityFree
 

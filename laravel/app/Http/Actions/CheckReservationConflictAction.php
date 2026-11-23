@@ -3,6 +3,7 @@
 namespace App\Http\Actions;
 
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use App\Models\Reservation;
 
@@ -41,6 +42,9 @@ class CheckReservationConflictAction
             return true;
         }
 
-        return $startTime < $reservation->end_time && $reservation->start_time < $endTime;
+        // Compared as minutes: the database may return "12:00:00" for a "12:00"
+        // sent by the API, and as strings those two would overlap.
+        return TimeUtil::toMinutes($startTime) < TimeUtil::toMinutes($reservation->end_time)
+            && TimeUtil::toMinutes($reservation->start_time) < TimeUtil::toMinutes($endTime);
     }
 }
