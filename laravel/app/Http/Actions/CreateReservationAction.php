@@ -4,10 +4,12 @@ namespace App\Http\Actions;
 
 use App\Enums\ReservationStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Creates a reservation for a common area.
@@ -30,8 +32,9 @@ class CreateReservationAction
         self::checkArea($commonArea);
         self::checkDate($date);
         self::checkPeriod($commonArea, $startTime, $endTime);
+        self::checkStartNotPast($date, $startTime);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($resident, $commonArea, $date, $startTime, $endTime) {
+        return DB::transaction(function () use ($resident, $commonArea, $date, $startTime, $endTime) {
             CommonArea::where('id', $commonArea->id)->lockForUpdate()->first();
             CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime);
 
@@ -78,29 +81,45 @@ class CreateReservationAction
             return;
         }
 
-        if ($startTime >= $endTime) {
+        $start = TimeUtil::toMinutes($startTime);
+        $end = TimeUtil::toMinutes($endTime);
+        $opening = TimeUtil::toMinutes($commonArea->opening_time);
+        $closing = TimeUtil::toMinutes($commonArea->closing_time);
+
+        if ($start >= $end) {
             throw BusinessRuleException::unprocessable('O horário final deve ser maior que o inicial.');
         }
 
-        if ($commonArea->opening_time && $startTime < $commonArea->opening_time) {
-            throw BusinessRuleException::unprocessable("A área abre às {$commonArea->opening_time}.");
+        if ($opening !== null && $start < $opening) {
+            throw BusinessRuleException::unprocessable('A área abre às '.TimeUtil::fromMinutes($opening).'.');
         }
 
-        if ($commonArea->closing_time && $endTime > $commonArea->closing_time) {
-            throw BusinessRuleException::unprocessable("A área fecha às {$commonArea->closing_time}.");
+        if ($closing !== null && $end > $closing) {
+            throw BusinessRuleException::unprocessable('A área fecha às '.TimeUtil::fromMinutes($closing).'.');
         }
 
         $limit = $commonArea->max_reservation_minutes;
 
-        if ($limit && self::minutes($endTime) - self::minutes($startTime) > $limit) {
+        if ($limit && $end - $start > $limit) {
             throw BusinessRuleException::unprocessable("A duração máxima desta área é de {$limit} minutos.");
         }
     }
 
-    private static function minutes(string $time): int
+    /**
+     * On the current day, a period that already started is as past as
+     * yesterday: the availability query shows it as taken by time, so the
+     * creation refuses it too.
+     */
+    private static function checkStartNotPast(string $date, ?string $startTime): void
     {
-        [$hours, $minutes] = array_pad(explode(':', $time), 2, '0');
+        if ($startTime === null || $date !== Carbon::today()->format('Y-m-d')) {
+            return;
+        }
 
-        return ((int) $hours * 60) + (int) $minutes;
+        $now = Carbon::now();
+
+        if (TimeUtil::toMinutes($startTime) < $now->hour * 60 + $now->minute) {
+            throw BusinessRuleException::unprocessable('Não é possível reservar um horário que já passou.');
+        }
     }
 }
