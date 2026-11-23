@@ -3,6 +3,7 @@
 namespace App\Http\Actions;
 
 use App\Enums\ReservationStatus;
+use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
@@ -15,8 +16,12 @@ use Illuminate\Support\Facades\DB;
  * Creates a reservation for a common area.
  *
  * RN01 — refuses any overlap with a reservation that still blocks the agenda.
- * RN02 — enforces availability, opening hours and the maximum duration set for
- *        the area, so the rule does not depend on the browser.
+ * RN02 — enforces availability, opening hours, the 30 minute grid and the
+ *        maximum duration set for the area, so the rule does not depend on the
+ *        browser.
+ *
+ * The checks are the same ListAvailabilityAction uses to draw the calendar:
+ * whatever it shows as free is accepted here, and nothing else.
  */
 class CreateReservationAction
 {
@@ -26,8 +31,8 @@ class CreateReservationAction
     public static function execute(User $resident, CommonArea $commonArea, array $attributes): Reservation
     {
         $date = $attributes['date'];
-        $startTime = $attributes['start_time'] ?? null;
-        $endTime = $attributes['end_time'] ?? null;
+        $startTime = TimeUtil::format($attributes['start_time'] ?? null);
+        $endTime = TimeUtil::format($attributes['end_time'] ?? null);
 
         self::checkArea($commonArea);
         self::checkDate($date);
@@ -35,10 +40,12 @@ class CreateReservationAction
         self::checkStartNotPast($date, $startTime);
 
         return DB::transaction(function () use ($resident, $commonArea, $date, $startTime, $endTime) {
+            // Two residents asking for the same period at the same time: the
+            // lock on the area makes the second one wait and then see the first.
             CommonArea::where('id', $commonArea->id)->lockForUpdate()->first();
             CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime);
 
-            return Reservation::create([
+            $reservation = Reservation::create([
                 'common_area_id' => $commonArea->id,
                 'resident_id' => $resident->id,
                 'date' => $date,
@@ -46,13 +53,43 @@ class CreateReservationAction
                 'end_time' => $endTime,
                 'status' => $commonArea->requires_approval ? ReservationStatus::Pending : ReservationStatus::Approved,
             ]);
+
+            CreateLogAction::execute(
+                TypeLogEnum::RESERVATION->value,
+                self::describe($reservation, $commonArea),
+                $reservation
+            );
+
+            return $reservation;
         });
+    }
+
+    /**
+     * "Reserva 12 da área 3 Quadra para 24/11/2026, das 10:00 às 12:00, aprovada."
+     */
+    public static function describe(Reservation $reservation, CommonArea $commonArea): string
+    {
+        $date = $reservation->date->format('d/m/Y');
+        $period = $reservation->isFullDay()
+            ? 'dia inteiro'
+            : "das {$reservation->start_time} às {$reservation->end_time}";
+        $outcome = $reservation->status === ReservationStatus::Pending ? 'solicitada' : 'aprovada';
+
+        return "Reserva {$reservation->id} da área {$commonArea->id} {$commonArea->name} para {$date}, {$period}, {$outcome}.";
     }
 
     private static function checkArea(CommonArea $commonArea): void
     {
         if (! $commonArea->isAvailable()) {
             throw BusinessRuleException::unprocessable('Esta área comum não está disponível para reserva.');
+        }
+
+        // The calendar shows such an area as unavailable: there is no grid to
+        // pick from, and accepting a booking here would contradict it.
+        if (! $commonArea->hasOpeningHours()) {
+            throw BusinessRuleException::unprocessable(
+                'Esta área comum não tem horário de funcionamento cadastrado. Procure a administração.'
+            );
         }
     }
 
@@ -90,17 +127,30 @@ class CreateReservationAction
             throw BusinessRuleException::unprocessable('O horário final deve ser maior que o inicial.');
         }
 
-        if ($opening !== null && $start < $opening) {
+        if ($start < $opening) {
             throw BusinessRuleException::unprocessable('A área abre às '.TimeUtil::fromMinutes($opening).'.');
         }
 
-        if ($closing !== null && $end > $closing) {
+        if ($end > $closing) {
             throw BusinessRuleException::unprocessable('A área fecha às '.TimeUtil::fromMinutes($closing).'.');
         }
 
-        $limit = $commonArea->max_reservation_minutes;
+        // Blocks count from opening time. The last one may be shorter when
+        // closing time is off the grid, so ending exactly at closing is fine.
+        $offGrid = ($start - $opening) % CommonArea::SLOT_MINUTES !== 0
+            || (($end - $opening) % CommonArea::SLOT_MINUTES !== 0 && $end !== $closing);
 
-        if ($limit && $end - $start > $limit) {
+        if ($offGrid) {
+            throw BusinessRuleException::unprocessable(sprintf(
+                'Escolha horários em blocos de %d minutos a partir da abertura, às %s.',
+                CommonArea::SLOT_MINUTES,
+                TimeUtil::fromMinutes($opening)
+            ));
+        }
+
+        $limit = $commonArea->maxReservationMinutes();
+
+        if ($end - $start > $limit) {
             throw BusinessRuleException::unprocessable("A duração máxima desta área é de {$limit} minutos.");
         }
     }

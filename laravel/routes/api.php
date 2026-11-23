@@ -11,6 +11,7 @@ use App\Http\Controllers\OccurrenceTypeController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UnitOccupancyController;
 use App\Http\Controllers\UserController;
@@ -261,6 +262,16 @@ Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->gr
     */
     Route::post('occurrences', [OccurrenceController::class, 'store'])
         ->middleware('use.case:create-occurrence,open-occurrence-for-resident');
+
+    /*
+    | UC03 / RF03 / RN01 / RN02 — solicitação de reserva de área comum.
+    |
+    | Só o morador reserva, e sempre em nome próprio: a identidade vem da
+    | sessão. A área com aprovação gera reserva pendente; a sem aprovação já
+    | sai aprovada.
+    */
+    Route::post('reservations', [ReservationController::class, 'store'])
+        ->middleware('use.case:request-reservation');
 });
 
 /*
