@@ -9,9 +9,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 COPY laravel/composer.json laravel/composer.lock ./
-RUN composer install --no-interaction --no-progress --prefer-dist --no-dev
+RUN composer install --no-interaction --no-progress --prefer-dist --no-dev --no-scripts
 
 COPY laravel/ ./
+RUN composer run-script --no-interaction post-autoload-dump
 RUN chown -R www-data:www-data /var/www/html
 
 USER www-data
