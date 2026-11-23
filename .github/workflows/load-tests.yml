@@ -1,0 +1,82 @@
+name: Testes de carga
+
+on:
+  workflow_dispatch:
+    inputs:
+      vus:
+        description: 'Usuários virtuais (carga curta no CI)'
+        required: false
+        type: choice
+        options: ['2', '10', '50']
+        default: '2'
+      duration:
+        description: 'Duração da execução'
+        required: false
+        type: choice
+        options: ['10s', '30s', '60s']
+        default: '10s'
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  load:
+    name: Carga com Laravel seed
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'run-load-tests'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Validar Docker Compose
+        run: docker compose -f load-tests/docker-compose.yml --profile load config
+
+      - name: Subir ambiente isolado e executar carga
+        env:
+          K6_VUS: ${{ github.event_name == 'workflow_dispatch' && inputs.vus || '2' }}
+          K6_DURATION: ${{ github.event_name == 'workflow_dispatch' && inputs.duration || '10s' }}
+        run: docker compose -f load-tests/docker-compose.yml --profile load up --build --abort-on-container-exit --exit-code-from k6
+
+      - name: Coletar logs e resultados
+        if: always()
+        run: |
+          mkdir -p artifacts/load-tests
+          docker compose -f load-tests/docker-compose.yml --profile load ps > artifacts/load-tests/compose-ps.txt || true
+          docker compose -f load-tests/docker-compose.yml --profile load logs --no-color --tail=200 > artifacts/load-tests/compose.log || true
+          if [ -d load-tests/results ]; then
+            cp -R load-tests/results artifacts/load-tests/results
+          fi
+
+      - name: Publicar resumo no Job Summary
+        if: always()
+        run: |
+          if [ -f artifacts/load-tests/results/summary.md ]; then
+            cat artifacts/load-tests/results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Teste de carga"
+              echo
+              echo "O relatório Markdown não foi gerado. Consulte os logs e os artefatos desta execução."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Publicar artefatos da carga
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ github.run_id }}
+          path: artifacts/load-tests
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Derrubar ambiente isolado
+        if: always()
+        run: docker compose -f load-tests/docker-compose.yml --profile load down -v --remove-orphans
