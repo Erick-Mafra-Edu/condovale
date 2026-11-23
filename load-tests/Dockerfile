@@ -12,5 +12,8 @@ COPY laravel/composer.json laravel/composer.lock ./
 RUN composer install --no-interaction --no-progress --prefer-dist --no-dev
 
 COPY laravel/ ./
+RUN chown -R www-data:www-data /var/www/html
+
+USER www-data
 
 EXPOSE 8000
