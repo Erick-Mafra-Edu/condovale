@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.3.2...v1.4.0) (2026-11-23)
+
+
+### Features
+
+* add-performance-evidence-report ([dc74a3d](https://github.com/Erick-Mafra-Edu/condovale/commit/dc74a3d631d073ca8494e099b01265b813b277b2))
+
+
+### Bug Fixes
+
+* defer-laravel-composer-scripts ([a3d8b37](https://github.com/Erick-Mafra-Edu/condovale/commit/a3d8b379724df2c692c2f098b0bdf17a61852d81))
+* run-load-api-as-non-root ([165d092](https://github.com/Erick-Mafra-Edu/condovale/commit/165d092e32092ae1c08f8b74bea77cf29f6fc08c))
+
 ## [1.3.2](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.3.1...v1.3.2) (2026-11-10)
 
 
