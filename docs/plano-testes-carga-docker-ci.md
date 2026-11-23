@@ -10,7 +10,7 @@
 | --- | --- |
 | `load-tests/docker-compose.yml` | Sobe a API Laravel e o runner k6. |
 | `load-tests/Dockerfile` | Monta a imagem PHP 8.3 com SQLite e dependências Laravel. |
-| `load-tests/scenarios/api-read.js` | Cenário de login, sessão e leitura de ocorrências. |
+| `load-tests/scenarios/api-read.js` | Cenário k6 com duas sessões preparadas e seis leituras principais da API. |
 | `.github/workflows/load-tests.yml` | Executa a carga no GitHub Actions e publica artefatos. |
 
 Não existem nesta primeira versão `docker-compose.load.yml`, `smoke.js`, `normal.js` ou `stress.js`. Esses nomes ficam como evolução futura; os comandos abaixo usam somente os arquivos implementados.
@@ -40,11 +40,13 @@ Arquivo: `load-tests/scenarios/api-read.js`.
 
 Fluxo:
 
-1. `POST /api/auth/login` com `resident@gmail.com` / `123456`;
-2. captura do cookie `laravel_session`;
-3. `GET /api/auth/session` usando o cookie;
-4. `GET /api/occurrences` usando o cookie;
-5. validação de status HTTP, JSON e checks.
+1. prepara uma sessão de administrador com `admin@gmail.com` / `123456`;
+2. prepara uma sessão de morador com `resident@gmail.com` / `123456`;
+3. captura os cookies `laravel_session` correspondentes;
+4. executa, sem escrita, as leituras `GET /api/auth/session`, `/api/users`, `/api/units`, `/api/unit-occupancies`, `/api/occurrences` e `/api/occurrence-types`;
+5. usa a sessão apropriada por perfil e valida HTTP 200, JSON e checks por funcionalidade.
+
+O login ocorre somente no `setup` do k6 para preparar as sessões; não é repetido na carga contínua. Cada endpoint possui uma métrica Trend própria para média e p95, além do throughput geral da execução.
 
 Parâmetros:
 
@@ -74,6 +76,12 @@ docker compose -f load-tests/docker-compose.yml --profile load logs --no-color
 docker compose -f load-tests/docker-compose.yml --profile load down -v --remove-orphans
 ```
 
+Para salvar o log do Compose junto das evidências locais:
+
+```bash
+docker compose -f load-tests/docker-compose.yml --profile load logs --no-color > load-tests/results/compose.log
+```
+
 Para alterar a carga:
 
 ```bash
@@ -87,9 +95,25 @@ $env:K6_VUS='100'; $env:K6_DURATION='2m'
 docker compose -f load-tests/docker-compose.yml --profile load up --build --abort-on-container-exit --exit-code-from k6
 ```
 
-O resultado JSON é escrito em `load-tests/results/summary.json`.
+Os resultados são escritos em `load-tests/results/summary.json`, `summary.md` e `performance.svg`.
 
-## 6. Perfis desta versão
+## 6. Ferramenta e escopo da medição
+
+Esta baseline usa **k6** em container Docker. JMeter não é necessário para o cenário atual: adicionar uma segunda ferramenta duplicaria a medição sem ampliar a cobertura. O Lighthouse existente no repositório é evidência visual/funcional, mas não comprova este critério de performance porque não contém uma auditoria da categoria `performance`. Ele não substitui a medição HTTP do k6.
+
+O conjunto de funcionalidades principais medido nesta baseline é:
+
+| Funcionalidade | Endpoint | Métricas |
+| --- | --- | --- |
+| Sessão | `GET /api/auth/session` | média, p95 |
+| Usuários | `GET /api/users` | média, p95 |
+| Unidades | `GET /api/units` | média, p95 |
+| Ocupações | `GET /api/unit-occupancies` | média, p95 |
+| Ocorrências | `GET /api/occurrences` | média, p95 |
+| Tipos de ocorrência | `GET /api/occurrence-types` | média, p95 |
+| Execução geral | todas as requisições HTTP | throughput, média, p95, p99, erro e checks |
+
+## 7. Perfis desta versão
 
 Como existe um único cenário parametrizado, os perfis são combinações de `K6_VUS` e `K6_DURATION`:
 
@@ -102,13 +126,13 @@ Como existe um único cenário parametrizado, os perfis são combinações de `K
 
 O cenário atual é somente leitura após autenticação. Ainda não mede criação de ocorrências, autorização negativa, reservas, escrita concorrente, spike ou soak.
 
-## 7. GitHub Actions real
+## 8. GitHub Actions real
 
 O workflow `.github/workflows/load-tests.yml` é acionado por `workflow_dispatch` ou por `pull_request` com o label `run-load-tests`. Em PR rotulado, executa sempre 2 VUs por 10 segundos. Na execução manual, oferece apenas 2, 10 ou 50 VUs e 10, 30 ou 60 segundos. Ele valida o Compose, executa `up --build --abort-on-container-exit --exit-code-from k6`, coleta `ps`, logs e `load-tests/results` mesmo em falha, publica `load-test-results-<run_id>` por 3 dias e executa `down -v --remove-orphans`.
 
 Para usar no GitHub, aplicar o label `run-load-tests` ao pull request para o smoke fixo ou iniciar manualmente o workflow para uma das combinações curtas permitidas. Cargas Normal prolongadas e Stress de 100–200 VUs continuam sendo locais/manuais.
 
-### 7.1 Limitações da conta estudantil
+### 8.1 Limitações da conta estudantil
 
 O GitHub Student Developer Pack oferece GitHub Pro enquanto a elegibilidade estiver ativa. Para repositórios privados, a referência atual do GitHub para o plano Pro é **US$ 18/mês de uso computacional incluído**, **1 GB de armazenamento de artefatos** e **10 GB de cache por repositório**. Em repositórios públicos, os runners padrão hospedados pelo GitHub não consomem a franquia de Actions; isso não elimina limites de tempo, concorrência ou armazenamento de artefatos. Consulte os valores vigentes na [documentação oficial de cobrança do GitHub Actions](https://docs.github.com/en/billing/concepts/product-billing/github-actions) e no [Student Developer Pack](https://education.github.com/pack).
 
@@ -126,18 +150,44 @@ Para não transformar o teste de carga em consumo recorrente de quota:
 
 Essa política faz do CI um **gate de regressão barato**, não um substituto para a campanha M3 de carga/estresse. Os resultados oficiais de 50, 100 e 200 usuários devem ser executados fora do ciclo automático e anexados como evidência separada.
 
-## 8. Evidências
+## 9. Evidências
 
 ```text
 artifacts/load-tests/
 ├── compose-ps.txt
 ├── compose.log
-└── results/summary.json
+└── results/
+    ├── summary.json
+    ├── summary.md
+    └── performance.svg
 ```
 
-Registrar commit, run ID, VUs, duração, thresholds, versões Docker/Compose/k6 e resultado. Não publicar credenciais ou dados pessoais. Vincular a execução aos IDs `LOAD-*` do relatório M3.
+O `summary.md` contém média, p95, p99, throughput, taxa de erro, checks e a tabela das seis funcionalidades. O `performance.svg` é o gráfico autocontido de média e p95 por endpoint. O workflow já gera o **Job Summary** e publica o artifact de resultados; ainda falta executar o workflow no GitHub para obter a evidência CI correspondente.
 
-## 9. Próximas evoluções
+| Item do critério | Evidência planejada | Situação |
+| --- | --- | --- |
+| Tempo médio | `results/summary.md` e `summary.json` por endpoint | Validado em execução local em 23/11/2026 |
+| p95 | `results/summary.md` e `summary.json` por endpoint | Validado em execução local em 23/11/2026 |
+| Throughput | `results/summary.md` e `summary.json` da execução | Validado em execução local em 23/11/2026 |
+| Gráfico | `results/performance.svg` | Validado em execução local em 23/11/2026 |
+| Visibilidade no CI | Job Summary + artifact de 3 dias | Implementado no workflow; execução CI ainda pendente |
+
+Registrar commit, run ID, VUs, duração, thresholds, versões Docker/Compose/k6 e resultado. Não publicar credenciais ou dados pessoais. Vincular a execução aos IDs `LOAD-*` do relatório M3. A execução local já valida a geração das métricas; a evidência do CI só deve ser marcada após uma execução GitHub Actions bem-sucedida.
+
+### 9.1 Roteiro para apresentar a evidência local atual
+
+Os números atualmente disponíveis foram obtidos em execução **local** com Docker Compose. Apresente `load-tests/results/summary.md` e `load-tests/results/performance.svg`; mantenha `load-tests/results/summary.json` como dados brutos agregados e `compose.log` como evidência do ambiente e do seed. Esses números não devem ser atribuídos ao GitHub Actions.
+
+### 9.2 Roteiro para localizar evidência futura no GitHub Actions
+
+1. No GitHub, abra o PR ou **Actions → Testes de carga**.
+2. Abra a execução concluída e leia o **Job Summary** para a visão rápida das métricas.
+3. Na seção **Artifacts**, baixe `load-test-results-<run_id>`.
+4. Dentro do pacote, abra `results/summary.md` para os números, `results/performance.svg` para projetar o gráfico, `results/summary.json` como dados brutos agregados e `compose.log` para comprovar o ambiente e o seed.
+
+Localmente, os mesmos arquivos ficam em `load-tests/results/` após o comando do Compose. Para a apresentação, projete `summary.md` e `performance.svg`; reserve `summary.json` para auditoria/processamento e `compose.log` para explicar a preparação do ambiente.
+
+## 10. Próximas evoluções
 
 1. Avaliar novos inputs do workflow manual somente se continuarem dentro do orçamento; manter o PR fixo em 2 VUs/10s e exigir confirmação para qualquer carga maior.
 2. Criar cenários separados para escrita, autorização, conflito e recuperação.
@@ -146,16 +196,42 @@ Registrar commit, run ID, VUs, duração, thresholds, versões Docker/Compose/k6
 5. Definir thresholds oficiais após baseline repetido e aprovação do responsável.
 6. Migrar de SQLite para o motor do ambiente-alvo se a capacidade do banco fizer parte do objetivo.
 
-## 10. Checklist
+## Resultado local validado
+
+Execucao local em **23/11/2026**, com Docker Compose, SQLite descartavel e **2 VUs por 10 segundos**:
+
+| Metrica | Resultado |
+| --- | ---: |
+| Throughput | 115,28 req/s |
+| Tempo HTTP medio | 16,58 ms |
+| Tempo HTTP p95 | 20,52 ms |
+| Taxa de erro | 0% |
+| Checks aprovados | 100% |
+
+Os valores acima são exclusivamente da execução local. A tabela detalhada por endpoint está em `load-tests/results/summary.md`, os dados agregados em `summary.json` e o gráfico em `performance.svg`. O Job Summary e o upload do artifact estão implementados no workflow, mas a execução CI ainda está pendente.
+
+### Matriz do criterio apos a execucao local
+
+| Item | Situacao |
+| --- | --- |
+| Tempo médio | Validado localmente em 23/11/2026 |
+| p95 | Validado localmente em 23/11/2026 |
+| Throughput | Validado localmente em 23/11/2026 |
+| Gráfico | Validado localmente em 23/11/2026 |
+| Job Summary CI | Implementado no workflow; execução CI pendente |
+
+## 11. Checklist
 
 - [x] Banco isolado e descartável.
 - [x] Seed Laravel executado automaticamente.
 - [x] Health check da API.
-- [x] Cenário de login, sessão e ocorrências.
+- [x] Cenário k6 com duas sessões preparadas e seis leituras principais.
 - [x] Thresholds de falha, p95, p99 e checks.
-- [x] Coleta de logs e JSON no CI.
+- [x] Coleta de logs, JSON, Markdown e SVG no CI.
 - [x] Limpeza garantida do Compose.
 - [ ] Cenários de escrita e concorrência.
 - [ ] Perfis separados smoke/normal/stress.
 - [ ] Inputs de carga no workflow manual.
+- [x] Job Summary com média, p95, throughput e link do gráfico implementado no workflow.
+- [ ] Execução CI bem-sucedida anexada como evidência M3.
 - [ ] Relatório com métricas de infraestrutura.

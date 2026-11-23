@@ -55,6 +55,19 @@ jobs:
             cp -R load-tests/results artifacts/load-tests/results
           fi
 
+      - name: Publicar resumo no Job Summary
+        if: always()
+        run: |
+          if [ -f artifacts/load-tests/results/summary.md ]; then
+            cat artifacts/load-tests/results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Teste de carga"
+              echo
+              echo "O relatório Markdown não foi gerado. Consulte os logs e os artefatos desta execução."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Publicar artefatos da carga
         if: always()
         uses: actions/upload-artifact@v4
