@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\CommonAreaStatus;
+use App\Http\Utils\TimeUtil;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -46,6 +48,20 @@ class CommonArea extends Model
             'requires_approval' => 'boolean',
             'status' => CommonAreaStatus::class,
         ];
+    }
+
+    /**
+     * MySQL returns a TIME column as "HH:MM:SS"; the API speaks "HH:MM", in
+     * the form and in the response alike.
+     */
+    protected function openingTime(): Attribute
+    {
+        return Attribute::make(get: fn (?string $value) => TimeUtil::format($value));
+    }
+
+    protected function closingTime(): Attribute
+    {
+        return Attribute::make(get: fn (?string $value) => TimeUtil::format($value));
     }
 
     public function reservations(): HasMany

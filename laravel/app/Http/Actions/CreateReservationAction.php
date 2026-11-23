@@ -103,8 +103,12 @@ class CreateReservationAction
     /**
      * A reservation without both times is a full day booking; informing only
      * one of them is invalid.
+     *
+     * Public because UpdateCommonAreaAction runs the future reservations
+     * through it after the area rules change: the rule that decides what may
+     * be booked is the same that decides what no longer fits.
      */
-    private static function checkPeriod(CommonArea $commonArea, ?string $startTime, ?string $endTime): void
+    public static function checkPeriod(CommonArea $commonArea, ?string $startTime, ?string $endTime): void
     {
         $isFullDay = $startTime === null && $endTime === null;
 

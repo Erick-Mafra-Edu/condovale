@@ -450,18 +450,28 @@ Route::middleware(['auth', 'user.active', 'password.change', 'use.case:generate-
 
 /*
 |--------------------------------------------------------------------------
-| Disponibilidade das áreas comuns — UC03 / RF03 / RN01 / RN02
+| Áreas comuns e disponibilidade — UC03 / RF03 / RN01 / RN02
 |--------------------------------------------------------------------------
 |
-| O morador consulta antes de reservar (view-common-areas e
-| request-reservation) e a administração, que gerencia as reservas
-| (manage-reservations), consulta a mesma agenda. As duas respostas são
-| anônimas (RN14): dizem quando a área está ocupada, nunca por quem.
+| Consultar é de quem reserva (view-common-areas e request-reservation) e da
+| administração, que gerencia as reservas (manage-reservations). A agenda é
+| anônima (RN14): diz quando a área está ocupada, nunca por quem.
+|
+| Cadastrar, editar e excluir área é da administração. O diagrama de casos de
+| uso não tem um caso próprio para isso; o mais próximo é manage-reservations,
+| e um caso novo exigiria mexer também na matriz do frontend.
 */
-Route::middleware([
-    'auth', 'user.active', 'password.change',
-    'use.case:view-common-areas,request-reservation,manage-reservations',
-])->group(function () {
-    Route::get('common-areas/{id}/availability', [CommonAreaController::class, 'availability']);
-    Route::get('common-areas/{id}/occupancy', [CommonAreaController::class, 'occupancy']);
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::middleware('use.case:view-common-areas,request-reservation,manage-reservations')->group(function () {
+        Route::get('common-areas', [CommonAreaController::class, 'index']);
+        Route::get('common-areas/{id}', [CommonAreaController::class, 'show']);
+        Route::get('common-areas/{id}/availability', [CommonAreaController::class, 'availability']);
+        Route::get('common-areas/{id}/occupancy', [CommonAreaController::class, 'occupancy']);
+    });
+
+    Route::middleware('use.case:manage-reservations')->group(function () {
+        Route::post('common-areas', [CommonAreaController::class, 'store']);
+        Route::patch('common-areas/{id}', [CommonAreaController::class, 'update']);
+        Route::delete('common-areas/{id}', [CommonAreaController::class, 'destroy']);
+    });
 });

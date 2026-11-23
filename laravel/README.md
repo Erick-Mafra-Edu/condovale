@@ -1105,6 +1105,57 @@ Com a carga da UC-T01 (10 mil reservas em mil dias), o pior caso também é a
 exportação de três meses, perto de 100 ms, com 7 consultas fixas. Não foi
 preciso índice novo: `reservations.date` já tinha.
 
+## Áreas comuns — AreaComum
+
+| Rota | Quem | Efeito |
+| --- | --- | --- |
+| `GET /api/common-areas` | morador e administração | lista, por nome, todas as áreas — inclusive as indisponíveis |
+| `GET /api/common-areas/{id}` | morador e administração | detalhe |
+| `POST /api/common-areas` | administração | cadastra |
+| `PATCH /api/common-areas/{id}` | administração | edita o que vier, a situação inclusive |
+| `DELETE /api/common-areas/{id}` | administração | exclui a área que nunca foi reservada |
+
+Consultar alcança `view-common-areas`, `request-reservation` e
+`manage-reservations`; escrever, só `manage-reservations`. O diagrama de casos
+de uso não tem um caso próprio para administrar áreas, e criar um novo exigiria
+mudar também a matriz do frontend — por isso a escrita ficou com o caso de
+uso de gerenciar reservas.
+
+```json
+{
+  "name": "Piscina", "description": "Piscina adulto e infantil.", "capacity": 30,
+  "opening_time": "09:00", "closing_time": "20:00", "max_reservation_minutes": 180,
+  "requires_approval": false, "status": "available"
+}
+```
+
+- **Nome único**, até 120 caracteres.
+- **Horários obrigatórios**, `HH:MM`, fechamento depois da abertura, no mesmo
+  dia. Podem mudar, mas não ser apagados: sem eles não há grade e a reserva é
+  recusada. As respostas trazem sempre `HH:MM`, mesmo com o MySQL guardando
+  `HH:MM:SS`.
+- **`max_reservation_minutes`** é opcional, a partir de 30 e múltiplo de 30 (o
+  tamanho do bloco). Sem ele vale o padrão de 2 horas.
+- **`capacity`** é opcional; vazia é gravada como 0, que é como a tabela diz
+  "não informada".
+- **`status`** é a situação ativa: `available` aceita reserva,
+  `unavailable` tira a área do calendário. Sem informar, a área nasce
+  disponível e sem exigir aprovação.
+- **A listagem não pagina na prática**: sem `limit`, devolve até 100 áreas,
+  porque a tela de reservas pede a lista inteira. `relations` é descartado —
+  por ele sairiam as reservas da área com quem reservou.
+- **Mudar as regras não mexe nas reservas já feitas.** Ao tornar a área
+  indisponível ou mudar horário ou duração, a resposta avisa quantas reservas
+  futuras pendentes ou aprovadas não se encaixam mais
+  (`"... 2 reservas futuras pendentes ou aprovadas não se encaixam mais nas
+  regras da área: reveja-as na agenda de reservas."`). Cancelar ou recusar é
+  decisão da administração, reserva a reserva.
+- **Área com reserva não é excluída** (409), nem que a reserva esteja
+  cancelada: a tabela de reservas apaga em cascata com a área e o histórico
+  dos relatórios iria junto. Nesse caso, torne-a indisponível. A exclusão
+  guarda uma cópia da área na auditoria.
+- Cadastro, edição e exclusão ficam na auditoria (`TypeLogEnum::COMMON_AREA`).
+
 ## Disponibilidade das áreas comuns — UC03 / RF03 / RN01 / RN02
 
 Duas consultas, as duas anônimas (RN14): dizem quando a área está ocupada,
