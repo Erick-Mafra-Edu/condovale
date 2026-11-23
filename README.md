@@ -22,6 +22,7 @@ Produção: [https://condoval.wuaze.com](https://condoval.wuaze.com)
 ## Documentação
 
 - [Usuários disponíveis no backend](docs/usuarios-backend.md)
+- [Plano de usabilidade e acessibilidade](docs/plano-usabilidade-acessibilidade.md)
 
 ## Testes de carga
 
