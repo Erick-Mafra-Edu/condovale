@@ -40,9 +40,8 @@ class CreateReservationAction
         self::checkStartNotPast($date, $startTime);
 
         return DB::transaction(function () use ($resident, $commonArea, $date, $startTime, $endTime) {
-            // Two residents asking for the same period at the same time: the
-            // lock on the area makes the second one wait and then see the first.
-            CommonArea::where('id', $commonArea->id)->lockForUpdate()->first();
+            // Inside the transaction: the check locks the area until the insert
+            // commits, so a simultaneous request waits and then sees this one.
             CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime);
 
             $reservation = Reservation::create([

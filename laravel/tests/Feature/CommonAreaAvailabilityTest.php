@@ -362,9 +362,12 @@ class CommonAreaAvailabilityTest extends TestCase
     public function test_reservar_a_partir_da_abertura_e_aceito(): void
     {
         $area = $this->area();
+        // Logado, como na requisição real: o log da reserva registra quem a fez.
+        $morador = User::factory()->resident()->create();
+        $this->actingAs($morador);
 
         // Com abertura gravada como "08:00:00", a comparação de texto recusava "08:00".
-        $reserva = CreateReservationAction::execute(User::factory()->resident()->create(), $area, [
+        $reserva = CreateReservationAction::execute($morador, $area, [
             'date' => self::AMANHA, 'start_time' => '08:00', 'end_time' => '10:00',
         ]);
 
@@ -375,6 +378,7 @@ class CommonAreaAvailabilityTest extends TestCase
     {
         $area = $this->area(['closing_time' => '18:00:00']);
         $morador = User::factory()->resident()->create();
+        $this->actingAs($morador);
 
         try {
             CreateReservationAction::execute($morador, $area, ['date' => self::HOJE, 'start_time' => '14:00', 'end_time' => '15:00']);
