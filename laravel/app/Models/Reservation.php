@@ -12,6 +12,15 @@ class Reservation extends Model
 {
     use HasFactory;
 
+    /**
+     * How many times a transaction that writes reservations runs again when
+     * InnoDB picks it as a deadlock victim ("try restarting transaction").
+     * Creating, approving and cancelling lock the area and the reservations
+     * of the day; under contention one of them may be chosen, and running it
+     * again is the remedy MySQL itself prescribes.
+     */
+    public const TRANSACTION_ATTEMPTS = 3;
+
     protected $fillable = [
         'common_area_id',
         'resident_id',

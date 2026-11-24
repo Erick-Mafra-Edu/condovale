@@ -55,19 +55,22 @@ class CreateReservationAction
             );
 
             return $reservation;
-        });
+        }, Reservation::TRANSACTION_ATTEMPTS);
     }
 
     /**
      * "Reserva 12 da área 3 Quadra para 24/11/2026, das 10:00 às 12:00, aprovada."
+     *
+     * Without an outcome, it is the one of a new reservation: "solicitada"
+     * when it waits for approval, "aprovada" otherwise.
      */
-    public static function describe(Reservation $reservation, CommonArea $commonArea): string
+    public static function describe(Reservation $reservation, CommonArea $commonArea, ?string $outcome = null): string
     {
         $date = $reservation->date->format('d/m/Y');
         $period = $reservation->isFullDay()
             ? 'dia inteiro'
-            : "das {$reservation->start_time} às {$reservation->end_time}";
-        $outcome = $reservation->status === ReservationStatus::Pending ? 'solicitada' : 'aprovada';
+            : 'das '.TimeUtil::format($reservation->start_time).' às '.TimeUtil::format($reservation->end_time);
+        $outcome ??= $reservation->status === ReservationStatus::Pending ? 'solicitada' : 'aprovada';
 
         return "Reserva {$reservation->id} da área {$commonArea->id} {$commonArea->name} para {$date}, {$period}, {$outcome}.";
     }

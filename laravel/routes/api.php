@@ -276,6 +276,24 @@ Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->gr
 
 /*
 |--------------------------------------------------------------------------
+| Cancelamento de reserva — RF03 / RN08
+|--------------------------------------------------------------------------
+|
+| O morador cancela as próprias reservas (cancel-own-reservation) e a
+| administração, qualquer uma (manage-reservations); de quem é a reserva quem
+| decide é a Action. Fica fora do unit.linked: cancelar não cria registro
+| órfão, e quem perdeu o vínculo com a unidade precisa poder desistir das
+| reservas que já tinha.
+*/
+Route::middleware([
+    'auth', 'user.active', 'password.change',
+    'use.case:cancel-own-reservation,manage-reservations',
+])->group(function () {
+    Route::post('reservations/{id}/cancel', [ReservationController::class, 'cancel']);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Andamento e encerramento de chamados — RF04 / RN06 / RN15
 |--------------------------------------------------------------------------
 |

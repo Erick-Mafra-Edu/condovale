@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Actions\CancelReservationAction;
 use App\Http\Actions\CreateReservationAction;
 use App\Http\Requests\ReservationStoreRequest;
 use App\Http\Utils\AuthUtil;
+use App\Http\Utils\SanitizeUtil;
 use App\Models\CommonArea;
+use App\Models\Reservation;
 use App\Services\MessageService;
 
 /**
@@ -37,5 +40,31 @@ class ReservationController extends Controller
             CreateReservationAction::describe($reservation, $commonArea),
             $reservation->load('commonArea:id,name')
         );
+    }
+
+    /**
+     * RN08 — cancels and releases the period at once: a cancelled reservation
+     * no longer blocks the agenda. The resident cancels their own; the
+     * administration, any. Which is which is the Action's decision.
+     */
+    public function cancel(int $id)
+    {
+        $id = SanitizeUtil::sanitizeInt($id);
+        $reservation = Reservation::find($id);
+
+        if (! $reservation) {
+            return MessageService::error("Reserva {$id} não encontrada.", 404);
+        }
+
+        try {
+            $reservation = CancelReservationAction::execute($reservation, AuthUtil::user());
+        } catch (\Throwable $th) {
+            return MessageService::throwable($th);
+        }
+
+        $reservation->load('commonArea:id,name');
+        $description = CreateReservationAction::describe($reservation, $reservation->commonArea, 'cancelada');
+
+        return MessageService::success("{$description} O período voltou a ficar disponível.", $reservation);
     }
 }

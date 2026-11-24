@@ -26,13 +26,21 @@ class ReviewReservationAction
             throw BusinessRuleException::unprocessable('A análise permite apenas aprovar ou reprovar a solicitação.');
         }
 
-        if ($reservation->status !== ReservationStatus::Pending) {
-            throw BusinessRuleException::conflict('Somente solicitações pendentes podem ser analisadas.');
-        }
-
-        // The check and the update share one transaction, so the lock the
-        // conflict check takes on the area holds until the approval is written.
+        // The checks and the update share one transaction, so the locks hold
+        // until the decision is written.
         return DB::transaction(function () use ($reservation, $status, $rejectionReason) {
+            // Area first, then the reservation: the same order the creation
+            // follows, so the two never wait on each other in a cycle.
+            CommonArea::whereKey($reservation->common_area_id)->lockForUpdate()->first();
+
+            // The status is read again under lock: a cancellation at the same
+            // moment must not be overwritten by this decision (RN08).
+            $reservation = Reservation::whereKey($reservation->id)->lockForUpdate()->firstOrFail();
+
+            if ($reservation->status !== ReservationStatus::Pending) {
+                throw BusinessRuleException::conflict('Somente solicitações pendentes podem ser analisadas.');
+            }
+
             if ($status === ReservationStatus::Approved) {
                 $commonArea = $reservation->commonArea;
                 $date = $reservation->date->format('Y-m-d');
@@ -49,7 +57,7 @@ class ReviewReservationAction
             ]);
 
             return $reservation->refresh();
-        });
+        }, Reservation::TRANSACTION_ATTEMPTS);
     }
 
     /**
