@@ -1290,6 +1290,40 @@ A especificação não define outras regras de utilização além das que a áre
 guarda; limite de reservas por morador, antecedência mínima ou máxima e número
 de convidados não existem no documento nem na tela, e não foram inventados.
 
+### Cancelamento — RN08
+
+> "O cancelamento de uma reserva deverá liberar novamente o respectivo período
+> para novas reservas."
+
+`POST /api/reservations/{id}/cancel`, sem corpo. O morador cancela as próprias
+reservas (`cancel-own-reservation`), inclusive desistindo de um pedido ainda
+pendente; a administração (`manage-reservations`), qualquer uma. A rota fica
+fora do `unit.linked`: quem perdeu o vínculo com a unidade ainda pode desistir
+das reservas que tinha.
+
+```json
+{
+  "status": true,
+  "message": "Reserva 12 da área 3 Quadra para 25/11/2026, das 10:00 às 12:00, cancelada. O período voltou a ficar disponível.",
+  "data": { "id": 12, "status": "cancelled", "common_area": { "id": 3, "name": "Quadra" } }
+}
+```
+
+- **A liberação é o próprio status**: só pendente e aprovada ocupam a agenda,
+  então a reserva cancelada sai na hora da checagem de conflito e da
+  disponibilidade — o mesmo período pode ser reservado em seguida.
+- **Recusas**: reserva de outra pessoa (403); já cancelada, reprovada ou que
+  já terminou (409) — data passada, ou hoje com o fim já alcançado. A que está
+  em andamento ainda se cancela, como a tela de reservas permite, e a diária de
+  hoje também.
+- **Cancelar e aprovar ao mesmo tempo** termina sempre cancelada: as duas
+  operações releem o status com trava antes de decidir, então a aprovação não
+  grava "aprovada" por cima de um cancelamento (o que deixaria o período
+  ocupado para sempre). Vale também para a tela que carregou o pedido antes de
+  o morador desistir.
+- Fica na auditoria como "cancelada", ou "cancelada pela administração" quando
+  não foi o próprio morador.
+
 ### Conflito de reservas e pedidos simultâneos — RN01
 
 `CheckReservationConflictAction` é a única porta: a criação e a aprovação
@@ -1323,6 +1357,16 @@ Medido em 2026-11-24 com MySQL 8.0.44 (InnoDB, REPEATABLE-READ):
 | 8 pedidos do mesmo período | 8 gravados | 1 gravado, 7 × 409 | 1 gravado, 7 × 409 |
 | 4 diárias + 4 períodos cruzados | 8 gravados | 1 gravado, 7 × 409 | 1 gravado, 7 × 409 |
 | 4 períodos encostados | — | 4 gravados | 4 gravados |
+| 6 pedidos cancelados e aprovados no mesmo instante | — | deadlock nos 6 | 6 cancelados |
+
+A última linha é o cancelamento (RN08). Com o cancelamento travando só a
+reserva, e a aprovação travando a área e depois as reservas do dia, as duas
+pegavam as mesmas travas em ordens opostas e o MySQL respondia com deadlock
+(1213). Agora **criar, aprovar e cancelar travam na mesma ordem — área, depois
+reserva** — e as três transações são refeitas até
+`Reservation::TRANSACTION_ATTEMPTS` (3) vezes se o InnoDB as escolher como
+vítima de deadlock, que é o que o próprio MySQL manda fazer ("try restarting
+transaction").
 
 **Tudo isso depende de InnoDB**: em MyISAM não há transação nem trava de
 linha. O `config/database.php` deixa o motor com o padrão do servidor. Para
@@ -1340,7 +1384,10 @@ voltar vazia, as tabelas não existem — faltam as migrations.
 A suíte inteira ainda não roda contra MySQL: `DemoSeedTest` e
 `DeployRouteTest` executam migrations por dentro, o DDL confirma a transação
 do `RefreshDatabase` e os testes seguintes encontram dados de sobra. Os testes
-de reservas, áreas, relatórios e painel passam contra MySQL. E o `down()` da
+de carga (`*PerformanceTest`) gravam chaves estrangeiras supondo ids a partir
+de 1, o que só vale no SQLite, onde a sequência volta com o rollback. Os
+demais testes de reservas, áreas, relatórios e painel passam contra MySQL. E o
+`down()` da
 migration de `occurrence_types` não roda no MySQL (erro 1553: o índice é usado
 por uma chave estrangeira), o que impede `migrate:rollback` ali.
 
