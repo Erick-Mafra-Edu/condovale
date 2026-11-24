@@ -87,7 +87,7 @@ class UpdateCommonAreaAction
 
         return $future->filter(function ($reservation) use ($commonArea) {
             try {
-                CreateReservationAction::checkPeriod(
+                CheckReservationRulesAction::checkPeriod(
                     $commonArea,
                     TimeUtil::format($reservation->start_time),
                     TimeUtil::format($reservation->end_time)
