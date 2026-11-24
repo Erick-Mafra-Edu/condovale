@@ -25,7 +25,9 @@ class PermissionSeeder extends Seeder
                 'guard_name' => $item->guard_name,
             ];
 
-            Permission::create($array);
+            // Um caso de uso novo no JSON chega a produção reaplicando só este
+            // seeder, sem recriar a base e sem duplicar os que já existem.
+            Permission::updateOrCreate(['name' => $item->name, 'guard_name' => $item->guard_name], $array);
         }
     }
 }

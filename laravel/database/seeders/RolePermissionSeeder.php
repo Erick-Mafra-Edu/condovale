@@ -2,8 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Permission;
-use App\Models\Role;
+use Database\Seeders\Concerns\ResolvesReferences;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -17,6 +16,8 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class RolePermissionSeeder extends Seeder
 {
+    use ResolvesReferences;
+
     public function run(): void
     {
         // O Spatie resolve nomes pela coleção que mantém em memória, carregada
@@ -28,15 +29,14 @@ class RolePermissionSeeder extends Seeder
         $data = json_decode($json);
 
         foreach ($data as $item) {
-            $roleId = Role::where('name', $item->role)->where('guard_name', 'web')->value('id');
-            $permissionId = Permission::where('name', $item->permission)->where('guard_name', 'web')->value('id');
-
             $array = [
-                'role_id' => $roleId,
-                'permission_id' => $permissionId,
+                'role_id' => $this->roleId($item->role, 'role_has_permissions.json'),
+                'permission_id' => $this->permissionId($item->permission, 'role_has_permissions.json'),
             ];
 
-            DB::table('role_has_permissions')->insert($array);
+            // A chave é o próprio par: reaplicar não duplica o vínculo, e um
+            // caso de uso concedido a um papel no JSON chega a produção.
+            DB::table('role_has_permissions')->updateOrInsert($array);
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

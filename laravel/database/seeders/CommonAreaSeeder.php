@@ -26,7 +26,9 @@ class CommonAreaSeeder extends Seeder
                 'status' => $item->status,
             ];
 
-            CommonArea::create($array);
+            // Pelo nome, a chave de negócio (único no cadastro): reaplicar a
+            // carga atualiza a área em vez de criar uma segunda igual.
+            CommonArea::updateOrCreate(['name' => $item->name], $array);
         }
     }
 }
