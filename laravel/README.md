@@ -240,11 +240,12 @@ obrigatório do publicador, ao lado de `vendor/composer/`.
 
 [.github/workflows/deploy-infinityfree.yml](../.github/workflows/deploy-infinityfree.yml)
 faz o mesmo pelo GitHub: roda a suíte, reinstala as dependências com `--no-dev`,
-grava o `.env` a partir do segredo e sincroniza o `htdocs`.
+grava o `.env` a partir do segredo, sincroniza o `htdocs`, aplica as migrations
+pendentes e renova os caches de inicialização.
 
-**Ele não dispara por push, de propósito.** Um commit de quem não conhece a
-configuração do host publicaria direto em produção. É acionado à mão, em
-*Actions → Run workflow*.
+**Dispara a cada push na `main`**, que só recebe código por pull request com o
+CI verde. Também pode ser acionado à mão, em *Actions → Run workflow*, para
+reprocessar um deploy ou recriar o banco.
 
 Configure antes, em *Settings → Secrets and variables → Actions*:
 
@@ -256,8 +257,8 @@ Configure antes, em *Settings → Secrets and variables → Actions*:
 | `ENV_PRODUCTION` | o conteúdo inteiro do `.env.production` local |
 | `DEPLOY_TOKEN` | o mesmo `DEPLOY_TOKEN` do `.env.production` |
 
-E uma *variable* `APP_URL` com `https://condoval.wuaze.com`, usada só pelo
-passo opcional que recria o banco.
+E uma *variable* `APP_URL` com `https://condoval.wuaze.com`, usada pelos passos
+que chamam a rota de implantação (migrations e caches).
 
 Quatro pontos que decorrem do desenho:
 
@@ -267,10 +268,12 @@ Quatro pontos que decorrem do desenho:
 - **A primeira execução é pesada**: mesmo com `--no-dev`, o `vendor/` passa de
   quatro mil arquivos. Se ela falhar por tempo ou por limite de conexão, suba o
   `vendor/` uma vez pelo FileZilla e deixe o workflow cuidar das diferenças.
-- **O banco não é tocado ao publicar.** Recriar o schema é um passo à parte:
-  marque `recreate_database` ao rodar o workflow, ou chame a rota de
-  implantação direto. Amarrar isso à publicação apagaria a produção a cada
-  entrega.
+- **A publicação aplica só as migrations pendentes** (`migrate`, sem `fresh`,
+  pelo `tools/run-deploy-migration.py --pending`): a coluna nova chega ao banco
+  junto com o código que a usa, e nada é apagado. Sem migration nova, o passo
+  não faz nada. **Recriar o schema** continua um passo à parte: marque
+  `recreate_database` ao rodar o workflow à mão — amarrar isso à publicação
+  apagaria a produção a cada entrega.
 - **O `.env` nunca entra no repositório.** Ele é escrito no runner a partir do
   segredo e vai direto para o FTP; o workflow aborta se faltar `APP_KEY`.
 
@@ -312,9 +315,15 @@ comparação é feita com `hash_equals`, e o limitador `throttle:deploy` corta e
 3 tentativas por minuto com chave fixa — um balde único para o endpoint, já que
 não há conta para chavear e o padrão do projeto proíbe limitar por IP.
 
-**A rota derruba todas as tabelas.** Deixe `DEPLOY_ENABLED=false` no
-`.env.production` fora da janela de implantação; ligue, rode, desligue. Gere o
-token com `php -r "echo bin2hex(random_bytes(32));"`.
+Com `{"fresh": false}` no corpo, a rota aplica só as migrations pendentes
+(`migrate`), sem apagar nada — é o que o deploy automático faz a cada
+publicação. **Sem ele, a rota derruba todas as tabelas.**
+
+Como o deploy automático chama as rotas de implantação a cada publicação
+(migrations e caches), `DEPLOY_ENABLED` fica ligado no `.env` de produção e a
+defesa é o token: mantenha-o longo, só nos segredos do GitHub e no `.env`, e
+troque-o se ele tiver circulado fora deles. Gere com
+`php -r "echo bin2hex(random_bytes(32));"`.
 
 Duas consequências que decorrem do que ela faz:
 
@@ -414,9 +423,14 @@ o acesso é `$item->campo`.
 
 As regras que não se quebram:
 
-- **`create()`, nunca `updateOrCreate()`.** A carga tem de falhar alto. Se
-  rodou duas vezes e duplicou, isso é informação: o banco não estava no estado
-  que se achava.
+- **Referência com `updateOrCreate()` pela chave de negócio; demonstração com
+  `create()`.** Permissões e papéis (pelo nome), a matriz papel–permissão
+  (pelo par), tipos de ocorrência e áreas comuns (pelo nome) são configuração
+  do produto: reaplicar só o seeder leva uma mudança do JSON a produção sem
+  duplicar nada (`ReferenceSeedersTest`). Pessoas, unidades, chamados,
+  reservas e comunicados são dado de demonstração, que só roda em base
+  recém-criada: ali a carga falha alto, e duplicar seria informação de que o
+  banco não estava no estado que se achava.
 - **Nenhum fallback no mapeamento.** `$item->campo`, jamais `?? null`. Dado
   faltando vira erro, não vira nulo em silêncio.
 - **As chaves do JSON são os nomes exatos das colunas.** Migration, JSON e
@@ -1255,9 +1269,10 @@ nem de 50 ms no MySQL 8.0, com 5 consultas fixas por página ou exportação
 
 A migration `2026_11_24_000001_add_audit_fields_to_logs_table` acrescenta
 `action`, `subject_id` e `user_role` e preenche `user_role` dos registros
-antigos com o perfil atual do autor. **Rode-a logo depois de publicar o
-código**, pelo `POST /api/deploy/migrate` com `fresh=false`, que não apaga
-nada: até lá, toda operação que grava log falha por coluna inexistente.
+antigos com o perfil atual do autor. O deploy automático a aplica logo depois
+de publicar o código (passo "Aplicar migrations pendentes"). Num deploy feito à
+mão, rode `POST /api/deploy/migrate` com `fresh=false`, que não apaga nada:
+até lá, toda operação que grava log falha por coluna inexistente.
 
 ## Áreas comuns — AreaComum
 

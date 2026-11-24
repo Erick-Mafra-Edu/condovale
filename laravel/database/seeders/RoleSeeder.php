@@ -19,7 +19,7 @@ class RoleSeeder extends Seeder
                 'guard_name' => $item->guard_name,
             ];
 
-            Role::create($array);
+            Role::updateOrCreate(['name' => $item->name, 'guard_name' => $item->guard_name], $array);
         }
     }
 }

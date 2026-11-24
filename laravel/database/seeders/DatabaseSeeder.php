@@ -13,8 +13,16 @@ class DatabaseSeeder extends Seeder
      * Run the database seeds, in the order the foreign keys require.
      *
      * Cada seeder lê um JSON de database/seeders/json, cujas chaves são os
-     * nomes das colunas, e cria com create() — carga que falha alto é melhor
-     * que carga que engole divergência.
+     * nomes das colunas.
+     *
+     * As tabelas de **referência** — permissões, papéis, a matriz entre eles,
+     * tipos de ocorrência e áreas comuns — usam updateOrCreate pela chave de
+     * negócio: são configuração do produto, e uma mudança no JSON chega a
+     * produção reaplicando só o seeder (`db:seed --class=...`), sem recriar a
+     * base nem duplicar linha. O **dado de demonstração** (pessoas, unidades,
+     * chamados, reservas, comunicados) cria com create(): só roda numa base
+     * recém-criada, e ali carga que falha alto é melhor que carga que engole
+     * divergência.
      *
      * A ordem abaixo é a das dependências, não a alfabética. O que um JSON
      * aponta no outro é a **chave de negócio** — o e-mail do usuário, o código
