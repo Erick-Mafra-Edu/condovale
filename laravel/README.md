@@ -986,6 +986,49 @@ Com dez mil chamados e dez mil reservas, o painel do administrador, o mais
 pesado, abre em cerca de 10 ms no SQLite, com 21 consultas — as mesmas com o
 dobro de dados (`DashboardPerformanceTest`).
 
+## Ocorrências e denúncias — RF04 / RN05 / RN06 / UC6 a UC12
+
+| Rota | Autorização | Caso de uso |
+| --- | --- | --- |
+| `POST /api/occurrences` | `create-occurrence` ou `open-occurrence-for-resident` | UC6 Registrar ocorrência e UC7 Registrar denúncia |
+| `GET /api/occurrences`, `/{id}`, `/{id}/history` | `track-own-occurrences`, `view-assigned-occurrences`, `analyze-occurrences` ou `close-any-occurrence` | UC9 Consultar atribuídas e UC12 Acompanhar minhas solicitações |
+| `PATCH /api/occurrences/{id}/status` | `analyze-occurrences` ou `update-occurrence-progress` | UC10 Atualizar andamento (status) |
+| `PATCH /api/occurrences/{id}` | `analyze-occurrences` ou `update-occurrence-progress` | UC10 Atualizar andamento (status e anotação) |
+| `PATCH /api/occurrences/{id}/assign` | `assign-occurrence` ou `hand-over-occurrence` | UC8 Encaminhar ocorrência para funcionário |
+| `POST /api/occurrences/{id}/finish` | `finish-occurrence` ou `close-any-occurrence` | UC11 Finalizar atendimento |
+| `/api/occurrences/{id}/attachments` | quem enxerga o chamado | imagens do chamado (até 5) |
+| `/api/occurrence-types` | leitura por quem abre chamado; escrita por `manage-occurrence-types` | os tipos e a natureza de cada um |
+
+Cada pessoa enxerga só o seu recorte (`ScopeOccurrencesAction`): o morador, os
+próprios chamados; o funcionário, os atribuídos a ele; síndico e
+administração, a fila inteira. Chamado fora do recorte responde 404.
+
+### UC7 — denúncia
+
+A especificação tem dois casos de uso de abertura no RF04: "UC6 - Registrar
+ocorrência" e "UC7 - Registrar denúncia". A denúncia é um chamado como os
+outros — do morador que abriu, com status (RN05), tratado pelo mesmo fluxo
+(RN06) —, e o que a separa é o assunto: barulho, uso indevido de área,
+descumprimento do regimento. Por isso a natureza fica no **tipo**:
+
+- `occurrence_types.kind` é `maintenance` (Manutenção) ou `complaint`
+  (Denúncia). Tipo novo nasce como manutenção; a administração decide quais são
+  denúncia (`POST`/`PATCH /api/occurrence-types` com `kind`), e a mudança fica
+  na auditoria.
+- Registrar denúncia é abrir chamado com um tipo de denúncia. Cada ocorrência
+  devolve `occurrence_type.kind`.
+- `GET /api/occurrences?kind=complaint` lista só as denúncias (somado ao
+  recorte de quem pede); o relatório aceita o mesmo `kind` e traz `by_kind`.
+- A carga traz dois tipos de denúncia: "Barulho e sossego" e "Conduta e
+  regimento interno". Em produção, a migration deixa todos os tipos existentes
+  como manutenção — marcar os de denúncia é decisão da administração, não um
+  palpite da migration pelo nome.
+
+Não há caso de uso próprio de permissão para a denúncia: ela usa o
+`create-occurrence` do morador. Um caso novo exigiria mudar a matriz do
+frontend junto (`permissions.ts`), e a especificação dá aos dois casos o mesmo
+ator e as mesmas regras.
+
 ## Comunicados — RF05 / RN07 / RN03
 
 | Rota | Autorização | Efeito |
@@ -1033,10 +1076,12 @@ formato e o mesmo teto de exportação nos dois.
 | `from`, `to` | sim | período de **abertura**, `AAAA-MM-DD`, os dois dias inteiros |
 | `occurrence_type_id` | não | filtra a lista por tipo |
 | `status` | não | filtra a lista por status |
+| `kind` | não | filtra a lista por natureza: `maintenance` ou `complaint` (UC7) |
 | `page`, `limit` | não | paginação da lista; `limit` até 100 |
 | `export` | não | `true` traz a lista inteira numa resposta (RN12) |
 
-A resposta segue o `ReportQuery` do frontend:
+A resposta segue o `ReportQuery` do frontend, e traz também `by_kind`
+(manutenção e denúncia, sempre as duas):
 
 ```jsonc
 {

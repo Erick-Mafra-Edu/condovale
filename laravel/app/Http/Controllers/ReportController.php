@@ -28,6 +28,7 @@ class ReportController extends Controller
         $filters = self::filtros($request, $item) + [
             'occurrence_type_id' => isset($item->occurrence_type_id) ? SanitizeUtil::sanitizeInt($item->occurrence_type_id) : null,
             'status' => $item->status ?? null,
+            'kind' => $item->kind ?? null,
         ];
 
         try {

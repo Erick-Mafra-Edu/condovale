@@ -249,7 +249,8 @@ class OccurrenceReportTest extends TestCase
         $this->assertSame('Concluído', $linha['status_label']);
         $this->assertSame('Cano trocado.', $linha['conclusion']);
         $this->assertTrue($linha['resolved']);
-        $this->assertSame(['id' => $tipo->id, 'name' => 'Manutenção predial'], $linha['occurrence_type']);
+        // A natureza separa manutenção de denúncia (UC7).
+        $this->assertSame(['id' => $tipo->id, 'name' => 'Manutenção predial', 'kind' => 'maintenance'], $linha['occurrence_type']);
         $this->assertSame(['id' => $morador->id, 'name' => 'Ana Silva'], $linha['resident']);
         $this->assertSame(['id' => $funcionario->id, 'name' => 'Pedro Manutenção'], $linha['assigned_employee']);
         $this->assertSame(['id' => $unidade->id, 'code' => $unidade->code], $linha['unit']);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\OccurrenceKind;
 use App\Enums\OccurrenceStatus;
 
 /**
@@ -19,6 +20,8 @@ class OccurrenceReportRequest extends ReportRequest
         return parent::rules() + [
             'occurrence_type_id' => 'nullable|integer|exists:occurrence_types,id',
             'status' => 'nullable|in:'.$status,
+            // UC7 — só denúncias (complaint) ou só manutenção (maintenance).
+            'kind' => 'nullable|in:'.OccurrenceKind::values(),
         ];
     }
 
@@ -28,6 +31,7 @@ class OccurrenceReportRequest extends ReportRequest
             'occurrence_type_id.integer' => 'O tipo de ocorrência deve ser informado pelo código.',
             'occurrence_type_id.exists' => 'O tipo de ocorrência informado não existe.',
             'status.in' => 'O status informado não existe.',
+            'kind.in' => 'Natureza inválida. Use manutenção (maintenance) ou denúncia (complaint).',
         ];
     }
 }
