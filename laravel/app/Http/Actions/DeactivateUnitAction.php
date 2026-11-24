@@ -2,9 +2,11 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UnitStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\AuditUtil;
 use App\Models\Unit;
 
 /**
@@ -19,10 +21,12 @@ class DeactivateUnitAction
     {
         self::checkCanDeactivate($unit);
 
-        $unit->update(['status' => UnitStatus::Inactive->value]);
+        $unit->fill(['status' => UnitStatus::Inactive->value]);
+        $changes = AuditUtil::diff($unit);
+        $unit->save();
 
         $description = "Unidade {$unit->id} {$unit->code} inativada.";
-        CreateLogAction::execute(TypeLogEnum::UNIT->value, $description);
+        CreateLogAction::execute(TypeLogEnum::UNIT->value, $description, $changes, action: AuditAction::UnitDeactivated, subjectId: $unit->id);
 
         return $unit->refresh();
     }

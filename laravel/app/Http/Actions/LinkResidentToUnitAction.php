@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccupantType;
 use App\Enums\TypeLogEnum;
 use App\Enums\UserRole;
@@ -43,7 +44,7 @@ class LinkResidentToUnitAction
         $user->update(['unit_id' => $unit->id]);
 
         $description = "Morador {$user->id} {$user->name} vinculado à unidade {$unit->id} {$unit->code}.";
-        CreateLogAction::execute(TypeLogEnum::UNIT_OCCUPANCY->value, $description, $occupancy);
+        CreateLogAction::execute(TypeLogEnum::UNIT_OCCUPANCY->value, $description, $occupancy, action: AuditAction::ResidentLinked, subjectId: $occupancy->id);
 
         return $occupancy;
     }
@@ -74,7 +75,7 @@ class LinkResidentToUnitAction
         $unit = $occupancy->unit;
         $user = $occupancy->user;
         $description = "Vínculo do morador {$user->id} {$user->name} com a unidade {$unit->id} {$unit->code} encerrado.";
-        CreateLogAction::execute(TypeLogEnum::UNIT_OCCUPANCY->value, $description, $occupancy);
+        CreateLogAction::execute(TypeLogEnum::UNIT_OCCUPANCY->value, $description, $occupancy, action: AuditAction::ResidentUnlinked, subjectId: $occupancy->id);
 
         return $occupancy;
     }

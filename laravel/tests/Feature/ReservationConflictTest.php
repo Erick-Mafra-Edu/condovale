@@ -63,6 +63,15 @@ class ReservationConflictTest extends TestCase
         ]);
     }
 
+    /**
+     * Quem analisa é sempre a administração logada: é ela que assina o
+     * registro de auditoria da decisão.
+     */
+    private function comoAdministracao(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+    }
+
     /** Gravada direto, como o MySQL devolve ("HH:MM:SS"), sem passar pela regra. */
     private function gravada(CommonArea $area, ?string $inicio, ?string $fim, ReservationStatus $status): Reservation
     {
@@ -131,6 +140,7 @@ class ReservationConflictTest extends TestCase
         // Duas sobrepostas, como só um dado antigo ou carregado à mão deixaria.
         $this->gravada($area, '10:00:00', '12:00:00', ReservationStatus::Approved);
         $pendente = $this->gravada($area, '11:00:00', '13:00:00', ReservationStatus::Pending);
+        $this->comoAdministracao();
 
         try {
             ReviewReservationAction::execute($pendente, ReservationStatus::Approved);
@@ -152,6 +162,7 @@ class ReservationConflictTest extends TestCase
         $diaria = Reservation::factory()->create([
             'common_area_id' => $area->id, 'date' => '2026-11-26', 'start_time' => null, 'end_time' => null, 'status' => ReservationStatus::Pending,
         ]);
+        $this->comoAdministracao();
 
         $this->assertSame(ReservationStatus::Approved, ReviewReservationAction::execute($encostada, ReservationStatus::Approved)->status);
         $this->assertSame(ReservationStatus::Approved, ReviewReservationAction::execute($diaria, ReservationStatus::Approved)->status);
@@ -162,6 +173,7 @@ class ReservationConflictTest extends TestCase
         $area = $this->area(['requires_approval' => true]);
         $this->gravada($area, null, null, ReservationStatus::Approved);
         $pendente = $this->gravada($area, '10:00:00', '12:00:00', ReservationStatus::Pending);
+        $this->comoAdministracao();
 
         $reprovada = ReviewReservationAction::execute($pendente, ReservationStatus::Rejected, 'Área reservada para o condomínio.');
 

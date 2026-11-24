@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
 use App\Enums\TypeLogEnum;
@@ -69,11 +70,17 @@ class FinishOccurrenceAction
 
         $como = $resolved ? 'resolvida' : 'não resolvida';
         $description = "Ocorrência {$occurrence->id} {$occurrence->title} encerrada como {$como} por {$author->name}.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, [
-            'de' => $previousStatus->value,
-            'resolvido' => $resolved,
-            'conclusao' => $conclusion,
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::OCCURRENCE->value,
+            $description,
+            [
+                'de' => $previousStatus->value,
+                'resolvido' => $resolved,
+                'conclusao' => $conclusion,
+            ],
+            action: AuditAction::OccurrenceCompleted,
+            subjectId: $occurrence->id,
+        );
 
         return $occurrence->refresh();
     }

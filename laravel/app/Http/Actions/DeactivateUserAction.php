@@ -2,10 +2,12 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\AuditUtil;
 use App\Http\Utils\AuthUtil;
 use App\Models\User;
 
@@ -25,10 +27,12 @@ class DeactivateUserAction
     {
         self::checkCanDeactivate($user);
 
-        $user->update(['status' => UserStatus::Inactive->value]);
+        $user->fill(['status' => UserStatus::Inactive->value]);
+        $changes = AuditUtil::diff($user);
+        $user->save();
 
         $description = "Usuário {$user->id} {$user->name} inativado.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description);
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, $changes, action: AuditAction::UserDeactivated, subjectId: $user->id);
 
         return $user->refresh();
     }

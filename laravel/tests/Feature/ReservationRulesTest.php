@@ -58,6 +58,15 @@ class ReservationRulesTest extends TestCase
         return $morador;
     }
 
+    /**
+     * Quem analisa é sempre a administração logada: é ela que assina o
+     * registro de auditoria da decisão.
+     */
+    private function comoAdministracao(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+    }
+
     /** Pedido das 10h às 12h de amanhã, gravado como o MySQL devolve. */
     private function pendente(CommonArea $area, array $attributes = []): Reservation
     {
@@ -134,6 +143,7 @@ class ReservationRulesTest extends TestCase
     public function test_aprovar_quando_as_regras_ainda_valem(): void
     {
         $pedido = $this->pendente($this->area());
+        $this->comoAdministracao();
 
         $this->assertSame(ReservationStatus::Approved, ReviewReservationAction::execute($pedido, ReservationStatus::Approved)->status);
     }
@@ -147,6 +157,7 @@ class ReservationRulesTest extends TestCase
             'reduziu a duração' => [['max_reservation_minutes' => 60], 'end_time', 'a duração máxima desta área é de 60 minutos.'],
             'mudou a grade' => [['opening_time' => '08:15:00'], 'start_time', 'escolha horários em blocos de 30 minutos a partir da abertura, às 08:15.'],
         ];
+        $this->comoAdministracao();
 
         foreach ($casos as $caso => [$mudanca, $campo, $motivo]) {
             $area = $this->area();
@@ -171,6 +182,7 @@ class ReservationRulesTest extends TestCase
         $area = $this->area();
         $ontem = $this->pendente($area, ['date' => '2026-11-22']);
         $hoje = $this->pendente($area, ['date' => self::HOJE, 'start_time' => '08:00:00', 'end_time' => '10:00:00']);
+        $this->comoAdministracao();
 
         foreach ([[$ontem, 'date', 'não é possível reservar uma data passada.'], [$hoje, 'start_time', 'não é possível reservar um horário que já passou.']] as [$pedido, $campo, $motivo]) {
             try {
@@ -188,6 +200,7 @@ class ReservationRulesTest extends TestCase
         $area = $this->area();
         $pedido = $this->pendente($area);
         $area->update(['status' => 'unavailable']);
+        $this->comoAdministracao();
 
         $reprovado = ReviewReservationAction::execute($pedido, ReservationStatus::Rejected, 'Área em manutenção.');
 
@@ -200,6 +213,7 @@ class ReservationRulesTest extends TestCase
         $area = $this->area();
         $pedido = $this->pendente($area);
         $area->update(['max_reservation_minutes' => 60]);
+        $this->comoAdministracao();
 
         try {
             ReviewReservationAction::execute($pedido, ReservationStatus::Approved);

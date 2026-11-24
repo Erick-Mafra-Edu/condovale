@@ -1,7 +1,9 @@
 [
     {
-        "type_log_id": 3,
+        "type_log_id": 11,
+        "action": "system.seeded",
         "user_email": "admin@gmail.com",
+        "user_role": "admin",
         "description": "Carga de demonstração aplicada à base de dados.",
         "ip": "127.0.0.1",
         "data_log": {

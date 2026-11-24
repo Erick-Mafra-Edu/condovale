@@ -2,10 +2,12 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\ReservationStatus;
 use App\Enums\TypeLogEnum;
 use App\Enums\UseCase;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\AuditUtil;
 use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use App\Models\Reservation;
@@ -49,7 +51,9 @@ class CancelReservationAction
 
             self::checkCanCancel($reservation);
 
-            $reservation->update(['status' => ReservationStatus::Cancelled]);
+            $reservation->fill(['status' => ReservationStatus::Cancelled]);
+            $changes = AuditUtil::diff($reservation);
+            $reservation->save();
 
             $byAdministration = $isAdministration && $reservation->resident_id !== $user->id;
             $commonArea = $reservation->commonArea;
@@ -57,7 +61,9 @@ class CancelReservationAction
             CreateLogAction::execute(
                 TypeLogEnum::RESERVATION->value,
                 CreateReservationAction::describe($reservation, $commonArea, $byAdministration ? 'cancelada pela administração' : 'cancelada'),
-                ['id' => $reservation->id, 'common_area_id' => $commonArea->id, 'resident_id' => $reservation->resident_id]
+                $changes + ['common_area_id' => $commonArea->id, 'resident_id' => $reservation->resident_id],
+                action: AuditAction::ReservationCancelled,
+                subjectId: $reservation->id,
             );
 
             return $reservation->refresh();

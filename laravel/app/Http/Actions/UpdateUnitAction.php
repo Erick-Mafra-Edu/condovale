@@ -2,8 +2,10 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UnitStatus;
+use App\Http\Utils\AuditUtil;
 use App\Models\Unit;
 use Illuminate\Support\Str;
 
@@ -28,10 +30,12 @@ class UpdateUnitAction
             DeactivateUnitAction::checkCanDeactivate($unit);
         }
 
-        $unit->update($attributes);
+        $unit->fill($attributes);
+        $changes = AuditUtil::diff($unit);
+        $unit->save();
 
         $description = "Unidade {$unit->id} {$unit->code} editada.";
-        CreateLogAction::execute(TypeLogEnum::UNIT->value, $description, (object) $attributes);
+        CreateLogAction::execute(TypeLogEnum::UNIT->value, $description, $changes, action: AuditAction::UnitUpdated, subjectId: $unit->id);
 
         return $unit->refresh();
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
@@ -464,6 +465,19 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
 Route::middleware(['auth', 'user.active', 'password.change', 'use.case:generate-reports'])->group(function () {
     Route::get('reports/occurrences', [ReportController::class, 'occurrences']);
     Route::get('reports/reservations', [ReportController::class, 'reservations']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Auditoria — RNF04 / UC-T03 / RN16
+|--------------------------------------------------------------------------
+|
+| Só a administração, por view-audit-reports. A trilha é gravada pelo
+| CreateLogAction em cada operação e aqui só é lida: não existe rota que
+| altere ou apague um registro de auditoria.
+*/
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:view-audit-reports'])->group(function () {
+    Route::get('audit-logs', [AuditLogController::class, 'index']);
 });
 
 /*

@@ -2,8 +2,10 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\AuditUtil;
 use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use Illuminate\Support\Carbon;
@@ -31,12 +33,16 @@ class UpdateCommonAreaAction
 
         self::checkHours($commonArea, $attributes);
 
-        $commonArea->update($attributes);
+        $commonArea->fill($attributes);
+        $changes = AuditUtil::diff($commonArea);
+        $commonArea->save();
 
         CreateLogAction::execute(
             TypeLogEnum::COMMON_AREA->value,
             "Área comum {$commonArea->id} {$commonArea->name} editada.",
-            (object) $attributes
+            $changes,
+            action: AuditAction::CommonAreaUpdated,
+            subjectId: $commonArea->id,
         );
 
         return $commonArea->refresh();

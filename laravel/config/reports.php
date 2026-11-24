@@ -23,4 +23,10 @@ return [
         'max_export_rows' => 5000,
     ],
 
+    // RNF04 / RN16 — a trilha cresce a cada operação, mais rápido que qualquer
+    // outra tabela; o mesmo teto vale para exportar a auditoria.
+    'audit' => [
+        'max_export_rows' => 5000,
+    ],
+
 ];

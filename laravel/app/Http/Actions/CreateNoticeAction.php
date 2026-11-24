@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\NoticeStatus;
 use App\Enums\TypeLogEnum;
 use App\Models\Notice;
@@ -36,7 +37,13 @@ class CreateNoticeAction
             ? "Comunicado {$notice->id} {$notice->title} publicado por {$author->name}."
             : "Comunicado {$notice->id} {$notice->title} salvo como rascunho por {$author->name}.";
 
-        CreateLogAction::execute(TypeLogEnum::NOTICE->value, $description, ['status' => $status->value]);
+        CreateLogAction::execute(
+            TypeLogEnum::NOTICE->value,
+            $description,
+            ['status' => $status->value],
+            action: $status === NoticeStatus::Published ? AuditAction::NoticePublished : AuditAction::NoticeDrafted,
+            subjectId: $notice->id,
+        );
 
         return $notice;
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Models\User;
@@ -44,10 +45,16 @@ class UpdateOwnProfileAction
         // chegava à trilha de auditoria. O valor anterior vai junto, porque é
         // o que permite reconstruir por qual conta alguém entrava antes.
         $description = "Usuário {$user->id} {$user->name} editou o próprio cadastro.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description, [
-            'de' => $anterior,
-            'para' => ['name' => $user->name, 'email' => $user->email],
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::USER->value,
+            $description,
+            [
+                'de' => $anterior,
+                'para' => ['name' => $user->name, 'email' => $user->email],
+            ],
+            action: AuditAction::UserProfileUpdated,
+            subjectId: $user->id,
+        );
 
         return $user->refresh();
     }

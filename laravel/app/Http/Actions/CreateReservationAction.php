@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\ReservationStatus;
 use App\Enums\TypeLogEnum;
 use App\Http\Utils\TimeUtil;
@@ -51,7 +52,9 @@ class CreateReservationAction
             CreateLogAction::execute(
                 TypeLogEnum::RESERVATION->value,
                 self::describe($reservation, $commonArea),
-                $reservation
+                $reservation,
+                action: AuditAction::ReservationCreated,
+                subjectId: $reservation->id,
             );
 
             return $reservation;
