@@ -1700,8 +1700,17 @@ teste se marca como pulado e pode ser removido.
 
 ## Pendências conhecidas
 
-- O cancelamento de ocorrência está previsto para o administrador enquanto o
-  atendimento não começou; a especificação não define quem pode cancelar.
-- Reabertura de ocorrência concluída e reatribuição de atendimento já iniciado
-  não são permitidas — ambas dependem de decisão registrada.
-- `RNF01` (consultas abaixo de 2 s) ainda não tem carga padrão nem medição.
+A rastreabilidade completa — cada RF, RNF, RN, caso de uso e item do backlog
+com a rota, a regra e o teste, e as decisões que se afastam da especificação —
+está em [docs/rastreabilidade-backend.md](../docs/rastreabilidade-backend.md).
+
+- O cancelamento de ocorrência vale só antes de o atendimento começar; a
+  especificação não define quem pode cancelar. A reatribuição de atendimento
+  já iniciado existe como repasse, com justificativa obrigatória.
+- Reabertura de ocorrência concluída não é permitida — depende de decisão
+  registrada.
+- Não há regra de retenção da auditoria: a especificação não define, e nada é
+  apagado.
+- Fora do código: conferir que `common_areas` e `reservations` estão em InnoDB
+  em produção, marcar os tipos de denúncia em produção e trocar o
+  `DEPLOY_TOKEN` se ele tiver circulado.
