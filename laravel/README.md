@@ -1329,9 +1329,13 @@ linha. O `config/database.php` deixa o motor com o padrão do servidor. Para
 conferir em produção, no phpMyAdmin do InfinityFree:
 
 ```sql
-SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('common_areas', 'reservations');
+SELECT TABLE_SCHEMA, TABLE_NAME, ENGINE FROM information_schema.TABLES
+WHERE TABLE_NAME IN ('common_areas', 'reservations');
 ```
+
+Sem `DATABASE()`: no phpMyAdmin a aba SQL do servidor roda sem banco
+selecionado, e aí `DATABASE()` é nulo e a consulta volta vazia. Se mesmo esta
+voltar vazia, as tabelas não existem — faltam as migrations.
 
 A suíte inteira ainda não roda contra MySQL: `DemoSeedTest` e
 `DeployRouteTest` executam migrations por dentro, o DDL confirma a transação
