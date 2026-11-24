@@ -45,7 +45,7 @@ class ReviewReservationAction
                 $commonArea = $reservation->commonArea;
                 $date = $reservation->date->format('Y-m-d');
                 $startTime = TimeUtil::format($reservation->start_time);
-                $endTime = TimeUtil::format($reservation->end_time);
+                $endTime = TimeUtil::formatEnd($reservation->end_time);
 
                 self::checkStillAllowed($commonArea, $date, $startTime, $endTime);
                 CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime, $reservation->id);

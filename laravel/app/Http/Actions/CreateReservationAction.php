@@ -30,7 +30,7 @@ class CreateReservationAction
     {
         $date = $attributes['date'];
         $startTime = TimeUtil::format($attributes['start_time'] ?? null);
-        $endTime = TimeUtil::format($attributes['end_time'] ?? null);
+        $endTime = TimeUtil::formatEnd($attributes['end_time'] ?? null);
 
         CheckReservationRulesAction::execute($commonArea, $date, $startTime, $endTime);
 
@@ -69,7 +69,7 @@ class CreateReservationAction
         $date = $reservation->date->format('d/m/Y');
         $period = $reservation->isFullDay()
             ? 'dia inteiro'
-            : 'das '.TimeUtil::format($reservation->start_time).' às '.TimeUtil::format($reservation->end_time);
+            : 'das '.TimeUtil::format($reservation->start_time).' às '.TimeUtil::formatEnd($reservation->end_time);
         $outcome ??= $reservation->status === ReservationStatus::Pending ? 'solicitada' : 'aprovada';
 
         return "Reserva {$reservation->id} da área {$commonArea->id} {$commonArea->name} para {$date}, {$period}, {$outcome}.";

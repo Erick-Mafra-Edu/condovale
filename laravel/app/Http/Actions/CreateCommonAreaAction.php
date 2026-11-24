@@ -4,6 +4,7 @@ namespace App\Http\Actions;
 
 use App\Enums\CommonAreaStatus;
 use App\Enums\TypeLogEnum;
+use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 
 /**
@@ -42,6 +43,12 @@ class CreateCommonAreaAction
     {
         if (array_key_exists('capacity', $attributes) && $attributes['capacity'] === null) {
             $attributes['capacity'] = 0;
+        }
+
+        // Midnight is kept as "24:00": stored as "00:00", it would sort and
+        // compare as the start of the day, before the opening.
+        if (array_key_exists('closing_time', $attributes)) {
+            $attributes['closing_time'] = TimeUtil::formatEnd($attributes['closing_time']);
         }
 
         return $attributes;

@@ -90,7 +90,7 @@ class UpdateCommonAreaAction
                 CheckReservationRulesAction::checkPeriod(
                     $commonArea,
                     TimeUtil::format($reservation->start_time),
-                    TimeUtil::format($reservation->end_time)
+                    TimeUtil::formatEnd($reservation->end_time)
                 );
 
                 return false;
@@ -101,18 +101,23 @@ class UpdateCommonAreaAction
     }
 
     /**
-     * Closing must come after opening. A request may send only one of them,
-     * so the other one is the stored value.
+     * The same rule as the creation (CommonArea::hoursProblem). A request may
+     * send only one of the hours, so the other one is the stored value, and
+     * the refusal points at the field that was sent.
      *
      * @param  array<string, mixed>  $attributes
      */
     private static function checkHours(CommonArea $commonArea, array $attributes): void
     {
-        $opening = TimeUtil::toMinutes($attributes['opening_time'] ?? $commonArea->opening_time);
-        $closing = TimeUtil::toMinutes($attributes['closing_time'] ?? $commonArea->closing_time);
+        $problem = CommonArea::hoursProblem(
+            $attributes['opening_time'] ?? $commonArea->opening_time,
+            $attributes['closing_time'] ?? $commonArea->closing_time
+        );
 
-        if ($opening !== null && $closing !== null && $opening >= $closing) {
-            throw BusinessRuleException::unprocessable('O horário de fechamento deve ser posterior ao de abertura.');
+        if ($problem !== null) {
+            $field = array_key_exists('closing_time', $attributes) ? 'closing_time' : 'opening_time';
+
+            throw BusinessRuleException::unprocessable($problem, $field);
         }
     }
 }

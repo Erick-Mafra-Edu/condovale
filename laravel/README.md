@@ -1130,10 +1130,29 @@ uso de gerenciar reservas.
 ```
 
 - **Nome único**, até 120 caracteres.
-- **Horários obrigatórios**, `HH:MM`, fechamento depois da abertura, no mesmo
-  dia. Podem mudar, mas não ser apagados: sem eles não há grade e a reserva é
-  recusada. As respostas trazem sempre `HH:MM`, mesmo com o MySQL guardando
-  `HH:MM:SS`.
+- **Horários obrigatórios** (`opening_time` e `closing_time`, o
+  `horarioInicio` e o `horarioFim` do diagrama). Podem mudar, mas não ser
+  apagados: sem eles não há grade e a reserva é recusada. Regras, todas em
+  `CommonArea::hoursProblem()`:
+  - formato `HH:MM`; o fechamento aceita também **`24:00`**, a meia-noite que
+    encerra o dia, e `00:00` no fechamento quer dizer o mesmo — é gravado e
+    devolvido como `24:00`, para nunca ficar "antes" da abertura;
+  - o funcionamento é **no mesmo dia**: fechar às 02:00 abrindo às 18:00 é
+    recusado (virar a meia-noite não é suportado);
+  - a área fica aberta **pelo menos 30 minutos**, um bloco de reserva;
+  - na edição, mandar só um dos horários confere com o outro já gravado, e a
+    recusa aponta para o campo enviado (`errors.opening_time` ou
+    `errors.closing_time`).
+
+  As respostas trazem sempre `HH:MM`, mesmo com o MySQL guardando `HH:MM:SS`.
+  A reserva segue o mesmo contrato: o fim do último bloco de uma área que
+  fecha à meia-noite é `"end_time": "24:00"` — é o que a tela de reservas
+  envia — e `"00:00"` no fim também é aceito como meia-noite. O MySQL guarda
+  `24:00:00` numa coluna `TIME` sem problema (testado contra o 8.0).
+- **Mudar os horários vale na hora para a disponibilidade e para a criação de
+  reserva**: as duas leem a área a cada consulta. As reservas já feitas que
+  ficaram fora do novo horário não são mexidas; a resposta da edição diz
+  quantas são.
 - **`max_reservation_minutes`** é opcional, a partir de 30 e múltiplo de 30 (o
   tamanho do bloco). Sem ele vale o padrão de 2 horas.
 - **`capacity`** é opcional; vazia é gravada como 0, que é como a tabela diz
