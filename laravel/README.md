@@ -1251,6 +1251,56 @@ a reserva nasce pendente.
 - A criação e o log de auditoria (`TypeLogEnum::RESERVATION`) acontecem na
   mesma transação.
 
+### Conflito de reservas e pedidos simultâneos — RN01
+
+`CheckReservationConflictAction` é a única porta: a criação e a aprovação
+passam por ela, dentro da transação que grava. Dois pedidos para o mesmo
+período chegando juntos leriam "livre" e gravariam os dois; por isso a
+checagem:
+
+1. **trava a linha da área** (`SELECT ... FOR UPDATE`): o segundo pedido espera
+   o primeiro confirmar;
+2. **lê as reservas com trava**, o que no InnoDB sempre enxerga o último dado
+   confirmado. Uma leitura comum responderia com a foto que a transação tirou
+   na primeira leitura — e a aprovação, que carrega a área antes de travar,
+   veria a agenda antiga;
+3. **compara `date` direto**, sem `whereDate()`, para o MySQL usar o índice
+   `(common_area_id, date, status)` e travar só as linhas daquele dia.
+
+O SQLite da suíte ignora `FOR UPDATE` e não é compartilhado entre processos,
+então a disputa real fica no `ReservationRaceTest`, pulado na suíte comum. Ele
+dispara oito processos PHP que largam no mesmo instante contra um MySQL:
+
+```bash
+# um MySQL vazio qualquer; o banco é recriado pelo próprio teste
+DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3307 DB_DATABASE=condovale_race \
+DB_USERNAME=root DB_PASSWORD= php artisan test --filter=ReservationRaceTest
+```
+
+Medido em 2026-11-24 com MySQL 8.0.44 (InnoDB, REPEATABLE-READ):
+
+| Cenário | Sem trava | Só a trava da área | Como ficou |
+| --- | --- | --- | --- |
+| 8 pedidos do mesmo período | 8 gravados | 1 gravado, 7 × 409 | 1 gravado, 7 × 409 |
+| 4 diárias + 4 períodos cruzados | 8 gravados | 1 gravado, 7 × 409 | 1 gravado, 7 × 409 |
+| 4 períodos encostados | — | 4 gravados | 4 gravados |
+
+**Tudo isso depende de InnoDB**: em MyISAM não há transação nem trava de
+linha. O `config/database.php` deixa o motor com o padrão do servidor. Para
+conferir em produção, no phpMyAdmin do InfinityFree:
+
+```sql
+SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('common_areas', 'reservations');
+```
+
+A suíte inteira ainda não roda contra MySQL: `DemoSeedTest` e
+`DeployRouteTest` executam migrations por dentro, o DDL confirma a transação
+do `RefreshDatabase` e os testes seguintes encontram dados de sobra. Os testes
+de reservas, áreas, relatórios e painel passam contra MySQL. E o `down()` da
+migration de `occurrence_types` não roda no MySQL (erro 1553: o índice é usado
+por uma chave estrangeira), o que impede `migrate:rollback` ali.
+
 ## Autorização
 
 O grupo da rota é o modelo de autorização: o middleware `use.case` recebe os

@@ -5,6 +5,7 @@ namespace App\Http\Actions;
 use App\Enums\ReservationStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Reservation;
+use Illuminate\Support\Facades\DB;
 
 /**
  * UC16 — the administration approves or rejects a pending request.
@@ -24,21 +25,25 @@ class ReviewReservationAction
             throw BusinessRuleException::conflict('Somente solicitações pendentes podem ser analisadas.');
         }
 
-        if ($status === ReservationStatus::Approved) {
-            CheckReservationConflictAction::execute(
-                $reservation->commonArea,
-                $reservation->date->format('Y-m-d'),
-                $reservation->start_time,
-                $reservation->end_time,
-                $reservation->id,
-            );
-        }
+        // The check and the update share one transaction, so the lock the
+        // check takes on the area holds until the approval is written.
+        return DB::transaction(function () use ($reservation, $status, $rejectionReason) {
+            if ($status === ReservationStatus::Approved) {
+                CheckReservationConflictAction::execute(
+                    $reservation->commonArea,
+                    $reservation->date->format('Y-m-d'),
+                    $reservation->start_time,
+                    $reservation->end_time,
+                    $reservation->id,
+                );
+            }
 
-        $reservation->update([
-            'status' => $status,
-            'rejection_reason' => $status === ReservationStatus::Rejected ? $rejectionReason : null,
-        ]);
+            $reservation->update([
+                'status' => $status,
+                'rejection_reason' => $status === ReservationStatus::Rejected ? $rejectionReason : null,
+            ]);
 
-        return $reservation->refresh();
+            return $reservation->refresh();
+        });
     }
 }
