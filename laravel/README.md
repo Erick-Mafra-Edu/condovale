@@ -1251,6 +1251,45 @@ a reserva nasce pendente.
 - A criação e o log de auditoria (`TypeLogEnum::RESERVATION`) acontecem na
   mesma transação.
 
+### Regras da área — RN02
+
+> "Toda reserva deverá respeitar a disponibilidade, os horários permitidos e
+> as regras de utilização definidas para a área comum."
+
+`CheckReservationRulesAction` reúne o que a área define — é a irmã da
+`CheckReservationConflictAction` (RN01). As duas rodam na criação **e de novo
+na aprovação**, com a área como ela está no momento: se a administração
+tornou a área indisponível, mudou o horário ou encurtou a duração enquanto o
+pedido esperava, aprovar responde 422 com
+`"Esta solicitação não pode mais ser aprovada: a área abre às 11:00. Reprove-a
+informando o motivo."`. Reprovar não confere nada: é a saída para o pedido que
+não cabe mais. A disponibilidade (`ListAvailabilityAction`) desenha o
+calendário com as mesmas regras.
+
+| Recusa | Campo em `errors` |
+| --- | --- |
+| área indisponível, área sem horário cadastrado | `common_area_id` |
+| data passada | `date` |
+| início antes da abertura, fora da grade, ou de hoje e já começado | `start_time` |
+| fim depois do fechamento, fora da grade, antes do início ou acima da duração | `end_time` |
+| só um dos dois horários | o que faltou |
+
+Cada recusa do RN02 sai no formato de uma validação do Laravel, com a regra
+na mensagem e o campo em `errors` — o RSV-04 do plano de testes pede as duas
+coisas, e o front já lê `errors`:
+
+```json
+{ "status": false, "message": "A área abre às 08:00.", "code": 422,
+  "error": "A área abre às 08:00.", "errors": { "start_time": ["A área abre às 08:00."] } }
+```
+
+O conflito (409) não leva `errors`: o formulário está certo, o horário é que
+foi tomado.
+
+A especificação não define outras regras de utilização além das que a área
+guarda; limite de reservas por morador, antecedência mínima ou máxima e número
+de convidados não existem no documento nem na tela, e não foram inventados.
+
 ### Conflito de reservas e pedidos simultâneos — RN01
 
 `CheckReservationConflictAction` é a única porta: a criação e a aprovação

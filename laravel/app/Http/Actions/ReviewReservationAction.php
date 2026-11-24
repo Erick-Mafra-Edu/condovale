@@ -4,14 +4,19 @@ namespace App\Http\Actions;
 
 use App\Enums\ReservationStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\TimeUtil;
+use App\Models\CommonArea;
 use App\Models\Reservation;
 use Illuminate\Support\Facades\DB;
 
 /**
  * UC16 — the administration approves or rejects a pending request.
  *
- * Approving re-checks the conflict because another reservation may have taken
- * the period while this one waited.
+ * Approving checks the request again, as the area and the agenda are now: the
+ * area may have been made unavailable or changed its hours while the request
+ * waited (RN02), and another reservation may have taken the period (RN01).
+ * Rejecting checks nothing — it is the way out for a request that no longer
+ * fits.
  */
 class ReviewReservationAction
 {
@@ -26,16 +31,16 @@ class ReviewReservationAction
         }
 
         // The check and the update share one transaction, so the lock the
-        // check takes on the area holds until the approval is written.
+        // conflict check takes on the area holds until the approval is written.
         return DB::transaction(function () use ($reservation, $status, $rejectionReason) {
             if ($status === ReservationStatus::Approved) {
-                CheckReservationConflictAction::execute(
-                    $reservation->commonArea,
-                    $reservation->date->format('Y-m-d'),
-                    $reservation->start_time,
-                    $reservation->end_time,
-                    $reservation->id,
-                );
+                $commonArea = $reservation->commonArea;
+                $date = $reservation->date->format('Y-m-d');
+                $startTime = TimeUtil::format($reservation->start_time);
+                $endTime = TimeUtil::format($reservation->end_time);
+
+                self::checkStillAllowed($commonArea, $date, $startTime, $endTime);
+                CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime, $reservation->id);
             }
 
             $reservation->update([
@@ -45,5 +50,21 @@ class ReviewReservationAction
 
             return $reservation->refresh();
         });
+    }
+
+    /**
+     * The rules speak to whoever books ("Não é possível reservar..."); here
+     * the reader is the administration, who needs to know what to do next.
+     */
+    private static function checkStillAllowed(CommonArea $commonArea, string $date, ?string $startTime, ?string $endTime): void
+    {
+        try {
+            CheckReservationRulesAction::execute($commonArea, $date, $startTime, $endTime);
+        } catch (BusinessRuleException $e) {
+            throw BusinessRuleException::unprocessable(
+                'Esta solicitação não pode mais ser aprovada: '.lcfirst($e->getMessage()).' Reprove-a informando o motivo.',
+                $e->field()
+            );
+        }
     }
 }
