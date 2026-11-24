@@ -36,6 +36,11 @@ http:
       value: "true"
       type: query
       disabled: true
+  params:
+    - name: kind
+      value: complaint
+      type: query
+      disabled: true
   auth: inherit
 
 settings:

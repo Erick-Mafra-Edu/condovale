@@ -2,48 +2,63 @@
     {
         "name": "Manutenção predial",
         "description": "Reparos em áreas do prédio: hidráulica, elétrica, elevadores, infiltrações.",
+        "kind": "maintenance",
         "employee_can_close": true,
         "active": true
     },
     {
         "name": "Estacionamento",
         "description": "Vagas ocupadas indevidamente, portão, manobras e danos na garagem.",
+        "kind": "maintenance",
         "employee_can_close": false,
         "active": true
     },
     {
         "name": "Barulho e sossego",
         "description": "Ruído fora do horário permitido e perturbação do sossego.",
+        "kind": "complaint",
+        "employee_can_close": false,
+        "active": true
+    },
+    {
+        "name": "Conduta e regimento interno",
+        "description": "Descumprimento do regimento por moradores ou visitantes: uso indevido de áreas comuns, animais, mudanças e obras fora do horário.",
+        "kind": "complaint",
         "employee_can_close": false,
         "active": true
     },
     {
         "name": "Limpeza e conservação",
         "description": "Lixo fora do lugar, áreas sujas e conservação de jardins.",
+        "kind": "maintenance",
         "employee_can_close": true,
         "active": true
     },
     {
         "name": "Segurança",
         "description": "Portaria, controle de acesso, câmeras e circulação de estranhos.",
+        "kind": "maintenance",
         "employee_can_close": false,
         "active": true
     },
     {
         "name": "Áreas comuns",
         "description": "Problemas no salão de festas, academia, piscina, quadra e demais espaços.",
+        "kind": "maintenance",
         "employee_can_close": true,
         "active": true
     },
     {
         "name": "Telefonia e TV a cabo",
         "description": "Tipo aposentado: o condomínio deixou de intermediar o atendimento das operadoras.",
+        "kind": "maintenance",
         "employee_can_close": false,
         "active": false
     },
     {
         "name": "Outros",
         "description": "Assuntos que não se encaixam nos demais tipos.",
+        "kind": "maintenance",
         "employee_can_close": false,
         "active": true
     }

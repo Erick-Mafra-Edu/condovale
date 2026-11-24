@@ -2,8 +2,10 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\OccurrenceKind;
 use App\Enums\OccurrenceStatus;
 use App\Models\Occurrence;
+use App\Models\OccurrenceType;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -28,7 +30,7 @@ class BuildOccurrenceReportAction
      * administração, mas e-mail e documento não ajudam a ler um chamado.
      */
     private const RELACOES = [
-        'occurrenceType:id,name',
+        'occurrenceType:id,name,kind',
         'resident:id,name',
         'assignedEmployee:id,name',
         'unit:id,code',
@@ -66,6 +68,7 @@ class BuildOccurrenceReportAction
             'summary' => self::summary($contagens, $from, $to),
             'by_status' => self::byStatus($contagens),
             'by_type' => self::byType($from, $to),
+            'by_kind' => self::byKind($from, $to),
             'occurrences' => self::rows($from, $to, $filters),
         ];
     }
@@ -193,6 +196,29 @@ class BuildOccurrenceReportAction
     }
 
     /**
+     * UC6 e UC7 lado a lado: quantos chamados do período foram pedidos de
+     * manutenção e quantos foram denúncias. As duas naturezas aparecem
+     * sempre, mesmo zeradas.
+     *
+     * @return list<array{kind: string, label: string, total: int}>
+     */
+    private static function byKind(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $totais = self::inPeriod($from, $to)
+            ->toBase()
+            ->join('occurrence_types', 'occurrence_types.id', '=', 'occurrences.occurrence_type_id')
+            ->selectRaw('occurrence_types.kind as kind, count(*) as total')
+            ->groupBy('occurrence_types.kind')
+            ->pluck('total', 'kind');
+
+        return array_map(fn (OccurrenceKind $kind) => [
+            'kind' => $kind->value,
+            'label' => $kind->label(),
+            'total' => (int) ($totais[$kind->value] ?? 0),
+        ], OccurrenceKind::cases());
+    }
+
+    /**
      * A lista, com tipo e status aplicados.
      *
      * A ordem é sempre a mesma — mais recente primeiro, com o id desempatando —
@@ -206,6 +232,10 @@ class BuildOccurrenceReportAction
         $query = self::inPeriod($from, $to)
             ->when($filters['occurrence_type_id'] ?? null, fn (Builder $q, int $tipo) => $q->where('occurrence_type_id', $tipo))
             ->when($filters['status'] ?? null, fn (Builder $q, string $status) => $q->where('status', $status))
+            ->when($filters['kind'] ?? null, fn (Builder $q, string $kind) => $q->whereIn(
+                'occurrence_type_id',
+                OccurrenceType::query()->where('kind', $kind)->select('id')
+            ))
             ->select(self::COLUNAS)
             ->with(self::RELACOES)
             ->orderByDesc('created_at')

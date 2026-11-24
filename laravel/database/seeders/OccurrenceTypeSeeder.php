@@ -24,11 +24,14 @@ class OccurrenceTypeSeeder extends Seeder
             $array = [
                 'name' => $item->name,
                 'description' => $item->description,
+                'kind' => $item->kind,
                 'employee_can_close' => $item->employee_can_close,
                 'active' => $item->active,
             ];
 
-            OccurrenceType::create($array);
+            // Pelo nome, a chave de negócio: a carga pode ser reaplicada sem
+            // duplicar tipos, e uma natureza corrigida no JSON chega ao banco.
+            OccurrenceType::updateOrCreate(['name' => $item->name], $array);
         }
     }
 }

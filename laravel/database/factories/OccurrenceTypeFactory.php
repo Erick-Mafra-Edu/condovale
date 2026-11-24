@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\OccurrenceKind;
 use App\Models\OccurrenceType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,9 +22,16 @@ class OccurrenceTypeFactory extends Factory
             // pela regra que ele mede.
             'name' => ucfirst(fake()->unique()->words(2, true)),
             'description' => fake()->sentence(),
+            'kind' => OccurrenceKind::Maintenance,
             'employee_can_close' => false,
             'active' => true,
         ];
+    }
+
+    /** UC7 — os chamados deste tipo são denúncias. */
+    public function complaint(): static
+    {
+        return $this->state(['kind' => OccurrenceKind::Complaint]);
     }
 
     /** Reparo operacional: o funcionário atribuído encerra o próprio atendimento. */
