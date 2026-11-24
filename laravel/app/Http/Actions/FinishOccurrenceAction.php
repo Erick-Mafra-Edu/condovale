@@ -38,6 +38,8 @@ class FinishOccurrenceAction
 {
     public static function execute(Occurrence $occurrence, User $author, bool $resolved, string $conclusion): Occurrence
     {
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         if ($occurrence->status->isFinal()) {
             throw BusinessRuleException::conflict(
                 "Este chamado já está {$occurrence->status->label()}."

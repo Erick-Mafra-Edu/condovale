@@ -41,6 +41,8 @@ class UpdateOccurrenceStatusAction
         OccurrenceStatus $status,
         ?string $message = null,
     ): Occurrence {
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         self::checkTransition($occurrence, $author, $status);
 
         $previousStatus = $occurrence->status;

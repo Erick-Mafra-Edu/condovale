@@ -29,6 +29,9 @@ class StoreOccurrenceAttachmentAction
 {
     public static function execute(Occurrence $occurrence, User $author, UploadedFile $file): OccurrenceAttachment
     {
+        // Two photos at once with one slot left would both pass the count.
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         CheckOccurrenceAccessAction::execute($occurrence, $author);
 
         if ($occurrence->status->isFinal()) {

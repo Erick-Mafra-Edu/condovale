@@ -37,6 +37,8 @@ class AssignOccurrenceAction
 {
     public static function execute(Occurrence $occurrence, User $author, User $employee, ?string $justification = null): Occurrence
     {
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         CheckOccurrenceAccessAction::execute($occurrence, $author);
 
         self::checkStatus($occurrence);
