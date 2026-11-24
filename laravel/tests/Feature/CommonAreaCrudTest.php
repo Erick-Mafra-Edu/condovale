@@ -186,7 +186,7 @@ class CommonAreaCrudTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors([
                 'name' => 'Já existe uma área comum com este nome.',
-                'closing_time' => 'O horário de fechamento deve ser posterior ao de abertura.',
+                'closing_time' => 'O horário de fechamento deve ser posterior ao de abertura, no mesmo dia. Para fechar à meia-noite, use 24:00.',
                 'max_reservation_minutes' => 'A duração máxima deve ser múltipla de 30 minutos, o tamanho dos blocos de reserva.',
                 'image_url' => 'Informe o endereço da imagem começando por http:// ou https://.',
                 'status' => 'A situação deve ser available (disponível) ou unavailable (indisponível).',
@@ -247,7 +247,7 @@ class CommonAreaCrudTest extends TestCase
         // Só o fechamento, antes da abertura gravada (08:00:00).
         $this->actingAs($admin)->patchJson("/api/common-areas/{$area->id}", ['closing_time' => '07:00'])
             ->assertStatus(422)
-            ->assertJsonPath('message', 'O horário de fechamento deve ser posterior ao de abertura.');
+            ->assertJsonPath('message', 'O horário de fechamento deve ser posterior ao de abertura, no mesmo dia. Para fechar à meia-noite, use 24:00.');
 
         $this->actingAs($admin)->patchJson("/api/common-areas/{$area->id}", ['opening_time' => '23:00', 'closing_time' => '22:00'])
             ->assertStatus(422);

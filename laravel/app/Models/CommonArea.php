@@ -59,9 +59,10 @@ class CommonArea extends Model
         return Attribute::make(get: fn (?string $value) => TimeUtil::format($value));
     }
 
+    /** Closing at midnight reads "24:00", never "00:00", which is before opening. */
     protected function closingTime(): Attribute
     {
-        return Attribute::make(get: fn (?string $value) => TimeUtil::format($value));
+        return Attribute::make(get: fn (?string $value) => TimeUtil::formatEnd($value));
     }
 
     public function reservations(): HasMany
@@ -88,5 +89,32 @@ class CommonArea extends Model
     public function hasOpeningHours(): bool
     {
         return $this->opening_time !== null && $this->closing_time !== null;
+    }
+
+    /**
+     * What is wrong with a pair of opening hours, or null when they work.
+     *
+     * The area opens and closes on the same day — "24:00" (or "00:00") is the
+     * midnight that ends it — and stays open at least one reservation block,
+     * or the calendar would have nothing to offer.
+     */
+    public static function hoursProblem(?string $openingTime, ?string $closingTime): ?string
+    {
+        $opening = TimeUtil::toMinutes($openingTime);
+        $closing = TimeUtil::toMinutes(TimeUtil::formatEnd($closingTime));
+
+        if ($opening === null || $closing === null) {
+            return null;
+        }
+
+        if ($closing <= $opening) {
+            return 'O horário de fechamento deve ser posterior ao de abertura, no mesmo dia. Para fechar à meia-noite, use 24:00.';
+        }
+
+        if ($closing - $opening < self::SLOT_MINUTES) {
+            return 'A área precisa ficar aberta por pelo menos '.self::SLOT_MINUTES.' minutos, o tamanho de um bloco de reserva.';
+        }
+
+        return null;
     }
 }

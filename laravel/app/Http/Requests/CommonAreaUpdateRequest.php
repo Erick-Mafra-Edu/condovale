@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Utils\SanitizeUtil;
+use App\Http\Utils\TimeUtil;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -29,7 +30,7 @@ class CommonAreaUpdateRequest extends FormRequest
             'image_url' => 'sometimes|nullable|url:http,https|max:255',
             'capacity' => 'sometimes|nullable|integer|min:1',
             'opening_time' => 'sometimes|required|date_format:H:i',
-            'closing_time' => 'sometimes|required|date_format:H:i',
+            'closing_time' => 'sometimes|required|'.TimeUtil::END_TIME_RULE,
             'max_reservation_minutes' => 'sometimes|nullable|integer|min:30|multiple_of:30',
             'requires_approval' => 'sometimes|boolean',
             'status' => 'sometimes|string|in:available,unavailable',
