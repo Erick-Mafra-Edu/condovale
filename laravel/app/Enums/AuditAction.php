@@ -53,6 +53,7 @@ enum AuditAction: string
 
     case NoticeDrafted = 'notice.drafted';
     case NoticePublished = 'notice.published';
+    case NoticeUpdated = 'notice.updated';
     case NoticeDeleted = 'notice.deleted';
 
     case DataSeeded = 'system.seeded';
@@ -78,7 +79,7 @@ enum AuditAction: string
             self::OccurrenceProgressNoted, self::OccurrenceCompleted, self::OccurrenceAttachmentAdded,
             self::OccurrenceAttachmentRemoved => TypeLogEnum::OCCURRENCE,
             self::OccurrenceTypeCreated, self::OccurrenceTypeUpdated, self::OccurrenceTypeDeleted => TypeLogEnum::OCCURRENCE_TYPE,
-            self::NoticeDrafted, self::NoticePublished, self::NoticeDeleted => TypeLogEnum::NOTICE,
+            self::NoticeDrafted, self::NoticePublished, self::NoticeUpdated, self::NoticeDeleted => TypeLogEnum::NOTICE,
             self::DataSeeded => TypeLogEnum::SYSTEM,
         };
     }
@@ -120,6 +121,7 @@ enum AuditAction: string
             self::OccurrenceTypeDeleted => 'Tipo de ocorrência excluído',
             self::NoticeDrafted => 'Comunicado salvo como rascunho',
             self::NoticePublished => 'Comunicado publicado',
+            self::NoticeUpdated => 'Comunicado editado',
             self::NoticeDeleted => 'Comunicado excluído',
             self::DataSeeded => 'Carga de dados aplicada',
         };

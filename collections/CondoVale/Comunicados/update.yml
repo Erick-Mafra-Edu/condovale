@@ -1,0 +1,24 @@
+info:
+  name: update
+  type: http
+  seq: 7
+
+http:
+  method: PATCH
+  url: "{{API_URL}}/notices/1"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "content": "Assembleia remarcada para o dia 26, às 19h30."
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

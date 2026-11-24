@@ -476,6 +476,8 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
 
     Route::middleware('use.case:publish-notices')->group(function () {
         Route::post('notices', [NoticeController::class, 'store']);
+        // Corrige título ou conteúdo; o texto anterior fica na auditoria.
+        Route::patch('notices/{id}', [NoticeController::class, 'update']);
         // Comunicado.publicar(): leva um rascunho ao mural.
         Route::post('notices/{id}/publish', [NoticeController::class, 'publish']);
         Route::delete('notices/{id}', [NoticeController::class, 'destroy']);
