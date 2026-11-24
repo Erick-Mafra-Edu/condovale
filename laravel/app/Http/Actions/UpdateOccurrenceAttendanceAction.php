@@ -37,6 +37,8 @@ class UpdateOccurrenceAttendanceAction
             throw BusinessRuleException::unprocessable('Informe o novo status ou descreva a atualização do atendimento.');
         }
 
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         CheckOccurrenceAccessAction::execute($occurrence, $author);
 
         // Status igual ao atual, com anotação, é anotação. A tela costuma

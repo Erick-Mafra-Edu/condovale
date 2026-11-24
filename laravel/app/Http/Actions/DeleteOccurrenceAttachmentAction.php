@@ -30,6 +30,8 @@ class DeleteOccurrenceAttachmentAction
 {
     public static function execute(Occurrence $occurrence, User $author, int $attachmentId): OccurrenceAttachment
     {
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         // O acesso vem antes da busca: quem não enxerga o chamado não descobre,
         // pela diferença entre 403 e 404, quais imagens ele tem.
         CheckOccurrenceAccessAction::execute($occurrence, $author);

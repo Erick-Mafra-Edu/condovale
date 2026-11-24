@@ -1003,6 +1003,16 @@ Cada pessoa enxerga só o seu recorte (`ScopeOccurrencesAction`): o morador, os
 próprios chamados; o funcionário, os atribuídos a ele; síndico e
 administração, a fila inteira. Chamado fora do recorte responde 404.
 
+**Pedidos simultâneos (OCR-10).** Toda mudança de chamado — status, anotação,
+encaminhamento, finalização, imagem — relê o chamado com trava
+(`Occurrence::lockForChange`) dentro da transação antes de conferir o status.
+Sem isso, o clique duplo em "finalizar" passava duas vezes pela checagem: no
+MySQL 8.0, seis pedidos simultâneos de finalizar o mesmo chamado eram os seis
+aceitos, com seis históricos de conclusão. Com a trava, um é aceito e os
+outros cinco recebem 409; o mesmo vale para duas análises ao mesmo tempo e
+para a sexta imagem quando só resta uma vaga. Provado pelo `OccurrenceRaceTest`
+(só roda contra MySQL, como o `ReservationRaceTest`).
+
 ### UC7 — denúncia
 
 A especificação tem dois casos de uso de abertura no RF04: "UC6 - Registrar
