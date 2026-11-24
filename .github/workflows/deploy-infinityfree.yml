@@ -124,6 +124,19 @@ jobs:
         run: |
           python tools/run-deploy-migration.py
 
+      # Em todo deploy que não recria o banco: aplica só as migrations que
+      # ainda não rodaram (migrate, sem fresh), sem apagar nada. Sem este passo
+      # a coluna nova chegava ao servidor junto com o código que a usa, mas não
+      # ao banco — com a auditoria, toda operação que grava log falharia até
+      # alguém chamar a rota à mão. Sem migration nova, não faz nada.
+      - name: Aplicar migrations pendentes
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.recreate_database) }}
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          python tools/run-deploy-migration.py --pending
+
       # Produção lê rotas e configuração dos caches de inicialização. O FTP acima
       # troca os arquivos, mas não os caches: sem renová-los, uma rota nova
       # responderia 404 e uma configuração nova seria ignorada, sem erro
