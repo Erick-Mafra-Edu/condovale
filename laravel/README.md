@@ -1143,7 +1143,8 @@ Regras:
 - **A trilha só cresce.** O model `Log` recusa alteração e exclusão; não há
   rota que altere ou apague um registro.
 - **Aprovar e reprovar reserva agora gravam log.** Era a única operação
-  administrativa sem rastro (`ReviewReservationAction`, ainda sem rota).
+  administrativa sem rastro (`ReviewReservationAction`, pelo
+  `PATCH /api/reservations/{id}/status`).
 - Exclusões guardam uma cópia do registro; a do tipo de ocorrência passou a
   guardar também.
 
@@ -1435,6 +1436,32 @@ das reservas que tinha.
   o morador desistir.
 - Fica na auditoria como "cancelada", ou "cancelada pela administração" quando
   não foi o próprio morador.
+
+### Consulta e análise — UC16 / UC17 / UC19
+
+| Rota | Autorização | Efeito |
+| --- | --- | --- |
+| `GET /api/reservations/me` | `view-own-reservations` | UC17 — as reservas de quem está logado, e só dele |
+| `GET /api/reservations` | `manage-reservations` ou `approve-or-reject-reservation` | UC19 — todas as reservas, com o morador (nome e unidade) |
+| `GET /api/reservations/{id}` | qualquer um dos três | o detalhe; reserva de outra pessoa responde 404 |
+| `PATCH /api/reservations/{id}/status` | `approve-or-reject-reservation` | UC16 — aprova ou reprova um pedido pendente |
+
+- As listagens seguem o contrato das demais (`filters`, `sort`, `page`,
+  `limit`), da data mais recente para a mais antiga, com até 100 por página
+  sem `limit` — a tela de reservas carrega a lista numa requisição só. Cada
+  linha traz `common_area` (id e nome), `status_label` e `full_day`.
+- O parâmetro `relations` é descartado: pela listagem do morador sairia o
+  cadastro inteiro de quem reservou. Os filtros do cliente se somam ao recorte
+  da sessão — `filters=resident_id:=:<outro>` em `/me` devolve zero, não as
+  reservas do vizinho.
+- Horários saem sempre em `HH:MM`, e a reserva que termina à meia-noite sai com
+  `end_time: "24:00"`, como a tela envia — o MySQL devolve `HH:MM:SS`.
+- `PATCH .../status` recebe `{"status": "approved"}` ou
+  `{"status": "rejected", "rejection_reason": "..."}`; o motivo é opcional,
+  como na regra RN14 do frontend. A aprovação confere de novo as regras da
+  área (RN02, 422 com `errors.<campo>`) e o conflito (RN01, 409); pedido que não
+  está pendente responde 409. A decisão fica na auditoria
+  (`reservation.approved` ou `reservation.rejected`), com o morador e o motivo.
 
 ### Conflito de reservas e pedidos simultâneos — RN01
 

@@ -295,6 +295,35 @@ Route::middleware([
 
 /*
 |--------------------------------------------------------------------------
+| Consulta e análise de reservas — UC16 / UC17 / UC19
+|--------------------------------------------------------------------------
+|
+| UC17: o morador vê as próprias reservas (view-own-reservations), fora do
+| unit.linked — quem perdeu o vínculo continua vendo o que reservou.
+| UC19: a administração vê todas (manage-reservations ou
+| approve-or-reject-reservation). UC16: só quem tem
+| approve-or-reject-reservation decide um pedido pendente.
+|
+| O detalhe serve aos dois; reserva de outra pessoa responde 404.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::get('reservations', [ReservationController::class, 'index'])
+        ->middleware('use.case:manage-reservations,approve-or-reject-reservation');
+
+    Route::get('reservations/me', [ReservationController::class, 'mine'])
+        ->middleware('use.case:view-own-reservations');
+
+    Route::get('reservations/{id}', [ReservationController::class, 'show'])
+        ->whereNumber('id')
+        ->middleware('use.case:view-own-reservations,manage-reservations,approve-or-reject-reservation');
+
+    Route::patch('reservations/{id}/status', [ReservationController::class, 'updateStatus'])
+        ->whereNumber('id')
+        ->middleware('use.case:approve-or-reject-reservation');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Andamento e encerramento de chamados — RF04 / RN06 / RN15
 |--------------------------------------------------------------------------
 |
