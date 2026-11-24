@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Models\User;
@@ -32,7 +33,7 @@ class ChangeOwnPasswordAction
         $request->session()->regenerate();
 
         $description = "Usuário {$user->id} {$user->name} alterou a própria senha.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description);
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, action: AuditAction::UserPasswordChanged, subjectId: $user->id);
 
         return $user->refresh();
     }

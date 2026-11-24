@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
 use App\Enums\TypeLogEnum;
@@ -75,12 +76,18 @@ class AssignOccurrenceAction
             ? "Ocorrência {$occurrence->id} {$occurrence->title} repassada de {$anterior->name} para {$employee->name} por {$author->name}."
             : "Ocorrência {$occurrence->id} {$occurrence->title} encaminhada a {$employee->name} por {$author->name}.";
 
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, [
-            'de' => $anterior?->only(['id', 'name']),
-            'para' => $employee->only(['id', 'name']),
-            'status_anterior' => $previousStatus->value,
-            'justificativa' => $justification,
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::OCCURRENCE->value,
+            $description,
+            [
+                'de' => $anterior?->only(['id', 'name']),
+                'para' => $employee->only(['id', 'name']),
+                'status_anterior' => $previousStatus->value,
+                'justificativa' => $justification,
+            ],
+            action: $anterior ? AuditAction::OccurrenceReassigned : AuditAction::OccurrenceAssigned,
+            subjectId: $occurrence->id,
+        );
 
         return $occurrence->refresh();
     }

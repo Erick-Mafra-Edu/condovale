@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\TypeLogEnum;
 use App\Enums\UseCase;
@@ -61,10 +62,17 @@ class DeleteOccurrenceAttachmentAction
         );
 
         $description = "Imagem {$attachment->id} removida da ocorrência {$occurrence->id} {$occurrence->title} por {$author->name}.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, [
-            'arquivo' => $attachment->original_name,
-            'enviada_por' => $attachment->uploaded_by,
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::OCCURRENCE->value,
+            $description,
+            [
+                'imagem_id' => $attachment->id,
+                'arquivo' => $attachment->original_name,
+                'enviada_por' => $attachment->uploaded_by,
+            ],
+            action: AuditAction::OccurrenceAttachmentRemoved,
+            subjectId: $occurrence->id,
+        );
 
         // O arquivo sai só depois do commit. Apagado antes, um rollback
         // devolveria a linha apontando para um arquivo que já não existe.

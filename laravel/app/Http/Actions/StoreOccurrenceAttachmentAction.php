@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
@@ -73,11 +74,18 @@ class StoreOccurrenceAttachmentAction
             );
 
             $description = "Imagem {$attachment->id} anexada à ocorrência {$occurrence->id} {$occurrence->title} por {$author->name}.";
-            CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, [
-                'arquivo' => $nome,
-                'bytes' => $attachment->size,
-                'regravada' => $imagem['reencoded'],
-            ]);
+            CreateLogAction::execute(
+                TypeLogEnum::OCCURRENCE->value,
+                $description,
+                [
+                    'imagem_id' => $attachment->id,
+                    'arquivo' => $nome,
+                    'bytes' => $attachment->size,
+                    'regravada' => $imagem['reencoded'],
+                ],
+                action: AuditAction::OccurrenceAttachmentAdded,
+                subjectId: $occurrence->id,
+            );
         } catch (\Throwable $th) {
             $disco->delete($path);
 

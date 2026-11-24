@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\CommonAreaStatus;
 use App\Enums\TypeLogEnum;
 use App\Http\Utils\TimeUtil;
@@ -26,7 +27,9 @@ class CreateCommonAreaAction
         CreateLogAction::execute(
             TypeLogEnum::COMMON_AREA->value,
             "Área comum {$commonArea->id} {$commonArea->name} criada.",
-            $commonArea
+            $commonArea,
+            action: AuditAction::CommonAreaCreated,
+            subjectId: $commonArea->id,
         );
 
         return $commonArea->refresh();

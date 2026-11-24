@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Models\CommonArea;
@@ -32,6 +33,6 @@ class DeleteCommonAreaAction
 
         $commonArea->delete();
 
-        CreateLogAction::execute(TypeLogEnum::COMMON_AREA->value, $description, $copy);
+        CreateLogAction::execute(TypeLogEnum::COMMON_AREA->value, $description, $copy, action: AuditAction::CommonAreaDeleted, subjectId: $commonArea->id);
     }
 }

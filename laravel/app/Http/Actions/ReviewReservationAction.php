@@ -2,8 +2,11 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\ReservationStatus;
+use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\AuditUtil;
 use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use App\Models\Reservation;
@@ -51,10 +54,25 @@ class ReviewReservationAction
                 CheckReservationConflictAction::execute($commonArea, $date, $startTime, $endTime, $reservation->id);
             }
 
-            $reservation->update([
+            $reservation->fill([
                 'status' => $status,
                 'rejection_reason' => $status === ReservationStatus::Rejected ? $rejectionReason : null,
             ]);
+            $changes = AuditUtil::diff($reservation);
+            $reservation->save();
+
+            // RNF04 — the decision of the administration on someone else's
+            // request is exactly the kind of operation the trail is for.
+            $approved = $status === ReservationStatus::Approved;
+            $commonArea = $reservation->commonArea;
+
+            CreateLogAction::execute(
+                TypeLogEnum::RESERVATION->value,
+                CreateReservationAction::describe($reservation, $commonArea, $approved ? 'aprovada' : 'reprovada'),
+                $changes + ['common_area_id' => $commonArea->id, 'resident_id' => $reservation->resident_id],
+                action: $approved ? AuditAction::ReservationApproved : AuditAction::ReservationRejected,
+                subjectId: $reservation->id,
+            );
 
             return $reservation->refresh();
         }, Reservation::TRANSACTION_ATTEMPTS);

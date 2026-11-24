@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
 use App\Enums\TypeLogEnum;
@@ -57,7 +58,7 @@ class UpdateOccurrenceAttendanceAction
         );
 
         $description = "Andamento registrado na ocorrência {$occurrence->id} {$occurrence->title} por {$author->name}.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, ['andamento' => $message]);
+        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, ['andamento' => $message], action: AuditAction::OccurrenceProgressNoted, subjectId: $occurrence->id);
 
         return $occurrence->refresh();
     }

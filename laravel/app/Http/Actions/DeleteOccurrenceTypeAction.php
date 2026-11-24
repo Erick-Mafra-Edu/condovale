@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Models\OccurrenceType;
@@ -32,9 +33,11 @@ class DeleteOccurrenceTypeAction
         }
 
         $description = "Tipo de ocorrência {$type->id} {$type->name} excluído.";
+        // The row is gone after this: the copy is what remains of it.
+        $copy = $type->only(['name', 'description', 'employee_can_close', 'active']);
 
         $type->delete();
 
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description);
+        CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description, $copy, action: AuditAction::OccurrenceTypeDeleted, subjectId: $type->id);
     }
 }

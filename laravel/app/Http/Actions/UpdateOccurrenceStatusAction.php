@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
 use App\Enums\TypeLogEnum;
@@ -56,11 +57,17 @@ class UpdateOccurrenceStatusAction
         );
 
         $description = "Ocorrência {$occurrence->id} {$occurrence->title} passou de {$previousStatus->label()} para {$status->label()}.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, [
-            'de' => $previousStatus->value,
-            'para' => $status->value,
-            'observacao' => $message,
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::OCCURRENCE->value,
+            $description,
+            [
+                'de' => $previousStatus->value,
+                'para' => $status->value,
+                'observacao' => $message,
+            ],
+            action: AuditAction::OccurrenceStatusUpdated,
+            subjectId: $occurrence->id,
+        );
 
         return $occurrence->refresh();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\NoticeStatus;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
@@ -31,7 +32,9 @@ class PublishNoticeAction
 
         CreateLogAction::execute(
             TypeLogEnum::NOTICE->value,
-            "Comunicado {$notice->id} {$notice->title} publicado por {$publisher->name}."
+            "Comunicado {$notice->id} {$notice->title} publicado por {$publisher->name}.",
+            action: AuditAction::NoticePublished,
+            subjectId: $notice->id,
         );
 
         return $notice;

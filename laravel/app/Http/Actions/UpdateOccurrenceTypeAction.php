@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Models\OccurrenceType;
 
@@ -33,10 +34,16 @@ class UpdateOccurrenceTypeAction
         $type->update($attributes);
 
         $description = "Tipo de ocorrência {$type->id} {$type->name} editado.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description, [
-            'de' => $anterior,
-            'para' => $type->only(['name', 'description', 'employee_can_close', 'active']),
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::OCCURRENCE_TYPE->value,
+            $description,
+            [
+                'de' => $anterior,
+                'para' => $type->only(['name', 'description', 'employee_can_close', 'active']),
+            ],
+            action: AuditAction::OccurrenceTypeUpdated,
+            subjectId: $type->id,
+        );
 
         return $type->refresh();
     }

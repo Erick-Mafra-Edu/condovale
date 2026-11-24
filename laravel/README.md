@@ -347,6 +347,7 @@ passar por rota autenticada que verifique quem pode baixar aquele arquivo.
 | `app/Services/MessageService.php` | envelope único de resposta da API |
 | `app/Http/Actions/HandlePaginationAction.php` | contrato genérico de consulta das listagens |
 | `app/Http/Actions/CreateLogAction.php` | trilha de auditoria na tabela `logs` (RNF04) |
+| `app/Http/Utils/AuditUtil.php` | o "de → para" de uma edição, para a auditoria |
 | `app/Http/Utils/SanitizeUtil.php` | saneamento de todo id e texto vindo da rota |
 | `app/Http/Utils/AuthUtil.php` | acessores tipados do guard de sessão |
 | `app/Http/Middleware/CheckUseCase.php` | autorização pelo grupo de rota (`use.case`) |
@@ -500,10 +501,10 @@ alguém acrescentasse uma linha a um JSON.
    ao caso de uso (`use.case:<caso>`).
 5. **Testes** cobrindo as regras de negócio do módulo.
 
-> A tabela `type_logs` é dado de referência com ids fixos usados por
-> `App\Enums\TypeLogEnum`; enquanto a task dela não existir, nenhuma operação
-> consegue gravar auditoria. É o primeiro seeder da fila e precisa rodar também
-> em produção: `php artisan db:seed --class=TypeLogSeeder`.
+> Não existe tabela `type_logs`: a referência dos tipos de log é o enum
+> `App\Enums\TypeLogEnum`, e `logs.type_log_id` não tem chave estrangeira. Os
+> ids do enum são contrato — os registros já gravados apontam para eles. Veja a
+> seção [Auditoria](#auditoria--rnf04--uc-t03--rn16).
 
 ## Contrato de resposta
 
@@ -1104,6 +1105,98 @@ exportando. O índice em `occurrences.created_at` é o que o período usa.
 Com a carga da UC-T01 (10 mil reservas em mil dias), o pior caso também é a
 exportação de três meses, perto de 100 ms, com 7 consultas fixas. Não foi
 preciso índice novo: `reservations.date` já tinha.
+
+## Auditoria — RNF04 / UC-T03 / RN16
+
+"O sistema deve manter logs de auditoria detalhados para todas as operações
+críticas realizadas por administradores e funcionários." Toda operação grava
+na tabela `logs` pelo `CreateLogAction`; a administração lê pelo
+`GET /api/audit-logs`.
+
+### O que cada registro guarda
+
+| Coluna | Conteúdo |
+| --- | --- |
+| `type_log_id` | a categoria (`TypeLogEnum`), que define o tipo do registro afetado |
+| `action` | a operação (`AuditAction`), como `reservation.approved` |
+| `subject_id` | o id do registro afetado; o tipo vem do `type_log_id` (`TypeLogEnum::entity()`) |
+| `user_id`, `user_role` | quem fez, e o perfil que tinha **naquele momento** |
+| `description` | a frase em português, com id e nome do registro |
+| `data_log` | os detalhes: o "de → para" das edições, a cópia do que foi excluído, motivo e justificativa |
+| `ip` | guardado, mas nunca sai da API (`$hidden` do model) |
+| `created_at` | a hora do servidor |
+
+Autor, perfil, hora e IP vêm sempre do servidor, nunca do corpo da requisição.
+
+Regras:
+
+- **Toda gravação declara ação e registro.** `CreateLogAction::execute()` ganhou
+  os argumentos `action:` e `subjectId:`; o `AuditLogTest` varre `app/` e falha
+  se uma gravação nova esquecer um dos dois. Uma ação gravada com o tipo de
+  outra entidade é recusada com `LogicException`.
+- **Edição guarda só o que mudou, de → para.** `AuditUtil::diff()` é chamado
+  entre o `fill()` e o `save()` — depois do save o Laravel 11 não guarda mais o
+  valor anterior. Campos ocultos (a senha) nunca entram, e "22:00" reenviado
+  sobre um "22:00:00" gravado não conta como mudança.
+- **O perfil é copiado, não consultado.** O funcionário promovido a síndico
+  continua aparecendo como funcionário nas ações de antes da promoção.
+- **A trilha só cresce.** O model `Log` recusa alteração e exclusão; não há
+  rota que altere ou apague um registro.
+- **Aprovar e reprovar reserva agora gravam log.** Era a única operação
+  administrativa sem rastro (`ReviewReservationAction`, ainda sem rota).
+- Exclusões guardam uma cópia do registro; a do tipo de ocorrência passou a
+  guardar também.
+
+| Entidade (`entity`) | Ações |
+| --- | --- |
+| `user` | `auth.login`, `auth.logout`, `user.created`, `user.updated`, `user.deactivated`, `user.profile_updated`, `user.password_changed`, `user.permission_granted`, `user.permission_revoked` |
+| `unit` | `unit.created`, `unit.updated`, `unit.deactivated` |
+| `unit_occupancy` | `unit_occupancy.created`, `unit_occupancy.ended` |
+| `common_area` | `common_area.created`, `common_area.updated`, `common_area.deleted` |
+| `reservation` | `reservation.created`, `reservation.approved`, `reservation.rejected`, `reservation.cancelled` |
+| `occurrence` | `occurrence.created`, `occurrence.assigned`, `occurrence.reassigned`, `occurrence.status_updated`, `occurrence.progress_noted`, `occurrence.completed`, `occurrence.attachment_added`, `occurrence.attachment_removed` |
+| `occurrence_type` | `occurrence_type.created`, `occurrence_type.updated`, `occurrence_type.deleted` |
+| `notice` | `notice.drafted`, `notice.published`, `notice.deleted` |
+| `system` | `system.seeded` (a carga de demonstração) |
+
+### Consulta
+
+`GET /api/audit-logs`, só com `view-audit-reports` (o administrador, RN16).
+Segue o contrato dos relatórios operacionais.
+
+| Parâmetro | Efeito |
+| --- | --- |
+| `from`, `to` | período, obrigatório, com os dois dias inteiros |
+| `entity` | uma das entidades da tabela acima |
+| `entity_id` | o histórico de um registro; exige `entity` (o 7 de uma reserva não é o 7 de uma ocorrência) |
+| `user_id` | o responsável |
+| `role` | o perfil de quem fez, na época: `admin`, `syndic`, `employee`, `resident` |
+| `action` | uma ação da tabela acima |
+| `page`, `limit`, `export` | como nos relatórios; a exportação tem teto de 5000 linhas (`config/reports.php`) |
+
+A resposta traz `period`, `summary` (total e quanto por perfil), `by_role`,
+`by_entity` e `logs` (`data`, `total`, `page`, `per_page`, `last_page`). Cada
+linha tem `id`, `action`, `action_label`, `entity`, `entity_label`,
+`entity_id`, `description`, `user` (id e nome), `user_role`,
+`user_role_label`, `metadata` e `created_at`. Os nomes seguem o `AuditLog` do
+frontend.
+
+Como nos outros relatórios, **os indicadores olham o período inteiro**; os
+filtros recortam só a lista. Registros gravados antes desta versão aparecem com
+`action` e `entity_id` nulos e só a frase.
+
+Com 20 mil registros em mil dias, nenhuma consulta passou de 65 ms no SQLite
+nem de 50 ms no MySQL 8.0, com 5 consultas fixas por página ou exportação
+(`AuditReportPerformanceTest`). Índices novos: `created_at`,
+`(type_log_id, subject_id)` e `(action, created_at)`.
+
+### Implantação
+
+A migration `2026_11_24_000001_add_audit_fields_to_logs_table` acrescenta
+`action`, `subject_id` e `user_role` e preenche `user_role` dos registros
+antigos com o perfil atual do autor. **Rode-a logo depois de publicar o
+código**, pelo `POST /api/deploy/migrate` com `fresh=false`, que não apaga
+nada: até lá, toda operação que grava log falha por coluna inexistente.
 
 ## Áreas comuns — AreaComum
 

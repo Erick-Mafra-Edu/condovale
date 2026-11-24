@@ -256,6 +256,7 @@ class ReservationCancellationTest extends TestCase
 
         // ...e o morador cancelou antes de ela decidir.
         $this->cancelar($morador, $pedido)->assertStatus(201);
+        $this->actingAs(User::factory()->admin()->create());
 
         try {
             ReviewReservationAction::execute($carregadoAntes, ReservationStatus::Approved);
@@ -274,6 +275,8 @@ class ReservationCancellationTest extends TestCase
         $pedido = $this->reserva($morador, $this->area(['requires_approval' => true]), ['status' => ReservationStatus::Pending]);
         $carregadoAntes = Reservation::find($pedido->id);
 
+        // Quem aprova é a administração, que assina o registro de auditoria.
+        $this->actingAs(User::factory()->admin()->create());
         ReviewReservationAction::execute(Reservation::find($pedido->id), ReservationStatus::Approved);
 
         $this->actingAs($morador);

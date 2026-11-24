@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Models\Notice;
 use App\Models\User;
@@ -32,7 +33,9 @@ class DeleteNoticeAction
         CreateLogAction::execute(
             TypeLogEnum::NOTICE->value,
             "Comunicado {$notice->id} {$notice->title} excluído por {$author->name}.",
-            $copia
+            $copia,
+            action: AuditAction::NoticeDeleted,
+            subjectId: $notice->id,
         );
     }
 }

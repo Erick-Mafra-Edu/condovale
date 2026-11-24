@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UseCase;
 use App\Exceptions\BusinessRuleException;
@@ -31,7 +32,7 @@ class GrantPermissionAction
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $description = "Caso de uso {$permission->name} concedido ao usuário {$user->id} {$user->name}.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description, ['permission' => $permission->name]);
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, ['permission' => $permission->name], action: AuditAction::UserPermissionGranted, subjectId: $user->id);
 
         return $user->fresh();
     }
@@ -52,7 +53,7 @@ class GrantPermissionAction
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $description = "Caso de uso {$permission->name} revogado do usuário {$user->id} {$user->name}.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description, ['permission' => $permission->name]);
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, ['permission' => $permission->name], action: AuditAction::UserPermissionRevoked, subjectId: $user->id);
 
         return $user->fresh();
     }
