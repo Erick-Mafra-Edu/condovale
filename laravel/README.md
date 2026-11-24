@@ -993,6 +993,7 @@ dobro de dados (`DashboardPerformanceTest`).
 | `GET /api/notices` | `view-notices` ou `publish-notices` | mural, paginado, do mais recente para o mais antigo |
 | `GET /api/notices/{id}` | `view-notices` ou `publish-notices` | um comunicado |
 | `POST /api/notices` | `publish-notices` | publica, ou guarda como rascunho com `status: draft` |
+| `PATCH /api/notices/{id}` | `publish-notices` | corrige título ou conteúdo; `status: published` publica um rascunho |
 | `POST /api/notices/{id}/publish` | `publish-notices` | publica um rascunho (`Comunicado.publicar()`) |
 | `DELETE /api/notices/{id}` | `publish-notices` | exclui (RN03) |
 
@@ -1005,6 +1006,10 @@ dobro de dados (`DashboardPerformanceTest`).
 - **Autor e data de publicação são do servidor.** O corpo traz só título,
   conteúdo e, opcionalmente, `status`; `author_id` e `published_at` enviados
   são ignorados, para ninguém assinar em nome do síndico nem antedatar aviso.
+- **Editar não apaga o que estava escrito.** O texto anterior vai para a
+  auditoria (`notice.updated`, de → para), e autor e `published_at` não mudam.
+  Um comunicado publicado não volta a rascunho (409): quem leu já leu, e o
+  jeito de retirá-lo é excluir.
 - **Excluir apaga a linha, não o registro.** Título, texto, autor e datas vão
   para o `data_log` da auditoria: aviso oficial que some sem rastro vira
   disputa de "ninguém avisou".
@@ -1157,7 +1162,7 @@ Regras:
 | `reservation` | `reservation.created`, `reservation.approved`, `reservation.rejected`, `reservation.cancelled` |
 | `occurrence` | `occurrence.created`, `occurrence.assigned`, `occurrence.reassigned`, `occurrence.status_updated`, `occurrence.progress_noted`, `occurrence.completed`, `occurrence.attachment_added`, `occurrence.attachment_removed` |
 | `occurrence_type` | `occurrence_type.created`, `occurrence_type.updated`, `occurrence_type.deleted` |
-| `notice` | `notice.drafted`, `notice.published`, `notice.deleted` |
+| `notice` | `notice.drafted`, `notice.published`, `notice.updated`, `notice.deleted` |
 | `system` | `system.seeded` (a carga de demonstração) |
 
 ### Consulta

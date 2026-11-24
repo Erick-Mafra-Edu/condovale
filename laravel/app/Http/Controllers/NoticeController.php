@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NoticeStatus;
 use App\Http\Actions\CreateNoticeAction;
 use App\Http\Actions\DeleteNoticeAction;
 use App\Http\Actions\HandlePaginationAction;
 use App\Http\Actions\PublishNoticeAction;
 use App\Http\Actions\ScopeNoticesAction;
+use App\Http\Actions\UpdateNoticeAction;
 use App\Http\Requests\DefaultPaginationRequest;
 use App\Http\Requests\NoticeStoreRequest;
+use App\Http\Requests\NoticeUpdateRequest;
 use App\Http\Utils\AuthUtil;
 use App\Http\Utils\SanitizeUtil;
 use App\Models\Notice;
@@ -82,6 +85,40 @@ class NoticeController extends Controller
         $mensagem = $notice->published_at
             ? "Comunicado {$notice->id} publicado."
             : "Comunicado {$notice->id} salvo como rascunho.";
+
+        return MessageService::success($mensagem, $notice->load(self::AUTOR));
+    }
+
+    /**
+     * Corrects title or content; `status: published` publishes a draft. The
+     * previous text stays in the audit trail.
+     */
+    public function update(NoticeUpdateRequest $request, int $id)
+    {
+        $id = SanitizeUtil::sanitizeInt($id);
+        $notice = Notice::find($id);
+
+        if (! $notice) {
+            return MessageService::error("Comunicado {$id} não encontrado.", 404);
+        }
+
+        $eraRascunho = $notice->status === NoticeStatus::Draft;
+
+        try {
+            DB::beginTransaction();
+
+            $notice = UpdateNoticeAction::execute($notice, AuthUtil::user(), $request->validated());
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+
+            return MessageService::throwable($th);
+        }
+
+        $mensagem = $eraRascunho && $notice->status === NoticeStatus::Published
+            ? "Comunicado {$notice->id} atualizado e publicado."
+            : "Comunicado {$notice->id} atualizado.";
 
         return MessageService::success($mensagem, $notice->load(self::AUTOR));
     }
