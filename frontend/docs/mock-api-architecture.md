@@ -34,7 +34,9 @@ Validações de input novas usam **Zod**. O schema vive no domínio do caso de u
 
 Os mocks são mutáveis em memória e devolvem cópias dos objetos. A persistência em banco e autenticação real permanecem fora desta etapa. Os seeds de usuários e unidades mantêm a mesma referência `unit-01`.
 
-## Contrato HTTP provisório
+## Contrato HTTP provisório (histórico)
+
+Os contratos atualizados pelo PR #52 e a matriz de revisão do frontend estão em [frontend-sprints-5-6.md](../../docs/frontend-sprints-5-6.md).
 
 Todos os caminhos, verbos e envelopes abaixo são provisórios, não representam um contrato Laravel validado:
 
