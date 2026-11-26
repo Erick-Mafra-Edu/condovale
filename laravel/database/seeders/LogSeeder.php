@@ -26,7 +26,9 @@ class LogSeeder extends Seeder
         foreach ($data as $item) {
             $array = [
                 'type_log_id' => $item->type_log_id,
+                'action' => $item->action,
                 'user_id' => $this->userId($item->user_email, 'logs.json'),
+                'user_role' => $item->user_role,
                 'description' => $item->description,
                 'ip' => $item->ip,
                 'data_log' => $item->data_log,

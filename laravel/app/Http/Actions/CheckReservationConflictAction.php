@@ -3,6 +3,7 @@
 namespace App\Http\Actions;
 
 use App\Exceptions\BusinessRuleException;
+use App\Http\Utils\TimeUtil;
 use App\Models\CommonArea;
 use App\Models\Reservation;
 
@@ -11,6 +12,13 @@ use App\Models\Reservation;
  *
  * Only pending and approved reservations block the agenda, which is what makes
  * RN08 work: cancelling or rejecting frees the period again.
+ *
+ * Must run inside the transaction that writes the reservation. Two requests
+ * for the same period arriving together would both read "free" and both
+ * insert; so the check first locks the area row, which makes the second
+ * request wait until the first commits, and then reads the reservations with
+ * a locking read, which in InnoDB always sees the latest committed rows — a
+ * plain read could still answer from the snapshot the transaction started with.
  */
 class CheckReservationConflictAction
 {
@@ -21,11 +29,18 @@ class CheckReservationConflictAction
         ?string $endTime,
         ?int $ignoreReservationId = null,
     ): void {
-        $reservations = $commonArea->reservations()
+        CommonArea::whereKey($commonArea->id)->lockForUpdate()->first();
+
+        // `date` compared as is, not through whereDate(): the column keeps
+        // only the day, and the function would keep MySQL from using the
+        // (common_area_id, date, status) index — and lock every row it reads.
+        $reservations = Reservation::query()
+            ->where('common_area_id', $commonArea->id)
+            ->where('date', $date)
             ->blocking()
-            ->whereDate('date', $date)
             ->when($ignoreReservationId, fn ($query, $id) => $query->whereKeyNot($id))
-            ->get();
+            ->lockForUpdate()
+            ->get(['id', 'start_time', 'end_time']);
 
         foreach ($reservations as $reservation) {
             if (self::overlaps($reservation, $startTime, $endTime)) {
@@ -41,6 +56,9 @@ class CheckReservationConflictAction
             return true;
         }
 
-        return $startTime < $reservation->end_time && $reservation->start_time < $endTime;
+        // Compared as minutes: the database may return "12:00:00" for a "12:00"
+        // sent by the API, and as strings those two would overlap.
+        return TimeUtil::toMinutes($startTime) < TimeUtil::toMinutes($reservation->end_time)
+            && TimeUtil::toMinutes($reservation->start_time) < TimeUtil::toMinutes($endTime);
     }
 }

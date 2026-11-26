@@ -27,6 +27,8 @@ class ReservationUpdateRequest extends FormRequest
         return [
             'status.required' => 'Informe se a reserva foi aprovada ou reprovada.',
             'status.in' => 'A análise permite apenas aprovar ou reprovar a solicitação.',
+            'rejection_reason.string' => 'Informe o motivo da reprovação como texto.',
+            'rejection_reason.max' => 'O motivo da reprovação pode ter até 255 caracteres.',
         ];
     }
 }

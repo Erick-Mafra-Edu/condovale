@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\CommonAreaStatus;
+use App\Http\Utils\TimeUtil;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CommonArea extends Model
 {
     use HasFactory;
+
+    /** RN14 — reservations by time are made of 30 minute blocks from opening time. */
+    public const SLOT_MINUTES = 30;
+
+    /** RN14 — the limit applied when the area does not inform its own. */
+    public const DEFAULT_MAX_RESERVATION_MINUTES = 120;
 
     protected $fillable = [
         'name',
@@ -42,6 +50,21 @@ class CommonArea extends Model
         ];
     }
 
+    /**
+     * MySQL returns a TIME column as "HH:MM:SS"; the API speaks "HH:MM", in
+     * the form and in the response alike.
+     */
+    protected function openingTime(): Attribute
+    {
+        return Attribute::make(get: fn (?string $value) => TimeUtil::format($value));
+    }
+
+    /** Closing at midnight reads "24:00", never "00:00", which is before opening. */
+    protected function closingTime(): Attribute
+    {
+        return Attribute::make(get: fn (?string $value) => TimeUtil::formatEnd($value));
+    }
+
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);
@@ -50,5 +73,48 @@ class CommonArea extends Model
     public function isAvailable(): bool
     {
         return $this->status === CommonAreaStatus::Available;
+    }
+
+    /**
+     * The maximum length of a reservation by time. The reservation screen
+     * already falls back to two hours when the area has no limit; the API
+     * applies the same number, so the rule does not live only in the browser.
+     */
+    public function maxReservationMinutes(): int
+    {
+        return $this->max_reservation_minutes ?? self::DEFAULT_MAX_RESERVATION_MINUTES;
+    }
+
+    /** Without opening and closing time there is no grid to book from. */
+    public function hasOpeningHours(): bool
+    {
+        return $this->opening_time !== null && $this->closing_time !== null;
+    }
+
+    /**
+     * What is wrong with a pair of opening hours, or null when they work.
+     *
+     * The area opens and closes on the same day — "24:00" (or "00:00") is the
+     * midnight that ends it — and stays open at least one reservation block,
+     * or the calendar would have nothing to offer.
+     */
+    public static function hoursProblem(?string $openingTime, ?string $closingTime): ?string
+    {
+        $opening = TimeUtil::toMinutes($openingTime);
+        $closing = TimeUtil::toMinutes(TimeUtil::formatEnd($closingTime));
+
+        if ($opening === null || $closing === null) {
+            return null;
+        }
+
+        if ($closing <= $opening) {
+            return 'O horário de fechamento deve ser posterior ao de abertura, no mesmo dia. Para fechar à meia-noite, use 24:00.';
+        }
+
+        if ($closing - $opening < self::SLOT_MINUTES) {
+            return 'A área precisa ficar aberta por pelo menos '.self::SLOT_MINUTES.' minutos, o tamanho de um bloco de reserva.';
+        }
+
+        return null;
     }
 }

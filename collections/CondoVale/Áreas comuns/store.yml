@@ -1,0 +1,30 @@
+info:
+  name: store
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{API_URL}}/common-areas"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Piscina",
+        "description": "Piscina adulto e infantil.",
+        "capacity": 30,
+        "opening_time": "09:00",
+        "closing_time": "20:00",
+        "max_reservation_minutes": 180,
+        "requires_approval": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

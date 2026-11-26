@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
 use App\Enums\TypeLogEnum;
@@ -59,7 +60,7 @@ class CreateOccurrenceAction
             ? "Ocorrência {$occurrence->id} {$occurrence->title} aberta por {$author->name} para o morador {$resident->id} {$resident->name}."
             : "Ocorrência {$occurrence->id} {$occurrence->title} aberta pelo morador {$resident->id} {$resident->name}.";
 
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, $occurrence);
+        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, $occurrence, action: AuditAction::OccurrenceCreated, subjectId: $occurrence->id);
 
         return $occurrence;
     }

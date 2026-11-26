@@ -18,12 +18,14 @@ use App\Http\Requests\DefaultPaginationRequest;
 use App\Http\Requests\OccurrenceAssignRequest;
 use App\Http\Requests\OccurrenceAttendanceRequest;
 use App\Http\Requests\OccurrenceFinishRequest;
+use App\Http\Requests\OccurrenceListRequest;
 use App\Http\Requests\OccurrenceStoreRequest;
 use App\Http\Requests\OccurrenceUpdateRequest;
 use App\Http\Utils\AuthUtil;
 use App\Http\Utils\SanitizeUtil;
 use App\Models\Occurrence;
 use App\Models\OccurrenceHistory;
+use App\Models\OccurrenceType;
 use App\Models\User;
 use App\Services\MessageService;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +49,7 @@ class OccurrenceController extends Controller
      * nome — é o que a tela de acompanhamento precisa.
      */
     private const RELACOES = [
-        'occurrenceType:id,name,employee_can_close',
+        'occurrenceType:id,name,kind,employee_can_close',
         'resident:id,name',
         'assignedEmployee:id,name',
         'unit:id,code,block,number',
@@ -56,14 +58,21 @@ class OccurrenceController extends Controller
     /**
      * Os chamados que a pessoa enxerga: o morador os próprios, o funcionário
      * os atribuídos a ele, o síndico e a administração a fila inteira.
+     *
+     * `kind=complaint` deixa só as denúncias (UC7); `kind=maintenance`, só os
+     * pedidos de manutenção (UC6).
      */
-    public function index(DefaultPaginationRequest $request)
+    public function index(OccurrenceListRequest $request)
     {
         $item = (object) $request->validated();
         $request->query->remove('relations');
 
         $response = HandlePaginationAction::execute($request, new Occurrence, ['title', 'description']);
         $occurrences = ScopeOccurrencesAction::execute($response, AuthUtil::user())
+            ->when($item->kind ?? null, fn ($query, string $kind) => $query->whereIn(
+                'occurrence_type_id',
+                OccurrenceType::query()->where('kind', $kind)->select('id')
+            ))
             ->with(self::RELACOES)
             ->paginate($item->limit ?? 10);
 

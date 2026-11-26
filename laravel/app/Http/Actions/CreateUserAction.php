@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UserStatus;
 use App\Http\Utils\TemporaryPasswordUtil;
@@ -46,7 +47,7 @@ class CreateUserAction
         Mail::to($user->email)->send(new TemporaryPasswordMail($user, $temporaria));
 
         $description = "Usuário {$user->id} {$user->name} cadastrado com perfil {$user->role->value}.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description, $user);
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, $user, action: AuditAction::UserCreated, subjectId: $user->id);
 
         return ['user' => $user, 'temporary_password' => $temporaria];
     }

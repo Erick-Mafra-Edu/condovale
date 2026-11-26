@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Http\JsonResponse;
 
 class MessageService
@@ -59,11 +60,19 @@ class MessageService
         $statusCode = ((int) $th->getCode() >= 400 && (int) $th->getCode() < 600) ? (int) $th->getCode() : 500;
         $message = $statusCode === 500 ? 'Erro ao salvar as informações na base de dados.' : $th->getMessage();
 
-        return response()->json([
+        $infos = [
             'status' => false,
             'message' => $message,
             'code' => $statusCode,
             'error' => $th->getMessage(),
-        ], $statusCode);
+        ];
+
+        // A broken rule that names its field answers like a failed validation
+        // (`errors.campo`), which the frontend already reads.
+        if ($th instanceof BusinessRuleException && $th->errors() !== []) {
+            $infos['errors'] = $th->errors();
+        }
+
+        return response()->json($infos, $statusCode);
     }
 }

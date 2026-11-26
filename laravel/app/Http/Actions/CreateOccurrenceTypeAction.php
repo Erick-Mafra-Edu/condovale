@@ -2,6 +2,8 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
+use App\Enums\OccurrenceKind;
 use App\Enums\TypeLogEnum;
 use App\Models\OccurrenceType;
 
@@ -21,12 +23,13 @@ class CreateOccurrenceTypeAction
         $type = OccurrenceType::create([
             'name' => trim($attributes['name']),
             'description' => $attributes['description'] ?? null,
+            'kind' => $attributes['kind'] ?? OccurrenceKind::Maintenance->value,
             'employee_can_close' => $attributes['employee_can_close'] ?? false,
             'active' => $attributes['active'] ?? true,
         ]);
 
         $description = "Tipo de ocorrência {$type->id} {$type->name} criado.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description, $type);
+        CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description, $type, action: AuditAction::OccurrenceTypeCreated, subjectId: $type->id);
 
         return $type;
     }

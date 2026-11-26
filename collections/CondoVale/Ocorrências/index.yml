@@ -9,6 +9,11 @@ http:
   headers:
     - name: Accept
       value: application/json
+  params:
+    - name: kind
+      value: complaint
+      type: query
+      disabled: true
   auth: inherit
 
 settings:

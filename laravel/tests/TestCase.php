@@ -21,4 +21,20 @@ abstract class TestCase extends BaseTestCase
     protected bool $seed = true;
 
     protected string $seeder = TestDatabaseSeeder::class;
+
+    /**
+     * Cada teste monta uma aplicação inteira, cheia de referências circulares,
+     * e o coletor do PHP só passa de tempos em tempos: na suíte completa, o
+     * lixo dos testes anteriores chegava a dezenas de megabytes. Isso importa
+     * porque o envio de imagem mede a memória livre do processo antes de
+     * redimensionar (ImageUtil::fitsInMemory) e passava a recusar as fotos
+     * conforme a ordem dos testes. Em produção cada requisição é um processo
+     * novo; recolher o lixo aqui deixa cada teste começar do mesmo jeito.
+     */
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        gc_collect_cycles();
+    }
 }

@@ -18,6 +18,12 @@
         </include>
     </source>
     <php>
+        <!-- O memory_limit da hospedagem (512M, medido no InfinityFree). O envio
+             de imagem mede a memória livre do processo antes de redimensionar;
+             com os 128M do CLI, a memória que a suíte longa já reservou fazia a
+             foto ser recusada conforme a ordem dos testes. Em produção cada
+             requisição é um processo novo com 512M. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_KEY" value="base64:a0123456789abcdef0123456789abcdef0123456789="/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\OccurrenceKind;
 use Illuminate\Foundation\Http\FormRequest;
 
 class OccurrenceTypeStoreRequest extends FormRequest
@@ -20,6 +21,8 @@ class OccurrenceTypeStoreRequest extends FormRequest
             // duas linhas.
             'name' => 'required|string|max:60|unique:occurrence_types,name',
             'description' => 'nullable|string|max:255',
+            // UC7 — `complaint` faz dos chamados deste tipo denúncias.
+            'kind' => 'sometimes|in:'.OccurrenceKind::values(),
             // Se o funcionário atribuído encerra chamados deste tipo, ou se
             // isso fica com o síndico e a administração.
             'employee_can_close' => 'sometimes|boolean',
@@ -34,6 +37,7 @@ class OccurrenceTypeStoreRequest extends FormRequest
             'name.unique' => 'Já existe um tipo de ocorrência com este nome.',
             'name.max' => 'O nome do tipo deve ter no máximo 60 caracteres.',
             'description.max' => 'A descrição deve ter no máximo 255 caracteres.',
+            'kind.in' => 'Natureza inválida. Use manutenção (maintenance) ou denúncia (complaint).',
             'employee_can_close.boolean' => 'Informe com verdadeiro ou falso se o funcionário encerra este tipo.',
         ];
     }

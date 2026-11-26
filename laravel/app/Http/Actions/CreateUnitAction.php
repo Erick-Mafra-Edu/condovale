@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UnitStatus;
 use App\Models\Unit;
@@ -28,7 +29,7 @@ class CreateUnitAction
         ]);
 
         $description = "Unidade {$unit->id} {$unit->code} cadastrada.";
-        CreateLogAction::execute(TypeLogEnum::UNIT->value, $description, $unit);
+        CreateLogAction::execute(TypeLogEnum::UNIT->value, $description, $unit, action: AuditAction::UnitCreated, subjectId: $unit->id);
 
         return $unit;
     }

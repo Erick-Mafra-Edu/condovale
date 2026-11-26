@@ -5,6 +5,8 @@ namespace Database\Seeders\Concerns;
 use App\Models\CommonArea;
 use App\Models\Occurrence;
 use App\Models\OccurrenceType;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\Unit;
 use App\Models\User;
 use RuntimeException;
@@ -53,6 +55,18 @@ trait ResolvesReferences
     {
         return OccurrenceType::where('name', $name)->value('id')
             ?? throw new RuntimeException("{$origem} cita o tipo de ocorrência {$name}, que não está em occurrence_types.json.");
+    }
+
+    protected function roleId(string $name, string $origem): int
+    {
+        return Role::where('name', $name)->where('guard_name', 'web')->value('id')
+            ?? throw new RuntimeException("{$origem} cita o papel {$name}, que não está em roles.json.");
+    }
+
+    protected function permissionId(string $name, string $origem): int
+    {
+        return Permission::where('name', $name)->where('guard_name', 'web')->value('id')
+            ?? throw new RuntimeException("{$origem} cita o caso de uso {$name}, que não está em permissions.json.");
     }
 
     /**

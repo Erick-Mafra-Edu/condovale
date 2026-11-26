@@ -122,4 +122,19 @@ class Occurrence extends Model
     {
         return $this->hasMany(OccurrenceAttachment::class)->orderBy('id');
     }
+
+    /**
+     * The ticket read again, locked until the transaction ends (OCR-10).
+     *
+     * Every change checks the status before writing. Read without a lock, two
+     * requests at the same moment — a double click on "finalizar", two people
+     * analysing the same ticket, two photos when only one slot is left — both
+     * pass the check and both write: two transitions, two history entries, a
+     * sixth image. Locked, the second waits for the first to commit and then
+     * sees the status it left. Must be called inside the transaction.
+     */
+    public static function lockForChange(self $occurrence): self
+    {
+        return static::query()->whereKey($occurrence->getKey())->lockForUpdate()->firstOrFail();
+    }
 }

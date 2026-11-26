@@ -240,11 +240,12 @@ obrigatório do publicador, ao lado de `vendor/composer/`.
 
 [.github/workflows/deploy-infinityfree.yml](../.github/workflows/deploy-infinityfree.yml)
 faz o mesmo pelo GitHub: roda a suíte, reinstala as dependências com `--no-dev`,
-grava o `.env` a partir do segredo e sincroniza o `htdocs`.
+grava o `.env` a partir do segredo, sincroniza o `htdocs`, aplica as migrations
+pendentes e renova os caches de inicialização.
 
-**Ele não dispara por push, de propósito.** Um commit de quem não conhece a
-configuração do host publicaria direto em produção. É acionado à mão, em
-*Actions → Run workflow*.
+**Dispara a cada push na `main`**, que só recebe código por pull request com o
+CI verde. Também pode ser acionado à mão, em *Actions → Run workflow*, para
+reprocessar um deploy ou recriar o banco.
 
 Configure antes, em *Settings → Secrets and variables → Actions*:
 
@@ -256,8 +257,8 @@ Configure antes, em *Settings → Secrets and variables → Actions*:
 | `ENV_PRODUCTION` | o conteúdo inteiro do `.env.production` local |
 | `DEPLOY_TOKEN` | o mesmo `DEPLOY_TOKEN` do `.env.production` |
 
-E uma *variable* `APP_URL` com `https://condoval.wuaze.com`, usada só pelo
-passo opcional que recria o banco.
+E uma *variable* `APP_URL` com `https://condoval.wuaze.com`, usada pelos passos
+que chamam a rota de implantação (migrations e caches).
 
 Quatro pontos que decorrem do desenho:
 
@@ -267,10 +268,12 @@ Quatro pontos que decorrem do desenho:
 - **A primeira execução é pesada**: mesmo com `--no-dev`, o `vendor/` passa de
   quatro mil arquivos. Se ela falhar por tempo ou por limite de conexão, suba o
   `vendor/` uma vez pelo FileZilla e deixe o workflow cuidar das diferenças.
-- **O banco não é tocado ao publicar.** Recriar o schema é um passo à parte:
-  marque `recreate_database` ao rodar o workflow, ou chame a rota de
-  implantação direto. Amarrar isso à publicação apagaria a produção a cada
-  entrega.
+- **A publicação aplica só as migrations pendentes** (`migrate`, sem `fresh`,
+  pelo `tools/run-deploy-migration.py --pending`): a coluna nova chega ao banco
+  junto com o código que a usa, e nada é apagado. Sem migration nova, o passo
+  não faz nada. **Recriar o schema** continua um passo à parte: marque
+  `recreate_database` ao rodar o workflow à mão — amarrar isso à publicação
+  apagaria a produção a cada entrega.
 - **O `.env` nunca entra no repositório.** Ele é escrito no runner a partir do
   segredo e vai direto para o FTP; o workflow aborta se faltar `APP_KEY`.
 
@@ -312,9 +315,15 @@ comparação é feita com `hash_equals`, e o limitador `throttle:deploy` corta e
 3 tentativas por minuto com chave fixa — um balde único para o endpoint, já que
 não há conta para chavear e o padrão do projeto proíbe limitar por IP.
 
-**A rota derruba todas as tabelas.** Deixe `DEPLOY_ENABLED=false` no
-`.env.production` fora da janela de implantação; ligue, rode, desligue. Gere o
-token com `php -r "echo bin2hex(random_bytes(32));"`.
+Com `{"fresh": false}` no corpo, a rota aplica só as migrations pendentes
+(`migrate`), sem apagar nada — é o que o deploy automático faz a cada
+publicação. **Sem ele, a rota derruba todas as tabelas.**
+
+Como o deploy automático chama as rotas de implantação a cada publicação
+(migrations e caches), `DEPLOY_ENABLED` fica ligado no `.env` de produção e a
+defesa é o token: mantenha-o longo, só nos segredos do GitHub e no `.env`, e
+troque-o se ele tiver circulado fora deles. Gere com
+`php -r "echo bin2hex(random_bytes(32));"`.
 
 Duas consequências que decorrem do que ela faz:
 
@@ -347,6 +356,7 @@ passar por rota autenticada que verifique quem pode baixar aquele arquivo.
 | `app/Services/MessageService.php` | envelope único de resposta da API |
 | `app/Http/Actions/HandlePaginationAction.php` | contrato genérico de consulta das listagens |
 | `app/Http/Actions/CreateLogAction.php` | trilha de auditoria na tabela `logs` (RNF04) |
+| `app/Http/Utils/AuditUtil.php` | o "de → para" de uma edição, para a auditoria |
 | `app/Http/Utils/SanitizeUtil.php` | saneamento de todo id e texto vindo da rota |
 | `app/Http/Utils/AuthUtil.php` | acessores tipados do guard de sessão |
 | `app/Http/Middleware/CheckUseCase.php` | autorização pelo grupo de rota (`use.case`) |
@@ -413,9 +423,14 @@ o acesso é `$item->campo`.
 
 As regras que não se quebram:
 
-- **`create()`, nunca `updateOrCreate()`.** A carga tem de falhar alto. Se
-  rodou duas vezes e duplicou, isso é informação: o banco não estava no estado
-  que se achava.
+- **Referência com `updateOrCreate()` pela chave de negócio; demonstração com
+  `create()`.** Permissões e papéis (pelo nome), a matriz papel–permissão
+  (pelo par), tipos de ocorrência e áreas comuns (pelo nome) são configuração
+  do produto: reaplicar só o seeder leva uma mudança do JSON a produção sem
+  duplicar nada (`ReferenceSeedersTest`). Pessoas, unidades, chamados,
+  reservas e comunicados são dado de demonstração, que só roda em base
+  recém-criada: ali a carga falha alto, e duplicar seria informação de que o
+  banco não estava no estado que se achava.
 - **Nenhum fallback no mapeamento.** `$item->campo`, jamais `?? null`. Dado
   faltando vira erro, não vira nulo em silêncio.
 - **As chaves do JSON são os nomes exatos das colunas.** Migration, JSON e
@@ -500,10 +515,10 @@ alguém acrescentasse uma linha a um JSON.
    ao caso de uso (`use.case:<caso>`).
 5. **Testes** cobrindo as regras de negócio do módulo.
 
-> A tabela `type_logs` é dado de referência com ids fixos usados por
-> `App\Enums\TypeLogEnum`; enquanto a task dela não existir, nenhuma operação
-> consegue gravar auditoria. É o primeiro seeder da fila e precisa rodar também
-> em produção: `php artisan db:seed --class=TypeLogSeeder`.
+> Não existe tabela `type_logs`: a referência dos tipos de log é o enum
+> `App\Enums\TypeLogEnum`, e `logs.type_log_id` não tem chave estrangeira. Os
+> ids do enum são contrato — os registros já gravados apontam para eles. Veja a
+> seção [Auditoria](#auditoria--rnf04--uc-t03--rn16).
 
 ## Contrato de resposta
 
@@ -550,13 +565,14 @@ query string — `attributes`, `search`, `filters`, `filtersOr`, `filtersIn`,
 `sort` + `direction`, `relations`, `limit` e `page`:
 
 ```
-/api/reports/occurrences?filters=created_at:>=:2026-09-01;status:=:completed&sort=created_at&direction=desc
-/api/logs?filters=type_log_id:=:6&relations=user;typeLog&limit=50
+/api/occurrences?filters=created_at:>=:2026-09-01;status:=:completed&sort=created_at&direction=desc
+/api/users?filters=status:=:active&search=silva&limit=50
 ```
 
 Os nomes de coluna vindos do cliente são validados contra o schema real da
-tabela, menos os `$hidden` do model. Para exportar tudo o que passou pelos
-filtros (RN12), envie um `limit` maior que o `total` devolvido.
+tabela, menos os `$hidden` do model. Uma página traz no máximo 100 linhas
+(RNF01); quem precisa de tudo pagina. O relatório de ocorrências tem contrato
+próprio, com exportação completa — ver "Relatórios — RF06".
 
 ## Autenticação — UC02 / RF02
 
@@ -955,6 +971,640 @@ A migration publicada usa `string('name')` sem tamanho, o que com o
 fixados em 125 e 25, que dão 600 bytes. A própria migration do Spatie alerta
 para isso nos comentários.
 
+## Painel inicial
+
+`GET /api/dashboard`, para qualquer pessoa logada. O painel é montado pelos
+casos de uso de quem pede — não pelo perfil —, então uma concessão individual
+traz a seção junto. Seção que a pessoa não pode ver não vem na resposta, nem
+vazia.
+
+| Seção | Aparece para quem tem | Conteúdo |
+| --- | --- | --- |
+| `my_occurrences` | `create-occurrence` ou `track-own-occurrences` | chamados próprios abertos, por status, os 5 mais recentes |
+| `my_reservations` | `view-own-reservations` | próximas reservas próprias, pendentes |
+| `my_assignments` | `view-assigned-occurrences` | para iniciar, em andamento, concluídos no mês, fila do mais antigo |
+| `occurrence_queue` | `analyze-occurrences`, `assign-occurrence` ou `close-any-occurrence` | chamados por etapa e os 5 que esperam há mais tempo |
+| `reservations` | `manage-reservations` ou `approve-or-reject-reservation` | a aprovar, de hoje, dos próximos 7 dias, próximas 5 |
+| `units` | `manage-units` | total, ativas, inativas, ocupadas, vagas |
+| `people` | `manage-residents` | ativos por perfil, contas inativas, primeiro acesso pendente |
+| `month` | `generate-reports` | o mês corrente, com o resumo dos dois relatórios |
+| `notices` | `view-notices` ou `publish-notices` | publicados, os 3 mais recentes; rascunhos só para quem publica |
+| `recent_activity` | `view-audit-reports` | as 5 últimas ações da auditoria, sem os dados gravados nem o IP |
+
+Toda resposta traz também `user` (nome, perfil e unidade) e `cards`: os
+indicadores da fileira do topo, prontos (`key`, `label`, `value`, `note`), na
+ordem de importância para quem está olhando — primeiro o que é da pessoa,
+depois o que ela precisa resolver, por último o panorama.
+
+Com dez mil chamados e dez mil reservas, o painel do administrador, o mais
+pesado, abre em cerca de 10 ms no SQLite, com 21 consultas — as mesmas com o
+dobro de dados (`DashboardPerformanceTest`).
+
+## Ocorrências e denúncias — RF04 / RN05 / RN06 / UC6 a UC12
+
+| Rota | Autorização | Caso de uso |
+| --- | --- | --- |
+| `POST /api/occurrences` | `create-occurrence` ou `open-occurrence-for-resident` | UC6 Registrar ocorrência e UC7 Registrar denúncia |
+| `GET /api/occurrences`, `/{id}`, `/{id}/history` | `track-own-occurrences`, `view-assigned-occurrences`, `analyze-occurrences` ou `close-any-occurrence` | UC9 Consultar atribuídas e UC12 Acompanhar minhas solicitações |
+| `PATCH /api/occurrences/{id}/status` | `analyze-occurrences` ou `update-occurrence-progress` | UC10 Atualizar andamento (status) |
+| `PATCH /api/occurrences/{id}` | `analyze-occurrences` ou `update-occurrence-progress` | UC10 Atualizar andamento (status e anotação) |
+| `PATCH /api/occurrences/{id}/assign` | `assign-occurrence` ou `hand-over-occurrence` | UC8 Encaminhar ocorrência para funcionário |
+| `POST /api/occurrences/{id}/finish` | `finish-occurrence` ou `close-any-occurrence` | UC11 Finalizar atendimento |
+| `/api/occurrences/{id}/attachments` | quem enxerga o chamado | imagens do chamado (até 5) |
+| `/api/occurrence-types` | leitura por quem abre chamado; escrita por `manage-occurrence-types` | os tipos e a natureza de cada um |
+
+Cada pessoa enxerga só o seu recorte (`ScopeOccurrencesAction`): o morador, os
+próprios chamados; o funcionário, os atribuídos a ele; síndico e
+administração, a fila inteira. Chamado fora do recorte responde 404.
+
+**Pedidos simultâneos (OCR-10).** Toda mudança de chamado — status, anotação,
+encaminhamento, finalização, imagem — relê o chamado com trava
+(`Occurrence::lockForChange`) dentro da transação antes de conferir o status.
+Sem isso, o clique duplo em "finalizar" passava duas vezes pela checagem: no
+MySQL 8.0, seis pedidos simultâneos de finalizar o mesmo chamado eram os seis
+aceitos, com seis históricos de conclusão. Com a trava, um é aceito e os
+outros cinco recebem 409; o mesmo vale para duas análises ao mesmo tempo e
+para a sexta imagem quando só resta uma vaga. Provado pelo `OccurrenceRaceTest`
+(só roda contra MySQL, como o `ReservationRaceTest`).
+
+### UC7 — denúncia
+
+A especificação tem dois casos de uso de abertura no RF04: "UC6 - Registrar
+ocorrência" e "UC7 - Registrar denúncia". A denúncia é um chamado como os
+outros — do morador que abriu, com status (RN05), tratado pelo mesmo fluxo
+(RN06) —, e o que a separa é o assunto: barulho, uso indevido de área,
+descumprimento do regimento. Por isso a natureza fica no **tipo**:
+
+- `occurrence_types.kind` é `maintenance` (Manutenção) ou `complaint`
+  (Denúncia). Tipo novo nasce como manutenção; a administração decide quais são
+  denúncia (`POST`/`PATCH /api/occurrence-types` com `kind`), e a mudança fica
+  na auditoria.
+- Registrar denúncia é abrir chamado com um tipo de denúncia. Cada ocorrência
+  devolve `occurrence_type.kind`.
+- `GET /api/occurrences?kind=complaint` lista só as denúncias (somado ao
+  recorte de quem pede); o relatório aceita o mesmo `kind` e traz `by_kind`.
+- A carga traz dois tipos de denúncia: "Barulho e sossego" e "Conduta e
+  regimento interno". Em produção, a migration deixa todos os tipos existentes
+  como manutenção — marcar os de denúncia é decisão da administração, não um
+  palpite da migration pelo nome.
+
+Não há caso de uso próprio de permissão para a denúncia: ela usa o
+`create-occurrence` do morador. Um caso novo exigiria mudar a matriz do
+frontend junto (`permissions.ts`), e a especificação dá aos dois casos o mesmo
+ator e as mesmas regras.
+
+## Comunicados — RF05 / RN07 / RN03
+
+| Rota | Autorização | Efeito |
+| --- | --- | --- |
+| `GET /api/notices` | `view-notices` ou `publish-notices` | mural, paginado, do mais recente para o mais antigo |
+| `GET /api/notices/{id}` | `view-notices` ou `publish-notices` | um comunicado |
+| `POST /api/notices` | `publish-notices` | publica, ou guarda como rascunho com `status: draft` |
+| `PATCH /api/notices/{id}` | `publish-notices` | corrige título ou conteúdo; `status: published` publica um rascunho |
+| `POST /api/notices/{id}/publish` | `publish-notices` | publica um rascunho (`Comunicado.publicar()`) |
+| `DELETE /api/notices/{id}` | `publish-notices` | exclui (RN03) |
+
+`publish-notices` é do síndico e da administração; `view-notices`, do morador
+(o funcionário só lê o mural por concessão individual).
+
+- **Quem só lê vê só o publicado (RN18).** O rascunho aparece para quem
+  publica e responde 404 para os demais, a mesma resposta de um comunicado
+  que não existe — a diferença revelaria que há um aviso em preparação.
+- **Autor e data de publicação são do servidor.** O corpo traz só título,
+  conteúdo e, opcionalmente, `status`; `author_id` e `published_at` enviados
+  são ignorados, para ninguém assinar em nome do síndico nem antedatar aviso.
+- **Editar não apaga o que estava escrito.** O texto anterior vai para a
+  auditoria (`notice.updated`, de → para), e autor e `published_at` não mudam.
+  Um comunicado publicado não volta a rascunho (409): quem leu já leu, e o
+  jeito de retirá-lo é excluir.
+- **Excluir apaga a linha, não o registro.** Título, texto, autor e datas vão
+  para o `data_log` da auditoria: aviso oficial que some sem rastro vira
+  disputa de "ninguém avisou".
+- Do autor saem só id e nome, e o parâmetro `relations` é descartado na
+  listagem, porque por ele sairia o cadastro inteiro.
+
+## Relatórios — RF06 / UC20
+
+Dois relatórios, no grupo `use.case:generate-reports` (síndico e
+administração). Leem o condomínio inteiro, sem o recorte por pessoa das telas
+de acompanhamento, e dividem o mesmo contrato: período, paginação e exportação
+vêm de `ReportRequest`, e a lista sai pelo `PaginateReportAction`, com o mesmo
+formato e o mesmo teto de exportação nos dois.
+
+### Ocorrências e manutenções
+
+`GET /api/reports/occurrences`
+
+| Parâmetro | Obrigatório | Efeito |
+| --- | --- | --- |
+| `from`, `to` | sim | período de **abertura**, `AAAA-MM-DD`, os dois dias inteiros |
+| `occurrence_type_id` | não | filtra a lista por tipo |
+| `status` | não | filtra a lista por status |
+| `kind` | não | filtra a lista por natureza: `maintenance` ou `complaint` (UC7) |
+| `page`, `limit` | não | paginação da lista; `limit` até 100 |
+| `export` | não | `true` traz a lista inteira numa resposta (RN12) |
+
+A resposta segue o `ReportQuery` do frontend, e traz também `by_kind`
+(manutenção e denúncia, sempre as duas):
+
+```jsonc
+{
+  "status": true,
+  "message": "Relatório de ocorrências de 01/10/2026 a 31/10/2026.",
+  "data": {
+    "period": { "from": "2026-10-01", "to": "2026-10-31" },
+    "summary": { "total": 7, "open": 4, "completed": 2, "cancelled": 1,
+                 "resolved": 1, "unresolved": 1, "average_resolution_hours": 26.5 },
+    "by_status": [{ "status": "open", "label": "Aberto", "total": 2 }],
+    "by_type": [{ "occurrence_type_id": 1, "name": "Manutenção predial", "total": 3 }],
+    "occurrences": { "data": [], "total": 7, "page": 1, "per_page": 10, "last_page": 1 }
+  }
+}
+```
+
+Três decisões que valem registrar:
+
+- **Os indicadores olham o período inteiro; tipo e status filtram só a
+  lista.** É o comportamento da tela: trocar a aba de status muda a tabela,
+  não o painel de cima. `by_status` traz todos os status, mesmo os zerados;
+  `by_type`, só os tipos usados no período, e é ela que alimenta o filtro.
+- **Encerrar não é resolver.** `resolved` e `unresolved` separam o problema
+  que acabou do que só foi fechado; concluída sem o campo conta como
+  resolvida, que é o padrão da finalização. O tempo médio vai da abertura à
+  conclusão, só das concluídas.
+- **A exportação tem teto** (`reports.occurrences.max_export_rows`, 5000).
+  Acima dele a API responde 422 pedindo um período menor, pela contagem, antes
+  de montar as linhas: a hospedagem corta o script em 60 segundos.
+
+Desempenho (RNF01), fixado no `OccurrenceReportPerformanceTest` com 10 mil
+chamados em mil dias: o pior caso, a exportação de três meses, fica perto de
+100 ms no SQLite, e são sempre 9 consultas, com 50 linhas, com 100 ou
+exportando. O índice em `occurrences.created_at` é o que o período usa.
+
+### Reservas das áreas comuns
+
+`GET /api/reports/reservations`
+
+| Parâmetro | Obrigatório | Efeito |
+| --- | --- | --- |
+| `from`, `to` | sim | período pela **data da reserva**, `AAAA-MM-DD`, os dois dias inclusos |
+| `common_area_id` | não | filtra a lista por área |
+| `status` | não | filtra a lista por status |
+| `page`, `limit`, `export` | não | iguais aos do relatório de ocorrências |
+
+```jsonc
+{
+  "status": true,
+  "message": "Relatório de reservas de 01/10/2026 a 31/10/2026.",
+  "data": {
+    "period": { "from": "2026-10-01", "to": "2026-10-31" },
+    "summary": { "total": 12, "pending": 2, "approved": 8, "rejected": 1, "cancelled": 1 },
+    "by_status": [{ "status": "approved", "label": "Aprovada", "total": 8 }],
+    "by_area": [{ "common_area_id": 1, "name": "Churrasqueira", "total": 7,
+                  "pending": 1, "approved": 5, "rejected": 0, "cancelled": 1 }],
+    "reservations": { "data": [], "total": 12, "page": 1, "per_page": 10, "last_page": 2 }
+  }
+}
+```
+
+- **O período é o da data da reserva**, não o de quando foi pedida: uma
+  reserva para dezembro pedida em outubro é uso de dezembro.
+- **`by_area` traz todas as áreas, inclusive as sem reserva.** Diferente dos
+  tipos de ocorrência, a área parada é informação: é o salão que ninguém usou
+  no mês.
+- Cada linha traz a área, o morador com nome e unidade, o motivo da recusa e
+  `full_day`, que marca a diária — a reserva sem horário, que ocupa o dia
+  inteiro.
+
+Com a carga da UC-T01 (10 mil reservas em mil dias), o pior caso também é a
+exportação de três meses, perto de 100 ms, com 7 consultas fixas. Não foi
+preciso índice novo: `reservations.date` já tinha.
+
+## Auditoria — RNF04 / UC-T03 / RN16
+
+"O sistema deve manter logs de auditoria detalhados para todas as operações
+críticas realizadas por administradores e funcionários." Toda operação grava
+na tabela `logs` pelo `CreateLogAction`; a administração lê pelo
+`GET /api/audit-logs`.
+
+### O que cada registro guarda
+
+| Coluna | Conteúdo |
+| --- | --- |
+| `type_log_id` | a categoria (`TypeLogEnum`), que define o tipo do registro afetado |
+| `action` | a operação (`AuditAction`), como `reservation.approved` |
+| `subject_id` | o id do registro afetado; o tipo vem do `type_log_id` (`TypeLogEnum::entity()`) |
+| `user_id`, `user_role` | quem fez, e o perfil que tinha **naquele momento** |
+| `description` | a frase em português, com id e nome do registro |
+| `data_log` | os detalhes: o "de → para" das edições, a cópia do que foi excluído, motivo e justificativa |
+| `ip` | guardado, mas nunca sai da API (`$hidden` do model) |
+| `created_at` | a hora do servidor |
+
+Autor, perfil, hora e IP vêm sempre do servidor, nunca do corpo da requisição.
+
+Regras:
+
+- **Toda gravação declara ação e registro.** `CreateLogAction::execute()` ganhou
+  os argumentos `action:` e `subjectId:`; o `AuditLogTest` varre `app/` e falha
+  se uma gravação nova esquecer um dos dois. Uma ação gravada com o tipo de
+  outra entidade é recusada com `LogicException`.
+- **Edição guarda só o que mudou, de → para.** `AuditUtil::diff()` é chamado
+  entre o `fill()` e o `save()` — depois do save o Laravel 11 não guarda mais o
+  valor anterior. Campos ocultos (a senha) nunca entram, e "22:00" reenviado
+  sobre um "22:00:00" gravado não conta como mudança.
+- **O perfil é copiado, não consultado.** O funcionário promovido a síndico
+  continua aparecendo como funcionário nas ações de antes da promoção.
+- **A trilha só cresce.** O model `Log` recusa alteração e exclusão; não há
+  rota que altere ou apague um registro.
+- **Aprovar e reprovar reserva agora gravam log.** Era a única operação
+  administrativa sem rastro (`ReviewReservationAction`, pelo
+  `PATCH /api/reservations/{id}/status`).
+- Exclusões guardam uma cópia do registro; a do tipo de ocorrência passou a
+  guardar também.
+
+| Entidade (`entity`) | Ações |
+| --- | --- |
+| `user` | `auth.login`, `auth.logout`, `user.created`, `user.updated`, `user.deactivated`, `user.profile_updated`, `user.password_changed`, `user.permission_granted`, `user.permission_revoked` |
+| `unit` | `unit.created`, `unit.updated`, `unit.deactivated` |
+| `unit_occupancy` | `unit_occupancy.created`, `unit_occupancy.ended` |
+| `common_area` | `common_area.created`, `common_area.updated`, `common_area.deleted` |
+| `reservation` | `reservation.created`, `reservation.approved`, `reservation.rejected`, `reservation.cancelled` |
+| `occurrence` | `occurrence.created`, `occurrence.assigned`, `occurrence.reassigned`, `occurrence.status_updated`, `occurrence.progress_noted`, `occurrence.completed`, `occurrence.attachment_added`, `occurrence.attachment_removed` |
+| `occurrence_type` | `occurrence_type.created`, `occurrence_type.updated`, `occurrence_type.deleted` |
+| `notice` | `notice.drafted`, `notice.published`, `notice.updated`, `notice.deleted` |
+| `system` | `system.seeded` (a carga de demonstração) |
+
+### Consulta
+
+`GET /api/audit-logs`, só com `view-audit-reports` (o administrador, RN16).
+Segue o contrato dos relatórios operacionais.
+
+| Parâmetro | Efeito |
+| --- | --- |
+| `from`, `to` | período, obrigatório, com os dois dias inteiros |
+| `entity` | uma das entidades da tabela acima |
+| `entity_id` | o histórico de um registro; exige `entity` (o 7 de uma reserva não é o 7 de uma ocorrência) |
+| `user_id` | o responsável |
+| `role` | o perfil de quem fez, na época: `admin`, `syndic`, `employee`, `resident` |
+| `action` | uma ação da tabela acima |
+| `page`, `limit`, `export` | como nos relatórios; a exportação tem teto de 5000 linhas (`config/reports.php`) |
+
+A resposta traz `period`, `summary` (total e quanto por perfil), `by_role`,
+`by_entity` e `logs` (`data`, `total`, `page`, `per_page`, `last_page`). Cada
+linha tem `id`, `action`, `action_label`, `entity`, `entity_label`,
+`entity_id`, `description`, `user` (id e nome), `user_role`,
+`user_role_label`, `metadata` e `created_at`. Os nomes seguem o `AuditLog` do
+frontend.
+
+Como nos outros relatórios, **os indicadores olham o período inteiro**; os
+filtros recortam só a lista. Registros gravados antes desta versão aparecem com
+`action` e `entity_id` nulos e só a frase.
+
+Com 20 mil registros em mil dias, nenhuma consulta passou de 65 ms no SQLite
+nem de 50 ms no MySQL 8.0, com 5 consultas fixas por página ou exportação
+(`AuditReportPerformanceTest`). Índices novos: `created_at`,
+`(type_log_id, subject_id)` e `(action, created_at)`.
+
+### Implantação
+
+A migration `2026_11_24_000001_add_audit_fields_to_logs_table` acrescenta
+`action`, `subject_id` e `user_role` e preenche `user_role` dos registros
+antigos com o perfil atual do autor. O deploy automático a aplica logo depois
+de publicar o código (passo "Aplicar migrations pendentes"). Num deploy feito à
+mão, rode `POST /api/deploy/migrate` com `fresh=false`, que não apaga nada:
+até lá, toda operação que grava log falha por coluna inexistente.
+
+## Áreas comuns — AreaComum
+
+| Rota | Quem | Efeito |
+| --- | --- | --- |
+| `GET /api/common-areas` | morador e administração | lista, por nome, todas as áreas — inclusive as indisponíveis |
+| `GET /api/common-areas/{id}` | morador e administração | detalhe |
+| `POST /api/common-areas` | administração | cadastra |
+| `PATCH /api/common-areas/{id}` | administração | edita o que vier, a situação inclusive |
+| `DELETE /api/common-areas/{id}` | administração | exclui a área que nunca foi reservada |
+
+Consultar alcança `view-common-areas`, `request-reservation` e
+`manage-reservations`; escrever, só `manage-reservations`. O diagrama de casos
+de uso não tem um caso próprio para administrar áreas, e criar um novo exigiria
+mudar também a matriz do frontend — por isso a escrita ficou com o caso de
+uso de gerenciar reservas.
+
+```json
+{
+  "name": "Piscina", "description": "Piscina adulto e infantil.", "capacity": 30,
+  "opening_time": "09:00", "closing_time": "20:00", "max_reservation_minutes": 180,
+  "requires_approval": false, "status": "available"
+}
+```
+
+- **Nome único**, até 120 caracteres.
+- **Horários obrigatórios** (`opening_time` e `closing_time`, o
+  `horarioInicio` e o `horarioFim` do diagrama). Podem mudar, mas não ser
+  apagados: sem eles não há grade e a reserva é recusada. Regras, todas em
+  `CommonArea::hoursProblem()`:
+  - formato `HH:MM`; o fechamento aceita também **`24:00`**, a meia-noite que
+    encerra o dia, e `00:00` no fechamento quer dizer o mesmo — é gravado e
+    devolvido como `24:00`, para nunca ficar "antes" da abertura;
+  - o funcionamento é **no mesmo dia**: fechar às 02:00 abrindo às 18:00 é
+    recusado (virar a meia-noite não é suportado);
+  - a área fica aberta **pelo menos 30 minutos**, um bloco de reserva;
+  - na edição, mandar só um dos horários confere com o outro já gravado, e a
+    recusa aponta para o campo enviado (`errors.opening_time` ou
+    `errors.closing_time`).
+
+  As respostas trazem sempre `HH:MM`, mesmo com o MySQL guardando `HH:MM:SS`.
+  A reserva segue o mesmo contrato: o fim do último bloco de uma área que
+  fecha à meia-noite é `"end_time": "24:00"` — é o que a tela de reservas
+  envia — e `"00:00"` no fim também é aceito como meia-noite. O MySQL guarda
+  `24:00:00` numa coluna `TIME` sem problema (testado contra o 8.0).
+- **Mudar os horários vale na hora para a disponibilidade e para a criação de
+  reserva**: as duas leem a área a cada consulta. As reservas já feitas que
+  ficaram fora do novo horário não são mexidas; a resposta da edição diz
+  quantas são.
+- **`max_reservation_minutes`** é opcional, a partir de 30 e múltiplo de 30 (o
+  tamanho do bloco). Sem ele vale o padrão de 2 horas.
+- **`capacity`** é opcional; vazia é gravada como 0, que é como a tabela diz
+  "não informada".
+- **`status`** é a situação ativa: `available` aceita reserva,
+  `unavailable` tira a área do calendário. Sem informar, a área nasce
+  disponível e sem exigir aprovação.
+- **A listagem não pagina na prática**: sem `limit`, devolve até 100 áreas,
+  porque a tela de reservas pede a lista inteira. `relations` é descartado —
+  por ele sairiam as reservas da área com quem reservou.
+- **Mudar as regras não mexe nas reservas já feitas.** Ao tornar a área
+  indisponível ou mudar horário ou duração, a resposta avisa quantas reservas
+  futuras pendentes ou aprovadas não se encaixam mais
+  (`"... 2 reservas futuras pendentes ou aprovadas não se encaixam mais nas
+  regras da área: reveja-as na agenda de reservas."`). Cancelar ou recusar é
+  decisão da administração, reserva a reserva.
+- **Área com reserva não é excluída** (409), nem que a reserva esteja
+  cancelada: a tabela de reservas apaga em cascata com a área e o histórico
+  dos relatórios iria junto. Nesse caso, torne-a indisponível. A exclusão
+  guarda uma cópia da área na auditoria.
+- Cadastro, edição e exclusão ficam na auditoria (`TypeLogEnum::COMMON_AREA`).
+
+## Disponibilidade das áreas comuns — UC03 / RF03 / RN01 / RN02
+
+Duas consultas, as duas anônimas (RN14): dizem quando a área está ocupada,
+nunca por quem. Alcançam `view-common-areas` e `request-reservation` (morador)
+e `manage-reservations` (administração).
+
+| Rota | Devolve |
+| --- | --- |
+| `GET /api/common-areas/{id}/availability` | o calendário já calculado: status do dia, blocos de 30 minutos, períodos livres e se cabe diária |
+| `GET /api/common-areas/{id}/occupancy` | só os períodos tomados (`date`, `start_time`, `end_time`), para quem monta o calendário sozinho — é a que o front chama hoje |
+
+As duas recebem `start_date` e `end_date` (`AAAA-MM-DD`, ambos inclusos), com
+no máximo 62 dias por consulta.
+
+```jsonc
+{
+  "status": true,
+  "message": "Disponibilidade da área 3 Quadra Poliesportiva retornada.",
+  "data": {
+    "common_area": { "id": 3, "name": "Quadra Poliesportiva", "status": "available",
+                     "opening_time": "08:00", "closing_time": "22:00",
+                     "max_reservation_minutes": 120, "requires_approval": false },
+    "start_date": "2026-11-24", "end_date": "2026-11-30",
+    "slot_minutes": 30,
+    "days": [{
+      "date": "2026-11-24",
+      "status": "partial",             // available | partial | occupied | unavailable
+      "label": "Parcialmente ocupado",
+      "reason": null,                   // past_date | area_unavailable | no_opening_hours | closed_for_today
+      "reason_label": null,
+      "full_day_available": false,
+      "occupied_periods": [{ "start_time": "10:00", "end_time": "12:00" }],
+      "free_periods": [{ "start_time": "08:00", "end_time": "10:00", "minutes": 120 },
+                       { "start_time": "12:00", "end_time": "22:00", "minutes": 600 }],
+      "slots": [{ "start_time": "08:00", "end_time": "08:30", "status": "available" }]
+    }]
+  }
+}
+```
+
+As regras são as mesmas que a criação da reserva aplica, para que o livre
+possa de fato ser reservado:
+
+- **Ocupa a agenda** a reserva pendente ou aprovada; cancelada e recusada
+  liberam o período (RN08). A diária (`start_time` e `end_time` nulos) ocupa o
+  dia inteiro, e só cabe diária no dia sem nenhuma reserva.
+- **A grade** vai da abertura ao fechamento em blocos de 30 minutos; se o
+  fechamento não cair na grade, o último bloco é mais curto. Uma reserva fora
+  da grade ocupa todo bloco que tocar.
+- **Fica indisponível** o dia passado, o dia de área marcada como
+  indisponível, a área sem horário de funcionamento cadastrado e o dia de hoje
+  depois do último bloco. Hoje, os blocos que já começaram saem como `past` e
+  não contam para o status do dia; a criação recusa o horário que já passou.
+- **Os horários são comparados em minutos.** O MySQL devolve `TIME` como
+  `HH:MM:SS` e a API recebe `HH:MM`; como texto, `"12:00" < "12:00:00"`, o
+  que acusava conflito entre reservas encostadas (10h–12h e 12h–14h) e
+  recusava reservar a partir da abertura. `App\Http\Utils\TimeUtil` resolve as
+  duas pontas, e as respostas saem sempre em `HH:MM`.
+
+Desempenho (RNF01), fixado no `CommonAreaAvailabilityPerformanceTest`: com 10
+mil reservas em cinco áreas, a janela máxima de 62 dias responde em cerca de
+10 ms, com 2 consultas — as mesmas com o dobro de reservas.
+
+## Solicitação de reserva — UC03 / RF03 / RN01 / RN02
+
+`POST /api/reservations`, só para quem tem `request-reservation` (o morador) e
+está vinculado a uma unidade (`unit.linked`).
+
+```json
+{ "common_area_id": 3, "date": "2026-11-30", "start_time": "10:00", "end_time": "12:00" }
+```
+
+Sem `start_time` e `end_time` (ou com os dois nulos), é diária. A resposta
+traz a reserva com `common_area` (id e nome) e uma mensagem que já diz o
+desfecho: `"Reserva 12 da área 3 Quadra Poliesportiva para 30/11/2026, das
+10:00 às 12:00, aprovada."` — ou `solicitada`, quando a área exige aprovação e
+a reserva nasce pendente.
+
+- **Quem reserva é a sessão.** Um `resident_id` no corpo é ignorado.
+- **RN01** — sobreposição com reserva pendente ou aprovada responde **409**; a
+  diária conflita com qualquer reserva do dia, nos dois sentidos. Reservas
+  encostadas (10h–12h e 12h–14h) não conflitam. A área é travada
+  (`lockForUpdate`) durante a checagem, para dois pedidos simultâneos não
+  passarem juntos.
+- **RN02** — respondem **422**: área indisponível; área sem horário de
+  funcionamento cadastrado; data passada; horário de hoje que já começou;
+  início antes da abertura ou fim depois do fechamento; horário fora da grade
+  de 30 minutos contada a partir da abertura (terminar exatamente no
+  fechamento vale, mesmo fora da grade); duração acima de
+  `max_reservation_minutes`. Área sem limite usa **2 horas**, o mesmo padrão
+  da tela de reservas — e a disponibilidade informa esse valor efetivo.
+- A diária não tem limite de duração: ela é o dia.
+- A criação e o log de auditoria (`TypeLogEnum::RESERVATION`) acontecem na
+  mesma transação.
+
+### Regras da área — RN02
+
+> "Toda reserva deverá respeitar a disponibilidade, os horários permitidos e
+> as regras de utilização definidas para a área comum."
+
+`CheckReservationRulesAction` reúne o que a área define — é a irmã da
+`CheckReservationConflictAction` (RN01). As duas rodam na criação **e de novo
+na aprovação**, com a área como ela está no momento: se a administração
+tornou a área indisponível, mudou o horário ou encurtou a duração enquanto o
+pedido esperava, aprovar responde 422 com
+`"Esta solicitação não pode mais ser aprovada: a área abre às 11:00. Reprove-a
+informando o motivo."`. Reprovar não confere nada: é a saída para o pedido que
+não cabe mais. A disponibilidade (`ListAvailabilityAction`) desenha o
+calendário com as mesmas regras.
+
+| Recusa | Campo em `errors` |
+| --- | --- |
+| área indisponível, área sem horário cadastrado | `common_area_id` |
+| data passada | `date` |
+| início antes da abertura, fora da grade, ou de hoje e já começado | `start_time` |
+| fim depois do fechamento, fora da grade, antes do início ou acima da duração | `end_time` |
+| só um dos dois horários | o que faltou |
+
+Cada recusa do RN02 sai no formato de uma validação do Laravel, com a regra
+na mensagem e o campo em `errors` — o RSV-04 do plano de testes pede as duas
+coisas, e o front já lê `errors`:
+
+```json
+{ "status": false, "message": "A área abre às 08:00.", "code": 422,
+  "error": "A área abre às 08:00.", "errors": { "start_time": ["A área abre às 08:00."] } }
+```
+
+O conflito (409) não leva `errors`: o formulário está certo, o horário é que
+foi tomado.
+
+A especificação não define outras regras de utilização além das que a área
+guarda; limite de reservas por morador, antecedência mínima ou máxima e número
+de convidados não existem no documento nem na tela, e não foram inventados.
+
+### Cancelamento — RN08
+
+> "O cancelamento de uma reserva deverá liberar novamente o respectivo período
+> para novas reservas."
+
+`POST /api/reservations/{id}/cancel`, sem corpo. O morador cancela as próprias
+reservas (`cancel-own-reservation`), inclusive desistindo de um pedido ainda
+pendente; a administração (`manage-reservations`), qualquer uma. A rota fica
+fora do `unit.linked`: quem perdeu o vínculo com a unidade ainda pode desistir
+das reservas que tinha.
+
+```json
+{
+  "status": true,
+  "message": "Reserva 12 da área 3 Quadra para 25/11/2026, das 10:00 às 12:00, cancelada. O período voltou a ficar disponível.",
+  "data": { "id": 12, "status": "cancelled", "common_area": { "id": 3, "name": "Quadra" } }
+}
+```
+
+- **A liberação é o próprio status**: só pendente e aprovada ocupam a agenda,
+  então a reserva cancelada sai na hora da checagem de conflito e da
+  disponibilidade — o mesmo período pode ser reservado em seguida.
+- **Recusas**: reserva de outra pessoa (403); já cancelada, reprovada ou que
+  já terminou (409) — data passada, ou hoje com o fim já alcançado. A que está
+  em andamento ainda se cancela, como a tela de reservas permite, e a diária de
+  hoje também.
+- **Cancelar e aprovar ao mesmo tempo** termina sempre cancelada: as duas
+  operações releem o status com trava antes de decidir, então a aprovação não
+  grava "aprovada" por cima de um cancelamento (o que deixaria o período
+  ocupado para sempre). Vale também para a tela que carregou o pedido antes de
+  o morador desistir.
+- Fica na auditoria como "cancelada", ou "cancelada pela administração" quando
+  não foi o próprio morador.
+
+### Consulta e análise — UC16 / UC17 / UC19
+
+| Rota | Autorização | Efeito |
+| --- | --- | --- |
+| `GET /api/reservations/me` | `view-own-reservations` | UC17 — as reservas de quem está logado, e só dele |
+| `GET /api/reservations` | `manage-reservations` ou `approve-or-reject-reservation` | UC19 — todas as reservas, com o morador (nome e unidade) |
+| `GET /api/reservations/{id}` | qualquer um dos três | o detalhe; reserva de outra pessoa responde 404 |
+| `PATCH /api/reservations/{id}/status` | `approve-or-reject-reservation` | UC16 — aprova ou reprova um pedido pendente |
+
+- As listagens seguem o contrato das demais (`filters`, `sort`, `page`,
+  `limit`), da data mais recente para a mais antiga, com até 100 por página
+  sem `limit` — a tela de reservas carrega a lista numa requisição só. Cada
+  linha traz `common_area` (id e nome), `status_label` e `full_day`.
+- O parâmetro `relations` é descartado: pela listagem do morador sairia o
+  cadastro inteiro de quem reservou. Os filtros do cliente se somam ao recorte
+  da sessão — `filters=resident_id:=:<outro>` em `/me` devolve zero, não as
+  reservas do vizinho.
+- Horários saem sempre em `HH:MM`, e a reserva que termina à meia-noite sai com
+  `end_time: "24:00"`, como a tela envia — o MySQL devolve `HH:MM:SS`.
+- `PATCH .../status` recebe `{"status": "approved"}` ou
+  `{"status": "rejected", "rejection_reason": "..."}`; o motivo é opcional,
+  como na regra RN14 do frontend. A aprovação confere de novo as regras da
+  área (RN02, 422 com `errors.<campo>`) e o conflito (RN01, 409); pedido que não
+  está pendente responde 409. A decisão fica na auditoria
+  (`reservation.approved` ou `reservation.rejected`), com o morador e o motivo.
+
+### Conflito de reservas e pedidos simultâneos — RN01
+
+`CheckReservationConflictAction` é a única porta: a criação e a aprovação
+passam por ela, dentro da transação que grava. Dois pedidos para o mesmo
+período chegando juntos leriam "livre" e gravariam os dois; por isso a
+checagem:
+
+1. **trava a linha da área** (`SELECT ... FOR UPDATE`): o segundo pedido espera
+   o primeiro confirmar;
+2. **lê as reservas com trava**, o que no InnoDB sempre enxerga o último dado
+   confirmado. Uma leitura comum responderia com a foto que a transação tirou
+   na primeira leitura — e a aprovação, que carrega a área antes de travar,
+   veria a agenda antiga;
+3. **compara `date` direto**, sem `whereDate()`, para o MySQL usar o índice
+   `(common_area_id, date, status)` e travar só as linhas daquele dia.
+
+O SQLite da suíte ignora `FOR UPDATE` e não é compartilhado entre processos,
+então a disputa real fica no `ReservationRaceTest`, pulado na suíte comum. Ele
+dispara oito processos PHP que largam no mesmo instante contra um MySQL:
+
+```bash
+# um MySQL vazio qualquer; o banco é recriado pelo próprio teste
+DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3307 DB_DATABASE=condovale_race \
+DB_USERNAME=root DB_PASSWORD= php artisan test --filter=ReservationRaceTest
+```
+
+Medido em 2026-11-24 com MySQL 8.0.44 (InnoDB, REPEATABLE-READ):
+
+| Cenário | Sem trava | Só a trava da área | Como ficou |
+| --- | --- | --- | --- |
+| 8 pedidos do mesmo período | 8 gravados | 1 gravado, 7 × 409 | 1 gravado, 7 × 409 |
+| 4 diárias + 4 períodos cruzados | 8 gravados | 1 gravado, 7 × 409 | 1 gravado, 7 × 409 |
+| 4 períodos encostados | — | 4 gravados | 4 gravados |
+| 6 pedidos cancelados e aprovados no mesmo instante | — | deadlock nos 6 | 6 cancelados |
+
+A última linha é o cancelamento (RN08). Com o cancelamento travando só a
+reserva, e a aprovação travando a área e depois as reservas do dia, as duas
+pegavam as mesmas travas em ordens opostas e o MySQL respondia com deadlock
+(1213). Agora **criar, aprovar e cancelar travam na mesma ordem — área, depois
+reserva** — e as três transações são refeitas até
+`Reservation::TRANSACTION_ATTEMPTS` (3) vezes se o InnoDB as escolher como
+vítima de deadlock, que é o que o próprio MySQL manda fazer ("try restarting
+transaction").
+
+**Tudo isso depende de InnoDB**: em MyISAM não há transação nem trava de
+linha. O `config/database.php` deixa o motor com o padrão do servidor. Para
+conferir em produção, no phpMyAdmin do InfinityFree:
+
+```sql
+SELECT TABLE_SCHEMA, TABLE_NAME, ENGINE FROM information_schema.TABLES
+WHERE TABLE_NAME IN ('common_areas', 'reservations');
+```
+
+Sem `DATABASE()`: no phpMyAdmin a aba SQL do servidor roda sem banco
+selecionado, e aí `DATABASE()` é nulo e a consulta volta vazia. Se mesmo esta
+voltar vazia, as tabelas não existem — faltam as migrations.
+
+A suíte inteira ainda não roda contra MySQL: `DemoSeedTest` e
+`DeployRouteTest` executam migrations por dentro, o DDL confirma a transação
+do `RefreshDatabase` e os testes seguintes encontram dados de sobra. Os testes
+de carga (`*PerformanceTest`) gravam chaves estrangeiras supondo ids a partir
+de 1, o que só vale no SQLite, onde a sequência volta com o rollback. Os
+demais testes de reservas, áreas, relatórios e painel passam contra MySQL. E o
+`down()` da
+migration de `occurrence_types` não roda no MySQL (erro 1553: o índice é usado
+por uma chave estrangeira), o que impede `migrate:rollback` ali.
+
 ## Autorização
 
 O grupo da rota é o modelo de autorização: o middleware `use.case` recebe os
@@ -999,6 +1649,11 @@ php artisan test --compact --filter=PermissionMatrixTest
 Hoje existe a cobertura da matriz de permissões e dos quatro caminhos da rota
 de implantação; os testes de regra de negócio de cada módulo vêm com a task
 correspondente.
+
+A suíte roda num processo só, e `tests/TestCase.php` recolhe o lixo de
+memória ao fim de cada teste. Sem isso, o envio de imagem — que mede a memória
+livre antes de redimensionar — passava a recusar as fotos dependendo de
+quantos testes tinham rodado antes.
 
 ## O que mudou em relação ao import do InfinityFree
 
@@ -1045,8 +1700,17 @@ teste se marca como pulado e pode ser removido.
 
 ## Pendências conhecidas
 
-- O cancelamento de ocorrência está previsto para o administrador enquanto o
-  atendimento não começou; a especificação não define quem pode cancelar.
-- Reabertura de ocorrência concluída e reatribuição de atendimento já iniciado
-  não são permitidas — ambas dependem de decisão registrada.
-- `RNF01` (consultas abaixo de 2 s) ainda não tem carga padrão nem medição.
+A rastreabilidade completa — cada RF, RNF, RN, caso de uso e item do backlog
+com a rota, a regra e o teste, e as decisões que se afastam da especificação —
+está em [docs/rastreabilidade-backend.md](../docs/rastreabilidade-backend.md).
+
+- O cancelamento de ocorrência vale só antes de o atendimento começar; a
+  especificação não define quem pode cancelar. A reatribuição de atendimento
+  já iniciado existe como repasse, com justificativa obrigatória.
+- Reabertura de ocorrência concluída não é permitida — depende de decisão
+  registrada.
+- Não há regra de retenção da auditoria: a especificação não define, e nada é
+  apagado.
+- Fora do código: conferir que `common_areas` e `reservations` estão em InnoDB
+  em produção, marcar os tipos de denúncia em produção e trocar o
+  `DEPLOY_TOKEN` se ele tiver circulado.

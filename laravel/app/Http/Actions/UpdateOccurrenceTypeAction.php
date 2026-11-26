@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Models\OccurrenceType;
 
@@ -19,12 +20,15 @@ use App\Models\OccurrenceType;
  */
 class UpdateOccurrenceTypeAction
 {
+    /** What the audit trail compares before and after. */
+    private const AUDITADOS = ['name', 'description', 'kind', 'employee_can_close', 'active'];
+
     /**
-     * @param  array{name?: string, description?: string|null, active?: bool}  $attributes
+     * @param  array{name?: string, description?: string|null, kind?: string, active?: bool}  $attributes
      */
     public static function execute(OccurrenceType $type, array $attributes): OccurrenceType
     {
-        $anterior = $type->only(['name', 'description', 'employee_can_close', 'active']);
+        $anterior = $type->only(self::AUDITADOS);
 
         if (isset($attributes['name'])) {
             $attributes['name'] = trim($attributes['name']);
@@ -33,10 +37,16 @@ class UpdateOccurrenceTypeAction
         $type->update($attributes);
 
         $description = "Tipo de ocorrência {$type->id} {$type->name} editado.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE_TYPE->value, $description, [
-            'de' => $anterior,
-            'para' => $type->only(['name', 'description', 'employee_can_close', 'active']),
-        ]);
+        CreateLogAction::execute(
+            TypeLogEnum::OCCURRENCE_TYPE->value,
+            $description,
+            [
+                'de' => $anterior,
+                'para' => $type->only(self::AUDITADOS),
+            ],
+            action: AuditAction::OccurrenceTypeUpdated,
+            subjectId: $type->id,
+        );
 
         return $type->refresh();
     }

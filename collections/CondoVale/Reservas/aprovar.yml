@@ -1,0 +1,24 @@
+info:
+  name: aprovar
+  type: http
+  seq: 7
+
+http:
+  method: PATCH
+  url: "{{API_URL}}/reservations/1/status"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "status": "approved"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

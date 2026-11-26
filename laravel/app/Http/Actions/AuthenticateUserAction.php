@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Utils\AuthUtil;
@@ -38,7 +39,7 @@ class AuthenticateUserAction
         $request->session()->regenerate();
 
         $description = "Usuário {$user->id} {$user->name} autenticado.";
-        CreateLogAction::execute(TypeLogEnum::LOGIN->value, $description);
+        CreateLogAction::execute(TypeLogEnum::LOGIN->value, $description, action: AuditAction::Login, subjectId: $user->id);
 
         return $user;
     }
@@ -52,7 +53,7 @@ class AuthenticateUserAction
 
         if ($user) {
             $description = "Usuário {$user->id} {$user->name} encerrou a sessão.";
-            CreateLogAction::execute(TypeLogEnum::LOGOUT->value, $description);
+            CreateLogAction::execute(TypeLogEnum::LOGOUT->value, $description, action: AuditAction::Logout, subjectId: $user->id);
         }
 
         AuthUtil::guard()->logout();

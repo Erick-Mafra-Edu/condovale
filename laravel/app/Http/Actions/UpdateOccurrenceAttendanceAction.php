@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\OccurrenceHistoryType;
 use App\Enums\OccurrenceStatus;
 use App\Enums\TypeLogEnum;
@@ -36,6 +37,8 @@ class UpdateOccurrenceAttendanceAction
             throw BusinessRuleException::unprocessable('Informe o novo status ou descreva a atualização do atendimento.');
         }
 
+        $occurrence = Occurrence::lockForChange($occurrence);
+
         CheckOccurrenceAccessAction::execute($occurrence, $author);
 
         // Status igual ao atual, com anotação, é anotação. A tela costuma
@@ -57,7 +60,7 @@ class UpdateOccurrenceAttendanceAction
         );
 
         $description = "Andamento registrado na ocorrência {$occurrence->id} {$occurrence->title} por {$author->name}.";
-        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, ['andamento' => $message]);
+        CreateLogAction::execute(TypeLogEnum::OCCURRENCE->value, $description, ['andamento' => $message], action: AuditAction::OccurrenceProgressNoted, subjectId: $occurrence->id);
 
         return $occurrence->refresh();
     }

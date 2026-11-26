@@ -14,7 +14,9 @@ class ScopeReservationsAction
 {
     public static function execute(Builder $query, User $user): Builder
     {
-        if ($user->hasUseCase(UseCase::ManageReservations)) {
+        // Who manages or decides on reservations sees all of them: approving
+        // a request starts by reading it.
+        if ($user->hasUseCase(UseCase::ManageReservations) || $user->hasUseCase(UseCase::ApproveOrRejectReservation)) {
             return $query;
         }
 

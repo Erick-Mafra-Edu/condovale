@@ -1,0 +1,18 @@
+info:
+  name: cancel
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{API_URL}}/reservations/1/cancel"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

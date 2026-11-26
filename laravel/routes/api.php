@@ -1,12 +1,18 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommonAreaController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\OccurrenceAttachmentController;
 use App\Http\Controllers\OccurrenceController;
 use App\Http\Controllers\OccurrenceTypeController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UnitOccupancyController;
 use App\Http\Controllers\UserController;
@@ -257,6 +263,63 @@ Route::middleware(['auth', 'user.active', 'password.change', 'unit.linked'])->gr
     */
     Route::post('occurrences', [OccurrenceController::class, 'store'])
         ->middleware('use.case:create-occurrence,open-occurrence-for-resident');
+
+    /*
+    | UC03 / RF03 / RN01 / RN02 — solicitação de reserva de área comum.
+    |
+    | Só o morador reserva, e sempre em nome próprio: a identidade vem da
+    | sessão. A área com aprovação gera reserva pendente; a sem aprovação já
+    | sai aprovada.
+    */
+    Route::post('reservations', [ReservationController::class, 'store'])
+        ->middleware('use.case:request-reservation');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Cancelamento de reserva — RF03 / RN08
+|--------------------------------------------------------------------------
+|
+| O morador cancela as próprias reservas (cancel-own-reservation) e a
+| administração, qualquer uma (manage-reservations); de quem é a reserva quem
+| decide é a Action. Fica fora do unit.linked: cancelar não cria registro
+| órfão, e quem perdeu o vínculo com a unidade precisa poder desistir das
+| reservas que já tinha.
+*/
+Route::middleware([
+    'auth', 'user.active', 'password.change',
+    'use.case:cancel-own-reservation,manage-reservations',
+])->group(function () {
+    Route::post('reservations/{id}/cancel', [ReservationController::class, 'cancel']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Consulta e análise de reservas — UC16 / UC17 / UC19
+|--------------------------------------------------------------------------
+|
+| UC17: o morador vê as próprias reservas (view-own-reservations), fora do
+| unit.linked — quem perdeu o vínculo continua vendo o que reservou.
+| UC19: a administração vê todas (manage-reservations ou
+| approve-or-reject-reservation). UC16: só quem tem
+| approve-or-reject-reservation decide um pedido pendente.
+|
+| O detalhe serve aos dois; reserva de outra pessoa responde 404.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::get('reservations', [ReservationController::class, 'index'])
+        ->middleware('use.case:manage-reservations,approve-or-reject-reservation');
+
+    Route::get('reservations/me', [ReservationController::class, 'mine'])
+        ->middleware('use.case:view-own-reservations');
+
+    Route::get('reservations/{id}', [ReservationController::class, 'show'])
+        ->whereNumber('id')
+        ->middleware('use.case:view-own-reservations,manage-reservations,approve-or-reject-reservation');
+
+    Route::patch('reservations/{id}/status', [ReservationController::class, 'updateStatus'])
+        ->whereNumber('id')
+        ->middleware('use.case:approve-or-reject-reservation');
 });
 
 /*
@@ -379,5 +442,99 @@ Route::middleware(['auth', 'user.active', 'password.change'])->group(function ()
         Route::post('occurrence-types', [OccurrenceTypeController::class, 'store']);
         Route::patch('occurrence-types/{id}', [OccurrenceTypeController::class, 'update']);
         Route::delete('occurrence-types/{id}', [OccurrenceTypeController::class, 'destroy']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Painel inicial
+|--------------------------------------------------------------------------
+|
+| Todo perfil tem painel. O que entra nele é decidido pela
+| BuildDashboardAction, seção por seção, pelos casos de uso de quem pede —
+| por isso a rota não pede caso de uso, só sessão válida.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Comunicados oficiais — RF05 / RN07 / RN03
+|--------------------------------------------------------------------------
+|
+| Ler é de quem tem view-notices (morador) ou publish-notices (síndico e
+| administração). Publicar e excluir, só de publish-notices: RN07 reserva a
+| publicação e RN03 a exclusão ao síndico e à administração. Quem lê só vê o
+| que foi publicado; o rascunho é de quem publica — ver ScopeNoticesAction.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::middleware('use.case:view-notices,publish-notices')->group(function () {
+        Route::get('notices', [NoticeController::class, 'index']);
+        Route::get('notices/{id}', [NoticeController::class, 'show']);
+    });
+
+    Route::middleware('use.case:publish-notices')->group(function () {
+        Route::post('notices', [NoticeController::class, 'store']);
+        // Corrige título ou conteúdo; o texto anterior fica na auditoria.
+        Route::patch('notices/{id}', [NoticeController::class, 'update']);
+        // Comunicado.publicar(): leva um rascunho ao mural.
+        Route::post('notices/{id}/publish', [NoticeController::class, 'publish']);
+        Route::delete('notices/{id}', [NoticeController::class, 'destroy']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Relatórios operacionais — RF06 / UC20
+|--------------------------------------------------------------------------
+|
+| Síndico e administração, pelo caso de uso generate-reports. O relatório lê
+| o condomínio inteiro, sem o recorte por pessoa das telas de acompanhamento.
+| A auditoria não entra aqui: ela é da administração, por view-audit-reports.
+*/
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:generate-reports'])->group(function () {
+    Route::get('reports/occurrences', [ReportController::class, 'occurrences']);
+    Route::get('reports/reservations', [ReportController::class, 'reservations']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Auditoria — RNF04 / UC-T03 / RN16
+|--------------------------------------------------------------------------
+|
+| Só a administração, por view-audit-reports. A trilha é gravada pelo
+| CreateLogAction em cada operação e aqui só é lida: não existe rota que
+| altere ou apague um registro de auditoria.
+*/
+Route::middleware(['auth', 'user.active', 'password.change', 'use.case:view-audit-reports'])->group(function () {
+    Route::get('audit-logs', [AuditLogController::class, 'index']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Áreas comuns e disponibilidade — UC03 / RF03 / RN01 / RN02
+|--------------------------------------------------------------------------
+|
+| Consultar é de quem reserva (view-common-areas e request-reservation) e da
+| administração, que gerencia as reservas (manage-reservations). A agenda é
+| anônima (RN14): diz quando a área está ocupada, nunca por quem.
+|
+| Cadastrar, editar e excluir área é da administração. O diagrama de casos de
+| uso não tem um caso próprio para isso; o mais próximo é manage-reservations,
+| e um caso novo exigiria mexer também na matriz do frontend.
+*/
+Route::middleware(['auth', 'user.active', 'password.change'])->group(function () {
+    Route::middleware('use.case:view-common-areas,request-reservation,manage-reservations')->group(function () {
+        Route::get('common-areas', [CommonAreaController::class, 'index']);
+        Route::get('common-areas/{id}', [CommonAreaController::class, 'show']);
+        Route::get('common-areas/{id}/availability', [CommonAreaController::class, 'availability']);
+        Route::get('common-areas/{id}/occupancy', [CommonAreaController::class, 'occupancy']);
+    });
+
+    Route::middleware('use.case:manage-reservations')->group(function () {
+        Route::post('common-areas', [CommonAreaController::class, 'store']);
+        Route::patch('common-areas/{id}', [CommonAreaController::class, 'update']);
+        Route::delete('common-areas/{id}', [CommonAreaController::class, 'destroy']);
     });
 });

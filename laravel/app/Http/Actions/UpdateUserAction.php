@@ -2,8 +2,10 @@
 
 namespace App\Http\Actions;
 
+use App\Enums\AuditAction;
 use App\Enums\TypeLogEnum;
 use App\Enums\UserStatus;
+use App\Http\Utils\AuditUtil;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -32,7 +34,9 @@ class UpdateUserAction
             DeactivateUserAction::checkCanDeactivate($user);
         }
 
-        $user->update($attributes);
+        $user->fill($attributes);
+        $changes = AuditUtil::diff($user);
+        $user->save();
 
         // users.role e o vínculo do Spatie são duas representações do mesmo
         // fato; quem as mantém em acordo é esta Action, na mesma transação.
@@ -41,7 +45,7 @@ class UpdateUserAction
         }
 
         $description = "Usuário {$user->id} {$user->name} editado.";
-        CreateLogAction::execute(TypeLogEnum::USER->value, $description, (object) $attributes);
+        CreateLogAction::execute(TypeLogEnum::USER->value, $description, $changes, action: AuditAction::UserUpdated, subjectId: $user->id);
 
         return $user->refresh();
     }
