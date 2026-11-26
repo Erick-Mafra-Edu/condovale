@@ -2,9 +2,9 @@
 import type { CreateOccurrenceTypeInput, OccurrenceType, UpdateOccurrenceTypeInput } from '~/domain/occurrence-type'
 
 const props = defineProps<{ types: OccurrenceType[]; loading: boolean; error?: string; onCreate: (input: CreateOccurrenceTypeInput) => Promise<unknown>; onFind?: (id: string) => Promise<OccurrenceType>; onUpdate: (id: string, input: UpdateOccurrenceTypeInput) => Promise<unknown>; onRemove: (id: string) => Promise<unknown> }>()
-const name = ref(''); const description = ref(''); const employeeCanClose = ref(false); const active = ref(true); const editing = ref<string | null>(null); const formOpen = ref(false); const feedback = ref(''); const saving = ref(false)
+const name = ref(''); const description = ref(''); const kind = ref<'maintenance' | 'complaint'>('maintenance'); const employeeCanClose = ref(false); const active = ref(true); const editing = ref<string | null>(null); const formOpen = ref(false); const feedback = ref(''); const saving = ref(false)
 const detailLoading = ref(false)
-function reset() { editing.value = null; name.value = ''; description.value = ''; employeeCanClose.value = false; active.value = true }
+function reset() { editing.value = null; name.value = ''; description.value = ''; kind.value = 'maintenance'; employeeCanClose.value = false; active.value = true }
 function openCreate() { reset(); feedback.value = ''; formOpen.value = true }
 async function edit(item: OccurrenceType) {
   detailLoading.value = true
@@ -14,6 +14,7 @@ async function edit(item: OccurrenceType) {
     editing.value = detail.id
     name.value = detail.name
     description.value = detail.description ?? ''
+    kind.value = detail.kind
     employeeCanClose.value = detail.employeeCanClose
     active.value = detail.active
     formOpen.value = true
@@ -22,7 +23,7 @@ async function edit(item: OccurrenceType) {
   } finally { detailLoading.value = false }
 }
 function closeForm() { formOpen.value = false; reset() }
-async function save() { if (!name.value.trim()) { feedback.value = 'Informe o nome do tipo.'; return }; saving.value = true; feedback.value = ''; try { const input = { name: name.value.trim(), description: description.value.trim() || undefined, employeeCanClose: employeeCanClose.value, active: active.value }; if (editing.value) await props.onUpdate(editing.value, input); else await props.onCreate(input); closeForm(); feedback.value = 'Tipo salvo com sucesso.' } catch (cause) { feedback.value = cause instanceof Error ? cause.message : 'Não foi possível salvar o tipo.' } finally { saving.value = false } }
+async function save() { if (!name.value.trim()) { feedback.value = 'Informe o nome do tipo.'; return }; saving.value = true; feedback.value = ''; try { const input = { name: name.value.trim(), description: description.value.trim() || undefined, kind: kind.value, employeeCanClose: employeeCanClose.value, active: active.value }; if (editing.value) await props.onUpdate(editing.value, input); else await props.onCreate(input); closeForm(); feedback.value = 'Tipo salvo com sucesso.' } catch (cause) { feedback.value = cause instanceof Error ? cause.message : 'Não foi possível salvar o tipo.' } finally { saving.value = false } }
 async function remove(item: OccurrenceType) { if (!confirm(`Inativar o tipo “${item.name}”?`)) return; saving.value = true; feedback.value = ''; try { await props.onRemove(item.id); feedback.value = 'Tipo inativado com sucesso.' } catch (cause) { feedback.value = cause instanceof Error ? cause.message : 'Não foi possível inativar o tipo.' } finally { saving.value = false } }
 </script>
 <template>
@@ -39,7 +40,7 @@ async function remove(item: OccurrenceType) { if (!confirm(`Inativar o tipo “$
         <p>Defina como a ocorrência será classificada e atendida.</p>
         <p v-if="detailLoading" class="empty-row" role="status">Carregando detalhes...</p>
         <label>Nome<input v-model="name" maxlength="60" autocomplete="off" required /></label>
-        <label>Descrição<textarea v-model="description" maxlength="255" /></label>
+        <label>Descrição<textarea v-model="description" maxlength="255" /></label><label>Natureza<select v-model="kind"><option value="maintenance">Manutenção</option><option value="complaint">Denúncia</option></select></label>
         <label class="checkbox-field"><input v-model="employeeCanClose" type="checkbox" /> Funcionário pode finalizar este tipo</label>
         <label class="checkbox-field"><input v-model="active" type="checkbox" /> Tipo ativo</label>
         <p v-if="feedback || error" class="form-error" role="alert">{{ feedback || error }}</p>

@@ -4,9 +4,9 @@ import { AppError } from '~/domain/app-error'
 import type { OccurrenceTypeRepository } from '~/repositories/contracts/occurrence-type-repository'
 
 const types: OccurrenceType[] = [
-  { id: '1', name: 'Manutenção', description: 'Reparos e conservação', employeeCanClose: true, active: true },
-  { id: '2', name: 'Convivência', employeeCanClose: false, active: true },
-  { id: '3', name: 'Segurança', employeeCanClose: false, active: true },
+  { id: '1', name: 'Manutenção', description: 'Reparos e conservação', kind: 'maintenance', employeeCanClose: true, active: true },
+  { id: '2', name: 'Convivência', kind: 'complaint', employeeCanClose: false, active: true },
+  { id: '3', name: 'Segurança', kind: 'complaint', employeeCanClose: false, active: true },
 ]
 const response = <T>(data: T): ApiResponse<T> => ({ data: structuredClone(data), message: null })
 export const mockOccurrenceTypeRepository: OccurrenceTypeRepository = {

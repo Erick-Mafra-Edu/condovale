@@ -6,6 +6,7 @@ export interface Occurrence {
   title: string
   description: string
   category: string
+  kind?: 'maintenance' | 'complaint'
   occurrenceTypeId?: string
   occurrenceTypeName?: string
   employeeCanClose?: boolean

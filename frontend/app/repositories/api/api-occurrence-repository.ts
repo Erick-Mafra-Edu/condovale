@@ -4,7 +4,7 @@ import type { OccurrenceRepository } from '~/repositories/contracts/occurrence-r
 import { createApiRequest } from './request'
 import { AppError } from '~/domain/app-error'
 
-type ApiOccurrence = Occurrence & { resident_id?: string | number; unit_id?: string | number; assigned_employee_id?: string | number; occurrence_type_id?: string | number; occurrence_type?: { id?: string | number; name?: string; employee_can_close?: boolean }; resident?: { id?: string | number; name?: string }; unit?: { id?: string | number; code?: string; number?: string }; assigned_employee?: { id?: string | number; name?: string }; created_at?: string; updated_at?: string; completed_at?: string }
+type ApiOccurrence = Occurrence & { resident_id?: string | number; unit_id?: string | number; assigned_employee_id?: string | number; occurrence_type_id?: string | number; occurrence_type?: { id?: string | number; name?: string; kind?: 'maintenance' | 'complaint'; employee_can_close?: boolean }; resident?: { id?: string | number; name?: string }; unit?: { id?: string | number; code?: string; number?: string }; assigned_employee?: { id?: string | number; name?: string }; created_at?: string; updated_at?: string; completed_at?: string }
 type ApiOccurrenceHistory = OccurrenceHistory & { occurrence_id?: string | number; user_id?: string | number; user?: { id?: string | number; name?: string }; previous_status?: OccurrenceStatus; new_status?: OccurrenceStatus; created_at?: string }
 type ApiOccurrencePage = ApiResponse<ApiOccurrence[]> & { total?: number; amount?: number }
 type ApiOccurrenceHistoryPage = ApiResponse<ApiOccurrenceHistory[]> & { total?: number; amount?: number }
@@ -29,6 +29,7 @@ export function fromApiOccurrence(value: ApiOccurrence): Occurrence {
     assignedEmployeeId: assigned_employee_id != null ? String(assigned_employee_id) : value.assignedEmployeeId,
     occurrenceTypeId: occurrence_type_id != null ? String(occurrence_type_id) : occurrence_type?.id != null ? String(occurrence_type.id) : value.occurrenceTypeId,
     occurrenceTypeName: occurrence_type?.name ?? value.occurrenceTypeName,
+    kind: occurrence_type?.kind ?? value.kind,
     employeeCanClose: occurrence_type?.employee_can_close ?? value.employeeCanClose,
     category: occurrence_type?.name ?? value.category,
     residentName: resident?.name ?? value.residentName,

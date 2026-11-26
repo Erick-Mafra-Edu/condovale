@@ -1,14 +1,18 @@
 import { AppError } from '~/domain/app-error'
-import type { CreateReservationInput, ReservationStatus } from '~/domain/reservation'
+import type { CommonAreaInput, CreateReservationInput, ReservationStatus } from '~/domain/reservation'
 import type { ReservationRepository } from '~/repositories/contracts/reservation-repository'
 
 export function createReservationService(repository: ReservationRepository) {
   return {
-    list: () => repository.list(),
+    list: (page?: number, filters?: string) => repository.list(page, filters),
     listAreas: () => repository.listAreas(),
     findById: (id: string) => repository.findById(id),
     listOccupancy: (areaId: string, startDate: string, endDate: string) => repository.listOccupancy(areaId, startDate, endDate),
-    getMyReservations: () => repository.listMine(),
+    availability: (areaId: string, startDate: string, endDate: string) => repository.availability(areaId, startDate, endDate),
+    createArea: (input: CommonAreaInput) => repository.createArea(input),
+    updateArea: (id: string, input: Partial<CommonAreaInput>) => repository.updateArea(id, input),
+    removeArea: (id: string) => repository.removeArea(id),
+    getMyReservations: (page?: number, filters?: string) => repository.listMine(page, filters),
     async reserve(input: CreateReservationInput) {
       const fields: Record<string, string[]> = {}
       if (!input.areaId) fields.areaId = ['Selecione uma área']

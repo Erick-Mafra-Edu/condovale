@@ -26,6 +26,8 @@ const occurrenceActionError = ref('')
 const uploadingOccurrenceAttachment = ref(false)
 const occurrenceAttachmentInput = ref<HTMLInputElement | null>(null)
 const reviewingReservation = ref(false)
+const reservationRejectionReason = ref('')
+const reservationActionError = ref('')
 const reportView = ref<'occurrences' | 'reservations' | 'audit'>('occurrences')
 const profileSaving = ref(false)
 const profileError = ref('')
@@ -52,21 +54,24 @@ function setTheme(nextTheme: 'light' | 'dark') {
 const { user: authUser, loading: authLoading, error: authError, authenticate, restoreSession, changePassword, logout } = useAuth()
 const { public: runtimeConfig } = useRuntimeConfig()
 const apiMode = computed(() => runtimeConfig.dataSource === 'api')
+const { data: dashboard, loading: dashboardLoading, error: dashboardError, refresh: refreshDashboard } = useDashboard()
 const { users, loading: usersLoading, loadUsers, updateOwnProfile, createUser, updateUser, deactivateUser } = useUsers()
 const { units, loading: unitsLoading, loadUnits, createUnit, updateUnit, deactivateUnit } = useUnits()
 const { occupancies, loading: occupanciesLoading, error: occupanciesError, loadOccupancies, findOccupancy, createOccupancy: createOccupancyRequest, removeOccupancy } = useUnitOccupancies()
 const selectedOccupancy = ref<(typeof occupancies.value)[number] | null>(null)
 const { occurrences, history: occurrenceHistory, assignableEmployees, attachments: occurrenceAttachments, loading: occurrencesLoading, error: occurrenceError, loadOccurrences, findOccurrence, createOccurrence, assignOccurrence, updateOccurrenceAttendance, loadAssignableEmployees, loadHistory, loadAttachments, uploadAttachment, attachmentUrl, updateOccurrenceStatus, finishOccurrence } = useOccurrences()
 const { types: occurrenceTypes, activeTypes: activeOccurrenceTypes, loading: occurrenceTypesLoading, load: loadOccurrenceTypes, loadActive: loadActiveOccurrenceTypes, find: findOccurrenceType, create: createOccurrenceType, update: updateOccurrenceType, remove: removeOccurrenceType } = useOccurrenceTypes()
-const { reservations, loading: reservationsLoading, error: reservationsError, loadReservations, loadMyReservations, listAreas, updateReservationStatus } = useReservations()
-const { notices, loading: noticesLoading, error: noticesError, loadNotices, createNotice } = useNotices()
+const { reservations, total: reservationsTotal, loading: reservationsLoading, error: reservationsError, loadReservations, loadMyReservations, listAreas, updateReservationStatus, cancelReservation, createArea, updateArea, removeArea } = useReservations()
+const areasLoading = ref(false)
+const areasError = ref('')
+async function reloadAreas() { areasLoading.value = true; areasError.value = ''; try { areas.value = (await listAreas()).data } catch (cause) { areasError.value = cause instanceof Error ? cause.message : 'Não foi possível carregar as áreas.' } finally { areasLoading.value = false } }
+const { notices, total: noticesTotal, loading: noticesLoading, error: noticesError, loadNotices, createNotice, updateNotice, removeNotice, publishNotice } = useNotices()
 const { auditLogs, loadAuditLogs } = useAuditLogs()
 
 const navItems = [
   { label: 'Início', icon: 'home' }, { label: 'Meu cadastro', icon: 'profile' }, { label: 'Usuários', icon: 'users' }, { label: 'Tipos de ocorrência', icon: 'alert' }, { label: 'Ocorrências', icon: 'occurrences' },
-  { label: 'Reservas', icon: 'calendar' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'documents' }, { label: 'Unidades', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
+  { label: 'Reservas', icon: 'calendar' }, { label: 'Áreas comuns', icon: 'building' }, { label: 'Comunicados', icon: 'message' }, { label: 'Relatórios', icon: 'documents' }, { label: 'Unidades', icon: 'building' }, { label: 'Moradores e unidades', icon: 'users' },
 ] as const
-const unavailableInApi = new Set(['Reservas', 'Comunicados', 'Relatórios'])
 
 function hasAccess(useCase: UseCase) {
   return authUser.value ? can(authUser.value.role, useCase, authUser.value.permissions) : false
@@ -74,7 +79,7 @@ function hasAccess(useCase: UseCase) {
 
 const canViewOccurrences = computed(() => ['create-occurrence', 'open-occurrence-for-resident', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence', 'close-any-occurrence'].some(useCase => hasAccess(useCase as UseCase)))
 const canTransferOccurrence = computed(() => canAssignOccurrence.value || hasAccess('hand-over-occurrence' as UseCase))
-const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label, authUser.value.permissions) && (!apiMode.value || (!unavailableInApi.has(item.label) && (item.label !== 'Ocorrências' || canViewOccurrences.value)))))
+const visibleNavItems = computed(() => navItems.filter(item => authUser.value && canViewModule(authUser.value.role, item.label, authUser.value.permissions)))
 const resident = computed(() => authUser.value?.role === 'resident' ? authUser.value : null)
 const canCreateOccurrence = computed(() => authUser.value ? can(authUser.value.role, 'create-occurrence', authUser.value.permissions) : false)
 const canOpenForResident = computed(() => authUser.value ? can(authUser.value.role, 'open-occurrence-for-resident', authUser.value.permissions) : false)
@@ -88,6 +93,7 @@ const areaById = computed(() => new Map(areas.value.map(area => [area.id, area])
 const activeResidents = computed(() => users.value.filter(user => user.role === 'resident' && user.status === 'active'))
 const activeEmployees = computed(() => apiMode.value ? assignableEmployees.value : users.value.filter(user => user.role === 'employee' && user.status === 'active'))
 const visibleOccurrences = computed(() => {
+  if (apiMode.value) return occurrences.value
   if (authUser.value?.role === 'employee') return occurrences.value.filter(item => item.assignedEmployeeId === authUser.value?.id)
   if (authUser.value?.role === 'resident') return occurrences.value.filter(item => item.residentId === authUser.value?.id)
   return occurrences.value
@@ -98,6 +104,7 @@ const residentName = computed(() => authUser.value?.name ?? 'Morador')
 const residentInitials = computed(() => residentName.value.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase())
 
 const stats = computed(() => {
+  if (apiMode.value) return (dashboard.value?.cards ?? []).map(card => ({ label: card.label, value: String(card.value), note: card.note, icon: (card.key.includes('reservation') ? 'calendar' : card.key.includes('notice') ? 'message' : card.key.includes('resident') || card.key.includes('unit') ? 'users' : 'alert') as 'calendar' | 'message' | 'users' | 'alert', tone: 'cyan', target: card.key.includes('reservation') ? 'Reservas' : card.key.includes('notice') ? 'Comunicados' : card.key.includes('unit') ? 'Unidades' : card.key.includes('resident') ? 'Usuários' : 'Ocorrências' }))
   const items = [
   { label: 'Moradores', value: String(activeResidents.value.length), note: 'moradores ativos', icon: 'users' as const, tone: 'cyan' },
   { label: 'Ocorrências abertas', value: String(openOccurrences.value.length), note: 'em acompanhamento', icon: 'alert' as const, tone: 'red' },
@@ -130,7 +137,7 @@ const publishedNotices = computed(() => getPublishedNotices(notices.value))
 const recentNotices = computed(() => publishedNotices.value.slice(0, 3))
 const getArea = (areaId: string) => areaById.value.get(areaId)
 const reservationMeta = (reservation: Reservation) => `${formatDate(reservation.date)} · ${reservation.startTime && reservation.endTime ? `${reservation.startTime}–${reservation.endTime}` : 'Dia inteiro'}`
-const noticeMeta = (publishedAt: string, status: string) => status === 'published' ? `Publicado em ${formatDateTime(publishedAt)}` : 'Rascunho'
+const noticeMeta = (publishedAt: string | null, status: string) => status === 'published' && publishedAt ? `Publicado em ${formatDateTime(publishedAt)}` : 'Rascunho'
 const noticeLabel = (status: string) => status === 'published' ? 'Publicado' : 'Rascunho'
 const noticeTone = (status: string) => status === 'published' ? 'green' : 'gray'
 const selectArea = (areaId: string | null) => { selectedAreaId.value = areaId }
@@ -145,6 +152,7 @@ async function openOccurrenceDetail(id: string) {
   occurrenceEmployeeId.value = ''
   detailTarget.value = { type: 'occurrence', id }
   if (apiMode.value) {
+    await refreshDashboard()
     const detail = await findOccurrence(id).catch(() => undefined)
     if (detail) {
       const index = occurrences.value.findIndex(item => item.id === detail.id)
@@ -160,15 +168,7 @@ async function loadDashboard() {
   const canManageOccupancies = hasAccess('link-residents-to-units')
   const canManageUnits = hasAccess('manage-units')
   if (apiMode.value) {
-    await Promise.all([
-      hasAccess('manage-residents') || canAssignOccurrence.value ? loadUsers() : Promise.resolve(),
-      canManageUnits || canManageOccupancies ? loadUnits() : Promise.resolve(),
-      canManageOccupancies ? loadOccupancies() : Promise.resolve(),
-      canViewOccurrences.value ? loadOccurrences() : Promise.resolve(),
-      canTransferOccurrence.value ? loadAssignableEmployees() : Promise.resolve(),
-      canCreateOccurrence.value || canOpenForResident.value ? loadActiveOccurrenceTypesRequest() : Promise.resolve(),
-      hasAccess('manage-occurrence-types') ? loadOccurrenceTypes() : Promise.resolve(),
-    ])
+    await refreshDashboard()
     return
   }
 
@@ -177,7 +177,15 @@ async function loadDashboard() {
   areas.value = areasResponse.data
 }
 
-const reloadReservations = () => resident.value ? loadMyReservations() : loadReservations()
+const reloadReservations = (page = 1, filters?: string) => hasAccess('manage-reservations') || hasAccess('approve-or-reject-reservation') ? loadReservations(page, filters) : hasAccess('view-own-reservations') ? loadMyReservations(page, filters) : Promise.resolve()
+async function afterReservationMutation() { await reloadReservations(); if (apiMode.value) await refreshDashboard() }
+async function createManagedArea(input: Parameters<typeof createArea>[0]) { const result = await createArea(input); if (apiMode.value) await refreshDashboard(); return result }
+async function updateManagedArea(id: string, input: Parameters<typeof updateArea>[1]) { const result = await updateArea(id, input); if (apiMode.value) await refreshDashboard(); return result }
+async function removeManagedArea(id: string) { const result = await removeArea(id); if (apiMode.value) await refreshDashboard(); return result }
+async function createManagedNotice(input: Parameters<typeof createNotice>[0]) { const result = await createNotice(input); if (apiMode.value) await refreshDashboard(); return result }
+async function updateManagedNotice(id: string, input: Parameters<typeof updateNotice>[1]) { const result = await updateNotice(id, input); if (apiMode.value) await refreshDashboard(); return result }
+async function publishManagedNotice(id: string) { const result = await publishNotice(id); if (apiMode.value) await refreshDashboard(); return result }
+async function removeManagedNotice(id: string) { await removeNotice(id); if (apiMode.value) await refreshDashboard() }
 
 async function handleLogin(email: string, password: string) {
   await authenticate({ email, password })
@@ -245,13 +253,14 @@ async function removeManagedOccurrenceType(id: string) {
 }
 
 async function submitOccurrence() {
-  const residentId = canOpenForResident.value && occurrenceResidentId.value ? occurrenceResidentId.value : resident.value?.id
-  if (!residentId || !occurrenceTitle.value.trim() || !occurrenceDescription.value.trim() || !occurrenceCategory.value) return
+  const residentId = canOpenForResident.value && occurrenceResidentId.value ? occurrenceResidentId.value : undefined
+  if ((canOpenForResident.value && !residentId && !canCreateOccurrence.value) || !occurrenceTitle.value.trim() || !occurrenceDescription.value.trim() || !occurrenceCategory.value) return
   submittingOccurrence.value = true
   occurrenceSuccess.value = ''
   occurrenceActionError.value = ''
   try {
-    await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), occurrenceTypeId: occurrenceCategory.value, residentId })
+    await createOccurrence({ title: occurrenceTitle.value.trim(), description: occurrenceDescription.value.trim(), occurrenceTypeId: occurrenceCategory.value, ...(residentId ? { residentId } : {}) })
+    if (apiMode.value) await refreshDashboard()
     if (apiMode.value) await loadOccurrences()
     occurrenceTitle.value = ''
     occurrenceDescription.value = ''
@@ -263,12 +272,23 @@ async function submitOccurrence() {
 }
 
 async function reviewReservation(status: 'approved' | 'rejected') {
-  if (!selectedReservation.value || !hasAccess('approve-or-reject-reservation')) return
+  if (!selectedReservation.value || selectedReservation.value.status !== 'pending' || !hasAccess('approve-or-reject-reservation') || reviewingReservation.value) return
   reviewingReservation.value = true
+  reservationActionError.value = ''
   try {
-    await updateReservationStatus(selectedReservation.value.id, status)
+    await updateReservationStatus(selectedReservation.value.id, status, status === 'rejected' ? reservationRejectionReason.value.trim() : undefined)
+    await reloadReservations()
+    await refreshDashboard()
     detailTarget.value = null
+  } catch (cause) { reservationActionError.value = cause instanceof Error ? cause.message : 'Não foi possível analisar a reserva.'
   } finally { reviewingReservation.value = false }
+}
+async function cancelManagedReservation() {
+  if (!selectedReservation.value || !hasAccess('manage-reservations') || reviewingReservation.value || !confirm('Cancelar esta reserva?')) return
+  reviewingReservation.value = true; reservationActionError.value = ''
+  try { await cancelReservation(selectedReservation.value.id); await reloadReservations(); await refreshDashboard(); detailTarget.value = null }
+  catch (cause) { reservationActionError.value = cause instanceof Error ? cause.message : 'Não foi possível cancelar a reserva.' }
+  finally { reviewingReservation.value = false }
 }
 
 async function startOccurrence() {
@@ -366,6 +386,8 @@ async function completeOccurrence() {
 function updateScrollMaterial() {
   isScrolled.value = window.scrollY > 24
 }
+function onSessionExpired() { authUser.value = null; active.value = 'Início' }
+function toggleNotifications() { showNotifications.value = !showNotifications.value; if (showNotifications.value && (hasAccess('view-notices') || hasAccess('publish-notices'))) void loadNotices(1, 'published').catch(() => undefined) }
 
 onMounted(() => {
   applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
@@ -374,12 +396,24 @@ onMounted(() => {
   }).catch(() => undefined)
   updateScrollMaterial()
   window.addEventListener('scroll', updateScrollMaterial, { passive: true })
+  window.addEventListener('condovale-session-expired', onSessionExpired)
 })
-onBeforeUnmount(() => window.removeEventListener('scroll', updateScrollMaterial))
+onBeforeUnmount(() => { window.removeEventListener('scroll', updateScrollMaterial); window.removeEventListener('condovale-session-expired', onSessionExpired) })
 const selectNav = (label: string) => {
   active.value = label
-  if (label === 'Relatórios' && hasAccess('view-audit-reports')) loadAuditLogs().catch(() => undefined)
 }
+watch(active, (label) => {
+  if (!authUser.value) return
+  if (label === 'Início' && apiMode.value) void refreshDashboard()
+  if (label === 'Comunicados') void loadNotices(1, 'published').catch(() => undefined)
+  if (label === 'Reservas' || label === 'Áreas comuns') { void reloadAreas(); if (label === 'Reservas') void reloadReservations().catch(() => undefined) }
+  if (label === 'Relatórios' && hasAccess('view-audit-reports') && !apiMode.value) void loadAuditLogs().catch(() => undefined)
+  if (apiMode.value && label === 'Ocorrências' && canViewOccurrences.value) { void loadOccurrences().catch(() => undefined); if (canTransferOccurrence.value) void loadAssignableEmployees().catch(() => undefined); if (canOpenForResident.value && hasAccess('manage-residents')) void loadUsers().catch(() => undefined) }
+  if (apiMode.value && label === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')) void loadOccurrenceTypes().catch(() => undefined)
+  if (apiMode.value && label === 'Usuários' && hasAccess('manage-residents')) void loadUsers().catch(() => undefined)
+  if (apiMode.value && (label === 'Unidades' || label === 'Moradores e unidades') && (hasAccess('manage-units') || hasAccess('link-residents-to-units'))) void loadUnits().catch(() => undefined)
+  if (apiMode.value && label === 'Moradores e unidades' && hasAccess('link-residents-to-units')) { void loadOccupancies().catch(() => undefined); void loadUsers().catch(() => undefined) }
+})
 
 async function createOccupancy(input: CreateUnitOccupancyInput) {
   if (!hasAccess('link-residents-to-units')) return
@@ -405,7 +439,7 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
     <AppSidebar :active="active" :items="visibleNavItems" @select="selectNav" />
 
     <main class="main-content">
-      <AppTopbar :name="residentName" :initials="residentInitials" :notification-count="publishedNotices.length" :compact="isScrolled" :can-open-profile="hasAccess('update-own-profile')" :theme="theme" @theme-change="setTheme" @notifications="showNotifications = !showNotifications" @profile="selectNav('Meu cadastro')" @logout="handleLogout" />
+      <AppTopbar :name="residentName" :initials="residentInitials" :notification-count="apiMode ? dashboard?.notices?.published ?? 0 : publishedNotices.length" :compact="isScrolled" :can-open-profile="hasAccess('update-own-profile')" :theme="theme" @theme-change="setTheme" @notifications="toggleNotifications" @profile="selectNav('Meu cadastro')" @logout="handleLogout" />
       <aside v-if="showNotifications" class="notifications-popover glass"><div class="popover-head"><strong>Comunicados</strong><button aria-label="Fechar notificações" @click="showNotifications = false">×</button></div><div class="notifications-list"><div v-if="!publishedNotices.length" class="empty-row">Nenhum comunicado novo.</div><button v-for="notice in publishedNotices" :key="notice.id" class="notification-item" @click="active = 'Comunicados'; showNotifications = false"><SvgIcon name="message" /><span><strong>{{ notice.title }}</strong><small>{{ noticeMeta(notice.publishedAt, notice.status) }}</small></span></button></div></aside>
 
       <div class="page-wrap">
@@ -415,7 +449,17 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
         </section>
 
         <div v-if="active === 'Início'">
-          <section class="stat-grid"><DashboardStat v-for="stat in stats" :key="stat.label" v-bind="stat" /></section>
+          <p v-if="apiMode && dashboardLoading" role="status">Carregando painel...</p><p v-if="apiMode && dashboardError" class="form-error" role="alert">{{ dashboardError }} <button class="outline-button" @click="refreshDashboard">Tentar novamente</button></p>
+          <section class="stat-grid"><DashboardStat v-for="stat in stats" :key="stat.label" v-bind="stat" @navigate="selectNav" /></section>
+          <section v-if="apiMode && dashboard" class="content-grid three-columns">
+            <article v-if="dashboard.my_occurrences || dashboard.my_assignments || dashboard.occurrence_queue" class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="selectNav('Ocorrências')">Ver todas</button></div><div class="list"><div v-if="!(dashboard.my_occurrences?.latest ?? dashboard.my_assignments?.queue ?? dashboard.occurrence_queue?.oldest_waiting)?.length" class="empty-row">Nenhuma ocorrência recente.</div><button v-for="item in (dashboard.my_occurrences?.latest ?? dashboard.my_assignments?.queue ?? dashboard.occurrence_queue?.oldest_waiting ?? [])" :key="item.id" class="list-row interactive-row" @click="selectNav('Ocorrências')"><span class="dot teal"></span><strong>{{ item.title ?? `Ocorrência #${item.id}` }}</strong></button></div></article>
+            <article v-if="dashboard.my_reservations || dashboard.reservations" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="selectNav('Reservas')">Ver agenda</button></div><div class="list"><div v-if="!(dashboard.my_reservations?.upcoming ?? dashboard.reservations?.upcoming)?.length" class="empty-row">Nenhuma reserva próxima.</div><button v-for="item in (dashboard.my_reservations?.upcoming ?? dashboard.reservations?.upcoming ?? [])" :key="item.id" class="list-row interactive-row" @click="selectNav('Reservas')"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ item.common_area?.name ?? 'Área comum' }}</strong><small>{{ item.date }}</small></span></button></div></article>
+            <article v-if="dashboard.notices" class="panel"><div class="panel-head"><h2>Comunicados recentes</h2><button @click="selectNav('Comunicados')">Ver todos</button></div><div class="list"><div v-if="!dashboard.notices.latest.length" class="empty-row">Nenhum comunicado publicado.</div><button v-for="item in dashboard.notices.latest" :key="item.id" class="list-row interactive-row" @click="selectNav('Comunicados')"><span class="row-icon"><SvgIcon name="message" /></span><span><strong>{{ item.title }}</strong><small>{{ item.published_at ? formatDateTime(item.published_at) : '' }}</small></span></button></div></article>
+            <article v-if="dashboard.units" class="panel"><div class="panel-head"><h2>Unidades</h2><button @click="selectNav('Unidades')">Ver unidades</button></div><div class="list"><p class="empty-row">{{ dashboard.units.occupied }} ocupadas de {{ dashboard.units.active }} ativas</p></div></article>
+            <article v-if="dashboard.people" class="panel"><div class="panel-head"><h2>Pessoas</h2><button @click="selectNav('Usuários')">Ver usuários</button></div><div class="list"><p class="empty-row">{{ dashboard.people.residents_active }} moradores ativos</p></div></article>
+            <article v-if="dashboard.month" class="panel"><div class="panel-head"><h2>Mês atual</h2><button @click="selectNav('Relatórios')">Ver relatórios</button></div><div class="list"><p class="empty-row">{{ dashboard.month.from }} a {{ dashboard.month.to }}</p></div></article>
+            <article v-if="dashboard.recent_activity" class="panel"><div class="panel-head"><h2>Atividade recente</h2><button @click="reportView = 'audit'; selectNav('Relatórios')">Ver auditoria</button></div><div class="list"><p v-if="!dashboard.recent_activity.length" class="empty-row">Nenhuma atividade recente.</p><p v-for="item in dashboard.recent_activity" :key="item.id" class="list-row"><strong>{{ item.description }}</strong><small>{{ formatDateTime(item.created_at) }}</small></p></div></article>
+          </section>
           <section class="content-grid three-columns">
             <article v-if="!apiMode" class="panel"><div class="panel-head"><h2>Ocorrências recentes</h2><button @click="active = 'Ocorrências'">Ver todas</button></div><div class="list"><div v-if="!recentOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in recentOccurrences" :key="item.id" class="list-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="dot teal"></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em></button></div></article>
             <article v-if="!apiMode && (hasAccess('view-common-areas') || hasAccess('manage-reservations'))" class="panel"><div class="panel-head"><h2>Próximas reservas</h2><button @click="active = 'Reservas'">Ver agenda</button></div><div class="list"><div v-if="!upcomingReservations.length" class="empty-row">Nenhuma reserva ativa.</div><button v-for="item in upcomingReservations.slice(0, 3)" :key="item.id" class="list-row interactive-row" @click="openDetail('reservation', item.id)"><span class="row-icon"><SvgIcon name="calendar" /></span><span><strong>{{ getArea(item.areaId)?.name ?? 'Área comum' }}</strong><small>{{ reservationMeta(item) }}</small></span><em :class="reservationTone(item.status)">{{ reservationLabel(item.status) }}</em></button></div></article>
@@ -428,19 +472,20 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
         <UsersAdminPage v-else-if="active === 'Usuários' && hasAccess('manage-residents')" :users="users" :loading="usersLoading" :current-user-id="authUser.id" :on-create="createManagedUser" :on-update="updateManagedUser" :on-deactivate="deactivateManagedUser" />
         <OccurrenceTypeAdminPage v-else-if="active === 'Tipos de ocorrência' && hasAccess('manage-occurrence-types')" :types="occurrenceTypes" :loading="occurrenceTypesLoading" :error="occurrenceTypesError" :on-find="findOccurrenceType" :on-create="createManagedOccurrenceType" :on-update="updateManagedOccurrenceType" :on-remove="removeManagedOccurrenceType" />
         <UnitAdminPage v-else-if="active === 'Unidades' && hasAccess('manage-units')" :units="units" :loading="unitsLoading" :on-create="createManagedUnit" :on-update="updateManagedUnit" :on-deactivate="deactivateManagedUnit" />
-        <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav v-if="hasAccess('generate-reports')" class="report-kind-tabs"><button :class="{ selected: reportView === 'occurrences' }" @click="reportView = 'occurrences'">Ocorrências</button><button :class="{ selected: reportView === 'reservations' }" @click="reportView = 'reservations'">Reservas</button><button v-if="hasAccess('view-audit-reports')" :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReservationReportPage v-else-if="reportView === 'reservations' && hasAccess('generate-reports')" :reservations="reservations" :areas="areas" :loading="reservationsLoading" :error="reservationsError" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></section>
-        <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('approve-or-reject-reservation')" @reservation-created="reloadReservations" @reservation-cancelled="reloadReservations" @open-details="openDetail('reservation', $event)" />
+        <CommonAreaAdminPage v-else-if="active === 'Áreas comuns' && hasAccess('manage-reservations')" :areas="areas" :loading="areasLoading" :error="areasError" :on-create="createManagedArea" :on-update="updateManagedArea" :on-remove="removeManagedArea" :on-reload="reloadAreas" />
+        <section v-else-if="active === 'Relatórios'" class="reports-shell"><nav class="report-kind-tabs"><button v-if="hasAccess('generate-reports')" :class="{ selected: reportView === 'occurrences' }" @click="reportView = 'occurrences'">Ocorrências</button><button v-if="hasAccess('generate-reports')" :class="{ selected: reportView === 'reservations' }" @click="reportView = 'reservations'">Reservas</button><button v-if="hasAccess('view-audit-reports')" :class="{ selected: reportView === 'audit' }" @click="reportView = 'audit'">Auditoria</button></nav><template v-if="apiMode"><AuditServerPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" /><OperationalReportPage v-else-if="hasAccess('generate-reports')" :kind="reportView === 'reservations' ? 'reservations' : 'occurrences'" /></template><template v-else><AuditReportPage v-if="reportView === 'audit' && hasAccess('view-audit-reports')" :logs="auditLogs" :users="users" /><ReservationReportPage v-else-if="reportView === 'reservations' && hasAccess('generate-reports')" :reservations="reservations" :areas="areas" :loading="reservationsLoading" :error="reservationsError" /><ReportPage v-else-if="hasAccess('generate-reports')" :occurrences="occurrences" /></template></section>
+        <ReservationPage v-else-if="active === 'Reservas'" :areas="areas" :reservations="reservations" :resident-id="resident?.id" :can-manage="hasAccess('manage-reservations') || hasAccess('approve-or-reject-reservation')" :can-request="hasAccess('request-reservation')" :can-cancel-own="hasAccess('cancel-own-reservation')" :can-cancel-admin="hasAccess('manage-reservations')" :total="reservationsTotal" :loading="reservationsLoading" :error="reservationsError?.message" :on-load="reloadReservations" @reservation-created="afterReservationMutation" @reservation-cancelled="afterReservationMutation" @open-details="openDetail('reservation', $event)" />
         <OccupancyPage v-else-if="active === 'Moradores e unidades' && hasAccess('link-residents-to-units')" :occupancies="occupancies" :selected-occupancy="selectedOccupancy" :users="users" :units="units" :loading="occupanciesLoading" :error="occupanciesError" @refresh="loadOccupancies" @create="createOccupancy" @delete="finishOccupancy" @open-detail="openOccupancyDetail" @close-detail="closeOccupancyDetail" />
         <div v-else>
           <section class="section-intro"><div class="section-icon"><SvgIcon :name="active === 'Reservas' ? 'calendar' : active === 'Ocorrências' ? 'alert' : 'message'" /></div><div><h2>{{ active }}</h2><p>{{ active === 'Reservas' ? 'Agende e acompanhe os espaços do condomínio.' : active === 'Ocorrências' ? 'Registre solicitações e acompanhe cada atendimento.' : 'Informação importante para viver melhor em comunidade.' }}</p></div><button v-if="active === 'Ocorrências' && (canCreateOccurrence || canOpenForResident)" class="primary-button" @click="openOccurrenceForm">Nova ocorrência</button></section>
-          <NoticePage v-if="active === 'Comunicados'" :notices="notices" :loading="noticesLoading" :error="noticesError?.message" :can-publish="hasAccess('publish-notices')" :author-id="authUser.id" :on-create="createNotice" />
+          <NoticePage v-if="active === 'Comunicados'" :notices="notices" :total="noticesTotal" :loading="noticesLoading" :error="noticesError?.message" :can-publish="hasAccess('publish-notices')" :on-load="loadNotices" :on-create="createManagedNotice" :on-update="updateManagedNotice" :on-remove="removeManagedNotice" :on-publish="publishManagedNotice" />
           <article class="panel detail-panel" v-else><div v-if="!sortedOccurrences.length" class="empty-row">Nenhuma ocorrência registrada.</div><button v-for="item in sortedOccurrences" :key="item.id" class="detail-row interactive-row" @click="openOccurrenceDetail(item.id)"><span class="row-icon large"><SvgIcon name="alert" /></span><span><strong>{{ item.title }}</strong><small>{{ item.category }} · {{ formatDateTime(item.createdAt) }}</small></span><em :class="occurrenceTone(item.status)">{{ occurrenceLabel(item.status) }}</em><span class="arrow"></span></button></article>
         </div>
       </div>
     </main>
 
     <MobileNav :active="active" :items="visibleNavItems" @select="selectNav" />
-    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" required><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (!resident && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
+    <div v-if="showOccurrence" class="modal-backdrop" @click.self="showOccurrence = false"><div class="modal glass"><button class="modal-close" @click="showOccurrence = false" aria-label="Fechar"></button><div class="section-icon"><SvgIcon name="alert" /></div><h2>Abrir ocorrência</h2><p>Conte para a gente o que está acontecendo.</p><p v-if="occurrenceTypesError || occurrenceError" class="form-error" role="alert">{{ occurrenceTypesError || occurrenceError?.message }}</p><p v-if="occurrenceSuccess" class="form-success" role="status">{{ occurrenceSuccess }}</p><label v-if="canOpenForResident && activeResidents.length">Morador responsável<select v-model="occurrenceResidentId" :required="!canCreateOccurrence"><option value="">Selecione o morador</option><option v-for="item in activeResidents" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label v-else-if="canOpenForResident">ID do morador responsável<input v-model="occurrenceResidentId" inputmode="numeric" placeholder="Informe o resident_id" required /><small class="field-help">A API não permite listar moradores para este perfil; informe o identificador cadastrado.</small></label><label>Título<input v-model="occurrenceTitle" placeholder="Ex.: Vazamento na garagem" required /></label><label>Tipo de ocorrência<select v-model="occurrenceCategory" required :disabled="occurrenceTypesLoading"><option value="">Selecione o tipo</option><option v-for="item in activeOccurrenceTypes" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>Descrição<textarea v-model="occurrenceDescription" placeholder="Descreva a ocorrência..." required></textarea></label><div class="modal-actions"><button class="outline-button" @click="showOccurrence = false">Cancelar</button><button class="primary-button" :disabled="submittingOccurrence || occurrenceTypesLoading || !occurrenceCategory || (canOpenForResident && !canCreateOccurrence && !occurrenceResidentId)" @click="submitOccurrence">{{ submittingOccurrence ? 'Enviando...' : 'Registrar ocorrência' }}</button></div></div></div>
           <DetailModal v-if="selectedOccurrence" title="Detalhes da ocorrência" icon="alert" @close="detailTarget = null">
             <p v-if="occurrenceActionError" class="form-error" role="alert">{{ occurrenceActionError }}</p>
             <dl class="detail-list"><div><dt>Status</dt><dd><em :class="occurrenceTone(selectedOccurrence.status)">{{ occurrenceLabel(selectedOccurrence.status) }}</em></dd></div><div><dt>Categoria</dt><dd>{{ selectedOccurrence.occurrenceTypeName ?? selectedOccurrence.category }}</dd></div><div><dt>Registrada em</dt><dd>{{ formatDateTime(selectedOccurrence.createdAt) }}</dd></div><div v-if="selectedOccurrence.assignedEmployeeId" class="full"><dt>Responsável</dt><dd>{{ occurrenceEmployeeName(selectedOccurrence.assignedEmployeeId, selectedOccurrence.assignedEmployeeName) }}</dd></div><div class="full"><dt>Descrição</dt><dd>{{ selectedOccurrence.description }}</dd></div><div v-if="occurrenceHistory.length" class="full"><dt>Histórico</dt><dd class="occurrence-history"><span v-for="entry in occurrenceHistory" :key="entry.id"><strong>{{ occurrenceLabel(entry.newStatus ?? selectedOccurrence.status) }}</strong><small>{{ entry.message || formatDateTime(entry.createdAt) }}</small></span></dd></div></dl>
@@ -451,8 +496,8 @@ function closeOccupancyDetail() { selectedOccupancy.value = null }
             <div v-if="canTransferOccurrence && ['analysis', 'assigned', 'in_progress'].includes(selectedOccurrence.status)" class="occurrence-transfer"><select v-model="occurrenceEmployeeId" aria-label="Responsável pela ocorrência"><option value="">Selecione o funcionário</option><option v-for="employee in activeEmployees" :key="employee.id" :value="employee.id">{{ employee.name }}</option></select><label v-if="selectedOccurrence.status !== 'analysis'" class="occurrence-note">Justificativa do repasse<textarea v-model="occurrenceTransferReason" maxlength="255" placeholder="Informe por que a ocorrência está sendo repassada"></textarea></label><button class="primary-button" :disabled="updatingOccurrence || !occurrenceEmployeeId || (selectedOccurrence.status !== 'analysis' && !occurrenceTransferReason.trim())" @click="assignSelectedOccurrence">{{ updatingOccurrence ? 'Encaminhando...' : selectedOccurrence.status === 'analysis' ? 'Encaminhar' : 'Repassar' }}</button></div>
             <label v-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="occurrence-note">Observação da conclusão<textarea v-model="occurrenceNote" placeholder="Descreva a conclusão do atendimento"></textarea></label><div v-if="selectedOccurrence.status === 'assigned' && hasAccess('update-occurrence-progress')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence" @click="startOccurrence">{{ updatingOccurrence ? 'Salvando...' : 'Atualizar para em andamento' }}</button></div><div v-else-if="selectedOccurrence.status === 'in_progress' && hasAccess('finish-occurrence')" class="modal-actions occurrence-actions"><button class="primary-button" :disabled="updatingOccurrence || !occurrenceNote.trim()" @click="completeOccurrence">{{ updatingOccurrence ? 'Finalizando...' : 'Finalizar atendimento' }}</button></div>
           </DetailModal>
-    <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl><div v-if="hasAccess('approve-or-reject-reservation') && selectedReservation.status === 'pending'" class="modal-actions reservation-review-actions"><button class="outline-button danger-action" :disabled="reviewingReservation" @click="reviewReservation('rejected')"><SvgIcon name="reject" />Reprovar</button><button class="primary-button approve-action" :disabled="reviewingReservation" @click="reviewReservation('approved')"><SvgIcon name="approve" />{{ reviewingReservation ? 'Salvando...' : 'Aprovar reserva' }}</button></div></DetailModal>
-    <DetailModal v-if="selectedNotice" title="Detalhes do comunicado" icon="message" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="noticeTone(selectedNotice.status)">{{ noticeLabel(selectedNotice.status) }}</em></dd></div><div><dt>Publicado em</dt><dd>{{ formatDateTime(selectedNotice.publishedAt) }}</dd></div><div class="full"><dt>Mensagem</dt><dd>{{ selectedNotice.content }}</dd></div></dl></DetailModal>
+    <DetailModal v-if="selectedReservation" title="Detalhes da reserva" icon="calendar" @close="detailTarget = null"><dl class="detail-list"><div><dt>Área comum</dt><dd>{{ getArea(selectedReservation.areaId)?.name ?? 'Área comum' }}</dd></div><div><dt>Status</dt><dd><em :class="reservationTone(selectedReservation.status)">{{ reservationLabel(selectedReservation.status) }}</em></dd></div><div><dt>Horário</dt><dd>{{ reservationMeta(selectedReservation) }}</dd></div><div v-if="selectedReservation.residentName"><dt>Morador</dt><dd>{{ selectedReservation.residentName }} · {{ selectedReservation.unitCode ?? 'Sem unidade' }}</dd></div><div><dt>Capacidade</dt><dd>{{ getArea(selectedReservation.areaId)?.capacity ?? 'Não informada' }} pessoas</dd></div><div class="full"><dt>Solicitada em</dt><dd>{{ formatDateTime(selectedReservation.createdAt) }}</dd></div></dl><p v-if="selectedReservation.rejectionReason" class="form-error">Motivo: {{ selectedReservation.rejectionReason }}</p><p v-if="reservationActionError" class="form-error" role="alert">{{ reservationActionError }}</p><label v-if="hasAccess('approve-or-reject-reservation') && selectedReservation.status === 'pending'" class="occurrence-note">Justificativa da reprovação<textarea v-model="reservationRejectionReason" maxlength="255" placeholder="Informe o motivo, se necessário"></textarea></label><div v-if="hasAccess('approve-or-reject-reservation') && selectedReservation.status === 'pending'" class="modal-actions reservation-review-actions"><button class="outline-button danger-action" :disabled="reviewingReservation" @click="reviewReservation('rejected')"><SvgIcon name="reject" />Reprovar</button><button class="primary-button approve-action" :disabled="reviewingReservation" @click="reviewReservation('approved')"><SvgIcon name="approve" />{{ reviewingReservation ? 'Salvando...' : 'Aprovar reserva' }}</button></div><div v-if="hasAccess('manage-reservations') && ['pending', 'approved'].includes(selectedReservation.status)" class="modal-actions"><button class="outline-button danger-action" :disabled="reviewingReservation" @click="cancelManagedReservation">Cancelar reserva</button></div></DetailModal>
+    <DetailModal v-if="selectedNotice" title="Detalhes do comunicado" icon="message" @close="detailTarget = null"><dl class="detail-list"><div><dt>Status</dt><dd><em :class="noticeTone(selectedNotice.status)">{{ noticeLabel(selectedNotice.status) }}</em></dd></div><div><dt>Publicado em</dt><dd>{{ selectedNotice.publishedAt ? formatDateTime(selectedNotice.publishedAt) : 'Rascunho' }}</dd></div><div class="full"><dt>Mensagem</dt><dd>{{ selectedNotice.content }}</dd></div></dl></DetailModal>
   </div>
 </template>
 

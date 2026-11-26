@@ -1,5 +1,5 @@
 import { AppError, toAppError } from '~/domain/app-error'
-import type { CreateReservationInput, Reservation, ReservationStatus } from '~/domain/reservation'
+import type { CommonAreaInput, CreateReservationInput, Reservation, ReservationStatus } from '~/domain/reservation'
 import { useServices } from '~/services'
 
 export function useReservations() {
@@ -7,6 +7,7 @@ export function useReservations() {
   const reservations = ref<Reservation[]>([])
   const loading = ref(false)
   const error = ref<AppError | null>(null)
+  const total = ref(0)
 
   async function execute<T>(action: () => Promise<T>): Promise<T> {
     loading.value = true
@@ -19,9 +20,10 @@ export function useReservations() {
     } finally { loading.value = false }
   }
 
-  async function loadReservations() {
-    const result = await execute(() => reservationService.list())
+  async function loadReservations(page = 1, filters?: string) {
+    const result = await execute(() => reservationService.list(page, filters))
     reservations.value = result.data
+    total.value = result.total ?? result.data.length
   }
 
   async function createReservation(input: CreateReservationInput) {
@@ -36,9 +38,10 @@ export function useReservations() {
     if (index >= 0) reservations.value[index] = result.data
   }
 
-  async function loadMyReservations() {
-    const result = await execute(() => reservationService.getMyReservations())
+  async function loadMyReservations(page = 1, filters?: string) {
+    const result = await execute(() => reservationService.getMyReservations(page, filters))
     reservations.value = result.data
+    total.value = result.total ?? result.data.length
   }
 
   async function updateReservationStatus(id: string, status: ReservationStatus, reason?: string) {
@@ -51,6 +54,10 @@ export function useReservations() {
   const listAreas = () => execute(() => reservationService.listAreas())
   const findReservation = (id: string) => execute(() => reservationService.findById(id))
   const listOccupancy = (areaId: string, startDate: string, endDate: string) => execute(() => reservationService.listOccupancy(areaId, startDate, endDate))
+  const availability = (areaId: string, startDate: string, endDate: string) => execute(() => reservationService.availability(areaId, startDate, endDate))
+  const createArea = (input: CommonAreaInput) => execute(() => reservationService.createArea(input))
+  const updateArea = (id: string, input: Partial<CommonAreaInput>) => execute(() => reservationService.updateArea(id, input))
+  const removeArea = (id: string) => execute(() => reservationService.removeArea(id))
 
-  return { reservations, loading, error, loadReservations, loadMyReservations, createReservation, cancelReservation, updateReservationStatus, listAreas, findReservation, listOccupancy }
+  return { reservations, total, loading, error, loadReservations, loadMyReservations, createReservation, cancelReservation, updateReservationStatus, listAreas, findReservation, listOccupancy, availability, createArea, updateArea, removeArea }
 }
