@@ -23,9 +23,10 @@ function ensureNotice(id: string): Notice {
 }
 
 export const mockNoticeRepository: NoticeRepository = {
-  async list() {
+  async list(page = 1, status) {
     await simulateRequest()
-    return response(notices)
+    const filtered = status ? notices.filter(item => item.status === status) : notices
+    return { ...response(filtered.slice((page - 1) * 10, page * 10)), total: filtered.length }
   },
   async findById(id) {
     await simulateRequest()
@@ -33,7 +34,7 @@ export const mockNoticeRepository: NoticeRepository = {
   },
   async create(input) {
     await simulateRequest()
-    const item: Notice = { ...structuredClone(input), id: crypto.randomUUID() }
+    const item: Notice = { ...structuredClone(input), id: crypto.randomUUID(), authorId: 'user-admin', publishedAt: input.status === 'published' ? new Date().toISOString() : null }
     notices.push(item)
     return response(item)
   },
@@ -48,5 +49,13 @@ export const mockNoticeRepository: NoticeRepository = {
     const item = ensureNotice(id)
     notices.splice(notices.indexOf(item), 1)
     return response(null)
+  },
+  async publish(id) {
+    await simulateRequest()
+    const item = ensureNotice(id)
+    if (item.status !== 'draft') throw new AppError('CONFLICT', 'Este comunicado já foi publicado.')
+    item.status = 'published'
+    item.publishedAt = new Date().toISOString()
+    return response(item)
   },
 }

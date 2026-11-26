@@ -28,6 +28,12 @@ import { createOccurrenceTypeService } from './occurrence-type-service'
 import { createApiPermissionRepository } from '~/repositories/api/api-permission-repository'
 import { mockPermissionRepository } from '~/repositories/mock/mock-permission-repository'
 import { createPermissionService } from './permission-service'
+import { createApiDashboardRepository } from '~/repositories/api/api-dashboard-repository'
+import { createDashboardService } from './dashboard-service'
+import { createApiReportRepository } from '~/repositories/api/api-report-repository'
+import { createReportService } from './report-service'
+import { createApiAuditReportRepository } from '~/repositories/api/api-audit-report-repository'
+import { createAuditReportService } from './audit-report-service'
 
 export function useServices() {
   const { public: config } = useRuntimeConfig()
@@ -44,5 +50,8 @@ export function useServices() {
     unitService: createUnitService(useMock ? mockUnitRepository : createApiUnitRepository()),
     unitOccupancyService: createUnitOccupancyService(useMock ? mockUnitOccupancyRepository : createApiUnitOccupancyRepository()),
     permissionService: createPermissionService(useMock ? mockPermissionRepository : createApiPermissionRepository()),
+    dashboardService: createDashboardService(createApiDashboardRepository()),
+    reportService: createReportService(createApiReportRepository()),
+    auditReportService: createAuditReportService(createApiAuditReportRepository()),
   }
 }

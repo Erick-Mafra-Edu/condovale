@@ -7,6 +7,7 @@ export function useNotices() {
   const notices = ref<Notice[]>([])
   const loading = ref(false)
   const error = ref<AppError | null>(null)
+  const total = ref(0)
 
   async function execute<T>(action: () => Promise<T>): Promise<T> {
     loading.value = true
@@ -19,9 +20,10 @@ export function useNotices() {
     } finally { loading.value = false }
   }
 
-  async function loadNotices() {
-    const result = await execute(() => noticeService.list())
+  async function loadNotices(page = 1, status?: Notice['status']) {
+    const result = await execute(() => noticeService.list(page, status))
     notices.value = result.data
+    total.value = result.total ?? result.data.length
   }
 
   async function findNotice(id: string) {
@@ -47,6 +49,13 @@ export function useNotices() {
     notices.value = notices.value.filter(item => item.id !== id)
   }
 
-  return { notices, loading, error, loadNotices, findNotice, createNotice, updateNotice, removeNotice }
+  async function publishNotice(id: string) {
+    const result = await execute(() => noticeService.publish(id))
+    const index = notices.value.findIndex(item => item.id === id)
+    if (index >= 0) notices.value[index] = result.data
+    return result.data
+  }
+
+  return { notices, total, loading, error, loadNotices, findNotice, createNotice, updateNotice, removeNotice, publishNotice }
 }
 

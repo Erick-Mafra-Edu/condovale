@@ -11,7 +11,7 @@ function validate(input: UpdateNoticeInput) {
 
 export function createNoticeService(repository: NoticeRepository) {
   return {
-    list: () => repository.list(),
+    list: (page?: number, status?: 'draft' | 'published') => repository.list(page, status),
     findById: (id: string) => repository.findById(id),
     async create(input: CreateNoticeInput) {
       validate(input)
@@ -22,6 +22,7 @@ export function createNoticeService(repository: NoticeRepository) {
       return repository.update(id, input)
     },
     remove: (id: string) => repository.remove(id),
+    publish: (id: string) => repository.publish(id),
   }
 }
 

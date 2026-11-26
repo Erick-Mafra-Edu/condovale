@@ -47,14 +47,15 @@ export function can(role: UserRole, useCase: UseCase, effectivePermissions?: rea
   return effectivePermissions ? effectivePermissions.includes(useCase) : rolePermissions[role].has(useCase)
 }
 
-export type AppModule = 'Início' | 'Meu cadastro' | 'Usuários' | 'Tipos de ocorrência' | 'Ocorrências' | 'Reservas' | 'Comunicados' | 'Relatórios' | 'Unidades' | 'Moradores e unidades'
+export type AppModule = 'Início' | 'Meu cadastro' | 'Usuários' | 'Tipos de ocorrência' | 'Ocorrências' | 'Reservas' | 'Áreas comuns' | 'Comunicados' | 'Relatórios' | 'Unidades' | 'Moradores e unidades'
 
 const modulePermissions: Readonly<Record<Exclude<AppModule, 'Início'>, readonly UseCase[]>> = {
   'Meu cadastro': ['update-own-profile'],
   Usuários: ['manage-residents'],
   'Tipos de ocorrência': ['manage-occurrence-types'],
-  Ocorrências: ['create-occurrence', 'open-occurrence-for-resident', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence'],
+  Ocorrências: ['create-occurrence', 'open-occurrence-for-resident', 'track-own-occurrences', 'view-assigned-occurrences', 'analyze-occurrences', 'assign-occurrence', 'close-any-occurrence', 'update-occurrence-progress', 'finish-occurrence', 'hand-over-occurrence'],
   Reservas: ['view-common-areas', 'request-reservation', 'view-own-reservations', 'manage-reservations', 'approve-or-reject-reservation'],
+  'Áreas comuns': ['manage-reservations'],
   Comunicados: ['view-notices', 'publish-notices'],
   Relatórios: ['generate-reports', 'view-audit-reports'],
   Unidades: ['manage-units'],
