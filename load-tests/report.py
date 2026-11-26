@@ -5,7 +5,6 @@ import json
 import math
 from pathlib import Path
 import statistics
-import sys
 from xml.sax.saxutils import escape
 
 
@@ -137,7 +136,3 @@ def main(folder):
     text = '\n'.join(lines)
     (folder / 'summary.md').write_text(text, encoding='utf-8')
     (folder / 'capacity-report.md').write_text(text, encoding='utf-8')
-
-
-if __name__ == '__main__':
-    main(sys.argv[1])

@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validar Compose
-        run: docker compose -f load-tests/docker-compose.infra.yml config
+        run: BENCHMARK_PASSWORD=$(openssl rand -hex 24) docker compose -f load-tests/docker-compose.infra.yml config >/dev/null
       - name: Executar benchmark curto
         run: python load-tests/run.py --profile small --scenario "${{ inputs.scenario }}" --duration 60s --rate 5
       - name: Publicar resumo

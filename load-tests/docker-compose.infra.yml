@@ -26,7 +26,8 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: base64:Q29uZG9WYWxlTG9hZFRlc3RLZXktMjAyNi1TZWVkISE=
-      APP_URL: http://api
+      APP_URL: http://api:8080
+      BENCHMARK_PASSWORD: ${BENCHMARK_PASSWORD:?run_with_load_tests_run_py}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
@@ -45,9 +46,9 @@ services:
     cpus: ${PHP_CPUS:-1.0}
     mem_limit: ${PHP_MEMORY:-512m}
     ports:
-      - "${BENCHMARK_PORT:-8080}:80"
+      - "${BENCHMARK_PORT:-8080}:8080"
     healthcheck:
-      test: [CMD-SHELL, "curl -fsS http://127.0.0.1/up >/dev/null"]
+      test: [CMD-SHELL, "curl -fsS http://127.0.0.1:8080/up >/dev/null"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -59,7 +60,8 @@ services:
       api:
         condition: service_healthy
     environment:
-      BASE_URL: http://api
+      BASE_URL: http://api:8080
+      BENCHMARK_PASSWORD: ${BENCHMARK_PASSWORD:?run_with_load_tests_run_py}
       K6_SCENARIO: ${K6_SCENARIO:-smoke}
       K6_RATE: ${K6_RATE:-5}
       K6_DURATION: ${K6_DURATION:-20s}

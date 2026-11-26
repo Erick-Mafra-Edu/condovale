@@ -19,7 +19,7 @@ Os perfis `small`, `medium`, `large` criam respectivamente 100/1.200/5.000 usuá
 Limites podem ser definidos com `PHP_CPUS`, `PHP_MEMORY`, `MYSQL_CPUS`, `MYSQL_MEMORY`; por exemplo, `PHP_CPUS=0.5 MYSQL_CPUS=0.5 PHP_MEMORY=384m MYSQL_MEMORY=384m`. O coletor grava `resource-usage.csv`, `metadata.json`, `k6-raw.json` e `k6-summary.json`. O gerador escreve `summary.json`, `summary.md`, `capacity-report.md` e três gráficos SVG. Para comparar dois resultados, confronte os `summary.json` somente se host, perfil e cenário forem equivalentes. Inspecione `dropped_iterations`: qualquer valor acima de zero invalida a afirmação de capacidade sustentável. O relatório não extrapola resultados para produção.
 
 ```sh
-python load-tests/compare.py load-tests/results/RUN1/summary.json load-tests/results/RUN2/summary.json
+python load-tests/compare.py RUN1 RUN2
 ```
 
 No GitHub Actions, o workflow **Benchmark Apache MySQL** é apenas manual e oferece smoke ou baseline curta. O workflow econômico SQLite original continua separado. Veja [arquitetura e limitações](../docs/performance/architecture.md).

@@ -11,9 +11,16 @@ REPORT = Path(__file__).resolve().parents[1] / 'report.py'
 spec = importlib.util.spec_from_file_location('benchmark_report', REPORT)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+compare_spec = importlib.util.spec_from_file_location('benchmark_compare', REPORT.with_name('compare.py'))
+compare = importlib.util.module_from_spec(compare_spec)
+compare_spec.loader.exec_module(compare)
 
 
 class ReportTest(unittest.TestCase):
+    def test_comparison_rejects_paths_outside_results(self):
+        with self.assertRaises(SystemExit):
+            compare.summary_path('../other/summary.json')
+
     def test_smoke_report_does_not_claim_capacity(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)

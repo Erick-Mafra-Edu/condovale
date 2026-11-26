@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 import platform
 import re
+import secrets
 import subprocess
 import threading
 import time
 from datetime import datetime, timezone
+from report import main as generate_report
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = f"condovale-benchmark-{os.getpid()}"
@@ -71,13 +73,13 @@ def main():
     parser.add_argument("--duration", default="20s")
     parser.add_argument("--rate", type=int, default=5)
     parser.add_argument("--seed", type=int, default=2026)
-    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.scenario == "soak" and args.duration not in ("30m", "45m", "60m"):
         parser.error("soak duration must be 30m, 45m or 60m")
-    output = args.output or ROOT / "results" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    output = ROOT / "results" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output.mkdir(parents=True, exist_ok=False)
     env = os.environ.copy()
+    env['BENCHMARK_PASSWORD'] = secrets.token_urlsafe(32)
     env.update({"K6_SCENARIO": args.scenario, "K6_DURATION": args.duration, "K6_RATE": str(args.rate), "BENCHMARK_USERS": str({"small": 100, "medium": 1200, "large": 5000}[args.profile])})
     docker_info = subprocess.run(["docker", "info", "--format", "{{json .}}"], capture_output=True, text=True, check=True)
     info = json.loads(docker_info.stdout)
@@ -113,7 +115,7 @@ def main():
         (output / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         stop.set()
         collector.join(timeout=10)
-        subprocess.run(["python", str(ROOT / "report.py"), str(output)], check=True)
+        generate_report(output)
         return k6.returncode
     finally:
         stop.set()

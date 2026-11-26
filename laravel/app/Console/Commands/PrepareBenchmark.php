@@ -61,12 +61,16 @@ class PrepareBenchmark extends Command
             $this->error('Database is not empty or differs from the requested profile. Reset the disposable volume with the benchmark runner.');
             return self::FAILURE;
         }
-        mt_srand($seed);
         foreach ([PermissionSeeder::class, RoleSeeder::class, RolePermissionSeeder::class, CommonAreaSeeder::class, OccurrenceTypeSeeder::class] as $seeder) {
             app($seeder)->run();
         }
         $stamp = '2026-01-01 00:00:00';
-        $password = Hash::make('benchmark-only-2026');
+        $plainPassword = getenv('BENCHMARK_PASSWORD');
+        if (! is_string($plainPassword) || strlen($plainPassword) < 24) {
+            $this->error('BENCHMARK_PASSWORD must contain at least 24 characters.');
+            return self::FAILURE;
+        }
+        $password = Hash::make($plainPassword);
         $roles = DB::table('roles')->pluck('id', 'name');
         $users = [];
         $roleLinks = [];
@@ -90,26 +94,26 @@ class PrepareBenchmark extends Command
         foreach (array_chunk($occupancies, 500) as $chunk) DB::table('unit_occupancies')->insert($chunk);
         $areaIds = DB::table('common_areas')->pluck('id')->all();
         $typeIds = DB::table('occurrence_types')->pluck('id')->all();
-        $this->insertRows('reservations', $counts['reservations'], function ($i) use ($residentIds, $areaIds) {
-            $day = gmdate('Y-m-d', strtotime('2025-01-01 UTC') + mt_rand(0, 364) * 86400);
-            return ['common_area_id' => $areaIds[mt_rand(0, count($areaIds) - 1)], 'resident_id' => $residentIds[mt_rand(0, count($residentIds) - 1)], 'date' => $day, 'start_time' => '10:00:00', 'end_time' => '12:00:00', 'status' => $i % 10 < 6 ? 'approved' : ($i % 10 < 8 ? 'cancelled' : 'rejected'), 'created_at' => "$day 10:00:00", 'updated_at' => "$day 10:00:00"];
+        $this->insertRows('reservations', $counts['reservations'], function ($i) use ($residentIds, $areaIds, $seed) {
+            $day = gmdate('Y-m-d', strtotime('2025-01-01 UTC') + $this->bucket($seed, 'reservation-day', $i, 365) * 86400);
+            return ['common_area_id' => $areaIds[$this->bucket($seed, 'reservation-area', $i, count($areaIds))], 'resident_id' => $residentIds[$this->bucket($seed, 'reservation-user', $i, count($residentIds))], 'date' => $day, 'start_time' => '10:00:00', 'end_time' => '12:00:00', 'status' => $i % 10 < 6 ? 'approved' : ($i % 10 < 8 ? 'cancelled' : 'rejected'), 'created_at' => "$day 10:00:00", 'updated_at' => "$day 10:00:00"];
         });
         $occurrenceOwners = [];
         $occurrenceDays = [];
-        $this->insertRows('occurrences', $counts['occurrences'], function ($i) use ($residentIds, $typeIds, $counts, &$occurrenceOwners, &$occurrenceDays) {
-            $day = gmdate('Y-m-d', strtotime('2025-01-01 UTC') + mt_rand(0, 364) * 86400);
-            $residentIndex = mt_rand(0, count($residentIds) - 1);
+        $this->insertRows('occurrences', $counts['occurrences'], function ($i) use ($residentIds, $typeIds, $counts, $seed, &$occurrenceOwners, &$occurrenceDays) {
+            $day = gmdate('Y-m-d', strtotime('2025-01-01 UTC') + $this->bucket($seed, 'occurrence-day', $i, 365) * 86400);
+            $residentIndex = $this->bucket($seed, 'occurrence-user', $i, count($residentIds));
             $occurrenceOwners[$i] = $residentIds[$residentIndex];
             $occurrenceDays[$i] = $day;
-            return ['title' => "Benchmark occurrence {$i}", 'description' => 'Synthetic maintenance request', 'occurrence_type_id' => $typeIds[mt_rand(0, count($typeIds) - 1)], 'resident_id' => $residentIds[$residentIndex], 'unit_id' => $residentIndex % $counts['units'] + 1, 'status' => 'open', 'created_at' => "$day 10:00:00", 'updated_at' => "$day 10:00:00"];
+            return ['title' => "Benchmark occurrence {$i}", 'description' => 'Synthetic maintenance request', 'occurrence_type_id' => $typeIds[$this->bucket($seed, 'occurrence-type', $i, count($typeIds))], 'resident_id' => $residentIds[$residentIndex], 'unit_id' => $residentIndex % $counts['units'] + 1, 'status' => 'open', 'created_at' => "$day 10:00:00", 'updated_at' => "$day 10:00:00"];
         });
         $this->insertRows('occurrence_histories', $counts['histories'], function ($i) use ($counts, $occurrenceOwners, $occurrenceDays) {
             $occurrenceId = ($i - 1) % $counts['occurrences'] + 1;
             $day = $occurrenceDays[$occurrenceId];
             return ['occurrence_id' => $occurrenceId, 'user_id' => $occurrenceOwners[$occurrenceId], 'type' => 'created', 'new_status' => 'open', 'created_at' => "$day 11:00:00", 'updated_at' => "$day 11:00:00"];
         });
-        $this->insertRows('notices', $counts['notices'], function ($i) {
-            $day = gmdate('Y-m-d', strtotime('2025-01-01 UTC') + mt_rand(0, 364) * 86400);
+        $this->insertRows('notices', $counts['notices'], function ($i) use ($seed) {
+            $day = gmdate('Y-m-d', strtotime('2025-01-01 UTC') + $this->bucket($seed, 'notice-day', $i, 365) * 86400);
             return ['title' => "Benchmark notice {$i}", 'content' => 'Synthetic announcement', 'author_id' => 2, 'status' => 'published', 'published_at' => "$day 09:00:00", 'created_at' => "$day 09:00:00", 'updated_at' => "$day 09:00:00"];
         });
         foreach ($counts as $table => $expected) {
@@ -143,5 +147,11 @@ class PrepareBenchmark extends Command
             }
         }
         if ($rows) DB::table($table)->insert($rows);
+    }
+
+    private function bucket(int $seed, string $scope, int $index, int $size): int
+    {
+        $digest = hash_hmac('sha256', "{$scope}:{$index}", (string) $seed);
+        return hexdec(substr($digest, 0, 8)) % $size;
     }
 }

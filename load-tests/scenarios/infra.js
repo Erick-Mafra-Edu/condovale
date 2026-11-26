@@ -2,7 +2,9 @@ import http from 'k6/http'
 import { check, fail } from 'k6'
 import { Counter, Trend } from 'k6/metrics'
 
-const base = __ENV.BASE_URL || 'http://api'
+const base = __ENV.BASE_URL
+if (!base) fail('BASE_URL is required')
+if (!__ENV.BENCHMARK_PASSWORD) fail('BENCHMARK_PASSWORD is required')
 const kind = __ENV.K6_SCENARIO || 'smoke'
 const rate = Number(__ENV.K6_RATE || 5)
 const duration = __ENV.K6_DURATION || '20s'
@@ -65,7 +67,7 @@ function request(method, path, body, operation, expected = 201) {
 
 function login(id) {
   http.cookieJar().clear(base)
-  const response = request('POST', '/api/auth/login', { email: `vu${id}@benchmark.invalid`, password: 'benchmark-only-2026' }, 'login')
+  const response = request('POST', '/api/auth/login', { email: `vu${id}@benchmark.invalid`, password: __ENV.BENCHMARK_PASSWORD }, 'login')
   loginLatency.add(response.timings.duration)
   if (response.status !== 201) fail(`Login failed for synthetic user ${id}: ${response.status}`)
 }
