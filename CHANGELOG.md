@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.5.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.4.0...v1.5.0) (2026-11-27)
+
+
+### Features
+
+* **audit:** record structured audit trail and add audit report endpoint ([b91ec14](https://github.com/Erick-Mafra-Edu/condovale/commit/b91ec149fb2d262fdcd5f4c44b8fe9cd5156515b))
+* **common-areas:** add common area CRUD ([3204313](https://github.com/Erick-Mafra-Edu/condovale/commit/3204313dd2c9e415e289426bebd7a6a9e12623fd))
+* **common-areas:** validate opening hours and allow closing at midnight ([31608d7](https://github.com/Erick-Mafra-Edu/condovale/commit/31608d72d87cde3012c4190f462ce689b65db98f))
+* completa o backend de reservas, auditoria e cobertura da especificação ([9f4b1f1](https://github.com/Erick-Mafra-Edu/condovale/commit/9f4b1f1d2be87915c6c63c9946cb6da73aa768db))
+* **frontend:** integrate sprint 5 and 6 API flows ([bfd2f59](https://github.com/Erick-Mafra-Edu/condovale/commit/bfd2f59fcc3249d688f45a9bed06efd773cb0929))
+* **notices:** add notice edit endpoint ([b027f45](https://github.com/Erick-Mafra-Edu/condovale/commit/b027f45fad87e9037058aeeb86ddcff123dfea79))
+* **occurrences:** register complaints as a nature of the occurrence type ([0d8e33c](https://github.com/Erick-Mafra-Edu/condovale/commit/0d8e33c540e3c441549197349085a0bdf123260c))
+* **performance:** add reproducible Apache and MySQL benchmarks ([0ac07bc](https://github.com/Erick-Mafra-Edu/condovale/commit/0ac07bc63e96f947cdb6185bd5713487de0aa041))
+* **performance:** add reproducible Apache and MySQL benchmarks ([d6acb99](https://github.com/Erick-Mafra-Edu/condovale/commit/d6acb999e7aa9a5f4f5d677f3807129b02682cfa))
+* **reservations:** add common area availability query ([68325a9](https://github.com/Erick-Mafra-Edu/condovale/commit/68325a9886660296b023987cf92c91871d04739c))
+* **reservations:** add reservation cancellation endpoint ([f22e96e](https://github.com/Erick-Mafra-Edu/condovale/commit/f22e96e0db3cff6a1aad08c08e73bd7f85acafa7))
+* **reservations:** add reservation listing, detail and review endpoints ([82a799d](https://github.com/Erick-Mafra-Edu/condovale/commit/82a799dcee87873b377f89f74a11a3b164d36fd3))
+* **reservations:** add reservation request endpoint ([85037d0](https://github.com/Erick-Mafra-Edu/condovale/commit/85037d034f0c884743356830321de88313e653b7))
+* **reservations:** check area rules on approval and name the field ([038503c](https://github.com/Erick-Mafra-Edu/condovale/commit/038503cccd47a59f0da951563b6b1c1139174b32))
+
+
+### Bug Fixes
+
+* **ci:** set application timezone in tests ([e79ba5d](https://github.com/Erick-Mafra-Edu/condovale/commit/e79ba5db11f1b2dc8b022289dd3ea8506d8e57de))
+* **ci:** set application timezone in tests ([6a74d68](https://github.com/Erick-Mafra-Edu/condovale/commit/6a74d6848cd85f01ca3db76bfec6b7a0e31a1e5e))
+* **occurrences:** lock the ticket before changing it ([a12669b](https://github.com/Erick-Mafra-Edu/condovale/commit/a12669bee6fc1f8529fdac220ddf237994a2ebae))
+* **performance:** address SonarCloud security findings ([b8274c0](https://github.com/Erick-Mafra-Edu/condovale/commit/b8274c0ae4430a1fe337938734e36b57b52b964d))
+* **reservations:** serialize concurrent conflict checks ([02d4618](https://github.com/Erick-Mafra-Edu/condovale/commit/02d4618b7a3e90f3d3855f70dedd2ddd54d7cf3d))
+
 ## [1.4.0](https://github.com/Erick-Mafra-Edu/condovale/compare/v1.3.2...v1.4.0) (2026-11-23)
 
 
