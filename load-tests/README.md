@@ -1,5 +1,31 @@
 # Teste de carga local
 
+## Benchmark Apache + MySQL
+
+O benchmark isolado fica em `docker-compose.infra.yml`; o smoke SQLite descrito abaixo permanece disponível. Requer Docker Compose e Python 3.10+ no host. A partir da raiz do repositório:
+
+```sh
+python load-tests/run.py --profile small --scenario smoke --duration 20s
+python load-tests/run.py --profile medium --scenario mixed --rate 10 --duration 5m
+python load-tests/run.py --profile small --scenario baseline
+```
+
+No PowerShell, para limitar recursos antes de uma execução: `$env:PHP_CPUS='0.5'; $env:PHP_MEMORY='384m'; $env:MYSQL_CPUS='0.5'; $env:MYSQL_MEMORY='384m'; python load-tests/run.py --profile small --scenario smoke`.
+
+`baseline` usa quatro patamares de cinco minutos (5, 10, 20, 40 iterações/s), além de 10 s de aquecimento. `short-baseline` usa os mesmos patamares por 30 s para diagnóstico no CI; não comprova estabilidade prolongada. `stress` usa patamares crescentes de dois minutos e interrompe ao violar thresholds. `spike` vai de `--rate` para três vezes a taxa e retorna; `soak` exige `--duration 30m`, `45m` ou `60m`. Testes longos e stress são exclusivamente manuais. O script cria um projeto Compose exclusivo por execução, reinicializa seu volume MySQL, prepara os dados e encerra os contêineres mesmo quando o k6 falha.
+
+Os perfis `small`, `medium`, `large` criam respectivamente 100/1.200/5.000 usuários, 50/500/2.000 unidades e 500/10.000/50.000 reservas. `--seed` controla a geração. O comando `benchmark:prepare` exige o banco `condovale_benchmark`; ao ser repetido com o mesmo perfil e semente, valida as quantidades e retorna sem modificar dados. Se o banco contiver outra carga, ele recusa a operação. A senha das contas sintéticas é exclusiva deste ambiente. Resultados ficam em `load-tests/results/<timestamp>/` e estão ignorados pelo Git.
+
+Limites podem ser definidos com `PHP_CPUS`, `PHP_MEMORY`, `MYSQL_CPUS`, `MYSQL_MEMORY`; por exemplo, `PHP_CPUS=0.5 MYSQL_CPUS=0.5 PHP_MEMORY=384m MYSQL_MEMORY=384m`. O coletor grava `resource-usage.csv`, `metadata.json`, `k6-raw.json` e `k6-summary.json`. O gerador escreve `summary.json`, `summary.md`, `capacity-report.md` e três gráficos SVG. Para comparar dois resultados, confronte os `summary.json` somente se host, perfil e cenário forem equivalentes. Inspecione `dropped_iterations`: qualquer valor acima de zero invalida a afirmação de capacidade sustentável. O relatório não extrapola resultados para produção.
+
+```sh
+python load-tests/compare.py RUN1 RUN2
+```
+
+No GitHub Actions, o workflow **Benchmark Apache MySQL** é apenas manual e oferece smoke ou baseline curta. O workflow econômico SQLite original continua separado. Veja [arquitetura e limitações](../docs/performance/architecture.md).
+
+Para a matriz experimental local, execute cada configuração com as variáveis `PHP_CPUS`, `MYSQL_CPUS`, `PHP_MEMORY` e `MYSQL_MEMORY` ajustadas ao host. Repita cada configuração três vezes com o mesmo perfil e semente; compare p95, RPS, erro, CPU e memória. Execute stress e soak somente após avaliar a baseline e com autorização explícita. Preserve os relatórios de cada execução fora do Git.
+
 Este diretório sobe uma API Laravel descartável com SQLite, executa o `DatabaseSeeder` completo e roda um cenário k6 contra rotas de leitura autenticadas. O banco é criado dentro do container e desaparece com ele.
 
 ## Pré-requisitos

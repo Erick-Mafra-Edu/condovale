@@ -1,0 +1,35 @@
+name: Benchmark Apache MySQL
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Execução curta e econômica'
+        required: true
+        type: choice
+        options: [smoke, short-baseline]
+        default: smoke
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar Compose
+        run: BENCHMARK_PASSWORD=$(openssl rand -hex 24) docker compose -f load-tests/docker-compose.infra.yml config >/dev/null
+      - name: Executar benchmark curto
+        run: python load-tests/run.py --profile small --scenario "${{ inputs.scenario }}" --duration 60s --rate 5
+      - name: Publicar resumo
+        if: always()
+        run: |
+          summary=$(find load-tests/results -name summary.md -print -quit)
+          if [ -n "$summary" ]; then cat "$summary" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Publicar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-infra-${{ github.run_id }}
+          path: load-tests/results/
+          retention-days: 3
+          if-no-files-found: warn

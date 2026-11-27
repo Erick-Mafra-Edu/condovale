@@ -1,0 +1,78 @@
+name: condovale-benchmark
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: benchmark-root-only
+      MYSQL_DATABASE: condovale_benchmark
+      MYSQL_USER: benchmark
+      MYSQL_PASSWORD: benchmark-only
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-benchmark.cnf:/etc/mysql/conf.d/benchmark.cnf:ro
+    cpus: ${MYSQL_CPUS:-1.0}
+    mem_limit: ${MYSQL_MEMORY:-768m}
+    healthcheck:
+      test: [CMD-SHELL, "mysql -ubenchmark -pbenchmark-only condovale_benchmark -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  api:
+    build:
+      context: ..
+      dockerfile: load-tests/Dockerfile.apache
+    environment:
+      APP_NAME: CondoVale Benchmark
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: base64:Q29uZG9WYWxlTG9hZFRlc3RLZXktMjAyNi1TZWVkISE=
+      APP_URL: http://api:8080
+      BENCHMARK_PASSWORD: ${BENCHMARK_PASSWORD:?run_with_load_tests_run_py}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: condovale_benchmark
+      DB_USERNAME: benchmark
+      DB_PASSWORD: benchmark-only
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: warning
+      DEPLOY_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    cpus: ${PHP_CPUS:-1.0}
+    mem_limit: ${PHP_MEMORY:-512m}
+    ports:
+      - "${BENCHMARK_PORT:-8080}:8080"
+    healthcheck:
+      test: [CMD-SHELL, "curl -fsS http://127.0.0.1:8080/up >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  k6:
+    image: grafana/k6:0.54.0
+    profiles: [load]
+    user: "0:0"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://api:8080
+      BENCHMARK_PASSWORD: ${BENCHMARK_PASSWORD:?run_with_load_tests_run_py}
+      K6_SCENARIO: ${K6_SCENARIO:-smoke}
+      K6_RATE: ${K6_RATE:-5}
+      K6_DURATION: ${K6_DURATION:-20s}
+      K6_VUS: ${K6_VUS:-2}
+      K6_PREALLOCATED_VUS: ${K6_PREALLOCATED_VUS:-20}
+      K6_MAX_VUS: ${K6_MAX_VUS:-80}
+      BENCHMARK_USERS: ${BENCHMARK_USERS:-100}
+      K6_WEIGHTS: ${K6_WEIGHTS:-40,25,15,10,10}
+    volumes:
+      - ./scenarios:/scripts:ro
+      - ./results:/results
+    command: [run, --out, json=/results/k6-raw.json, /scripts/infra.js]
+volumes:
+  mysql_data:
